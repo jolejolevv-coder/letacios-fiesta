@@ -64,12 +64,22 @@ body {
 
 #wurzel { position: relative; z-index: 1; }
 
-/* Tabellenziffern, damit Spalten stehen. */
+/* Tabellenziffern, damit Spalten stehen.
+
+   `white-space: nowrap` ist hier kein Feinschliff: auf schmalen Schirmen brach
+   sonst "53.3 %" in zwei Zeilen um, die Prozentzeichen standen allein darunter und
+   die Zeilenhoehen sprangen. Zahlen umbrechen nie, sie rollen lieber seitlich mit
+   ihrer Tabelle. */
 .zahl {
   font-family: var(--font-zahl);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
+  white-space: nowrap;
 }
+
+/* Dasselbe fuer Spaltenkoepfe: "Win rate" auf zwei Zeilen kostet mehr Hoehe, als
+   der Umbruch an Breite spart. */
+th.etikett { white-space: nowrap; }
 
 /* Beschriftungen klein und grau, normal geschrieben. */
 .etikett {

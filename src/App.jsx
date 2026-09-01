@@ -1597,7 +1597,7 @@ function Partie({ p, namen, replayOeffnen }) {
           Namenslaenge, und die Zeilen stehen untereinander nicht auf einer Linie. */}
       <button
         type="button"
-        className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-2.5 text-left"
+        className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto] items-center gap-x-2 px-2 py-2.5 text-left sm:gap-x-3 sm:px-3"
         onClick={() => setOffen((o) => !o)}
       >
         <span
@@ -1613,8 +1613,16 @@ function Partie({ p, namen, replayOeffnen }) {
         <span className="flex min-w-0 items-center gap-2">
           <Bild id={p.eigener_leader} breite={120} hoehe={168}
                 className="h-[38px] w-[27px] shrink-0 rounded-[3px] object-cover" />
+          {/* Auf dem Telefon ist der Name so kurz abgeschnitten, dass er nichts mehr
+              sagt. Dort steht die Kartennummer, die exakt ist und passt; der Name
+              kommt ab 640 Pixel dazu. */}
           <span className="min-w-0">
-            <LeaderName id={p.eigener_leader} namen={namen} klein />
+            <span className="hidden sm:block">
+              <LeaderName id={p.eigener_leader} namen={namen} klein />
+            </span>
+            <span className="zahl block truncate text-[13px] font-semibold sm:hidden">
+              {kennung(p.eigener_leader)}
+            </span>
           </span>
         </span>
 
@@ -1623,8 +1631,11 @@ function Partie({ p, namen, replayOeffnen }) {
         {/* Gegnerseite gespiegelt: Text links, Bild rechts, alles rechtsbuendig. */}
         <span className="flex min-w-0 items-center justify-end gap-2">
           <span className="min-w-0 text-right">
-            <span className="block truncate text-[13px] font-semibold">
+            <span className="hidden truncate text-[13px] font-semibold sm:block">
               {(namen[p.gegner_leader] || {}).n || p.gegner_leader}
+            </span>
+            <span className="zahl block truncate text-[13px] font-semibold sm:hidden">
+              {kennung(p.gegner_leader)}
             </span>
             <span className="block truncate text-xs" style={{ color: "var(--still)" }}>
               {p.gegner}
