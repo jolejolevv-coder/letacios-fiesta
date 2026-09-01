@@ -2,9 +2,12 @@
  * Die Marke. Ein Sombrero, flach und geometrisch, keine Illustration.
  *
  * Gezeichnet aus vier Formen: Krempe, Unterschatten, Krone und Hutband. Die Proportion
- * traegt das Ganze, eine sehr breite Krempe gegen eine schmale Krone. Farben kommen aus
- * den Themenvariablen, damit die Marke in hell wie dunkel sitzt.
+ * traegt das Ganze, eine sehr breite Krempe gegen eine schmale Krone.
+ *
+ * Der Strohton steht fest und erbt bewusst NICHT den Akzent. Sonst wandert die Marke mit
+ * der Systemfarbe mit und der Hut wurde blau.
  */
+const STROH = "#e8a33d";
 export default function Sombrero({ groesse = 34, className = "" }) {
   return (
     <svg
@@ -22,7 +25,7 @@ export default function Sombrero({ groesse = 34, className = "" }) {
         opacity="0.22"
       />
       {/* Krempe */}
-      <ellipse cx="32" cy="26.5" rx="30" ry="9" fill="var(--akzent)" />
+      <ellipse cx="32" cy="26.5" rx="30" ry="9" fill={STROH} />
       {/* Stickrand, eine einzelne gestrichelte Ellipse statt Zierrat */}
       <ellipse
         cx="32"
@@ -38,7 +41,7 @@ export default function Sombrero({ groesse = 34, className = "" }) {
       {/* Krone */}
       <path
         d="M21 26.5 C21 10 26 4.5 32 4.5 C38 4.5 43 10 43 26.5 Z"
-        fill="var(--akzent)"
+        fill={STROH}
       />
       {/* Hutband */}
       <path

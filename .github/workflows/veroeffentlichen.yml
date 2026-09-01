@@ -1,16 +1,22 @@
-# Baut die Seite und veroeffentlicht sie auf GitHub Pages.
+# Holt die Daten, baut die Seite und veroeffentlicht sie auf GitHub Pages.
 #
-# Arbeitsteilung:
-#   Homeserver   holt taeglich die Statistiken und schiebt sie unter public/ ins Repo
-#   diese Action baut daraus die Seite und veroeffentlicht sie
+# Es laeuft alles hier, auf GitHubs Rechnern. Weder der Mac noch ein Homeserver muss an
+# sein. Fuer oeffentliche Repos sind die Actionminuten unbegrenzt.
 #
-# Die Kartenbilder liegen NICHT im Repo, sondern im Zwischenspeicher dieser Action.
-# Der erste Lauf holt rund 2200 Bilder von der offiziellen Kartenseite, danach nur noch
-# neue. Der taegliche Push haelt den Zwischenspeicher warm.
+# Was NICHT im Repo liegt und deshalb im Zwischenspeicher gehalten wird:
+#   public/tage   die Tagesdateien, sonst muesste jeder Lauf dreissig Tage neu holen
+#   public/img    rund 2200 Kartenbilder, die einmalig von der Kartenseite kommen
+# Faellt der Zwischenspeicher aus, holt der naechste Lauf alles neu. Das heilt sich also
+# selbst, es dauert nur laenger.
+#
+# VERSCHLUESSELT WIRD NACH dem Bau, in dist. Wuerde public verschluesselt, laege im
+# Zwischenspeicher unbrauchbarer Geheimtext und der naechste Lauf muesste alles neu holen.
 
 name: Veroeffentlichen
 
 on:
+  schedule:
+    - cron: "20 6 * * *"
   push:
     branches: [main]
   workflow_dispatch:
@@ -39,18 +45,32 @@ jobs:
           node-version: "22"
           cache: npm
 
-      - name: Zwischenspeicher fuer Kartenbilder
+      - name: Zwischenspeicher fuer Daten und Bilder
         uses: actions/cache@v4
         with:
-          path: public/img
-          key: bilder-${{ github.run_id }}
-          restore-keys: bilder-
+          path: |
+            public/tage
+            public/img
+          key: daten-${{ github.run_id }}
+          restore-keys: daten-
 
-      - name: Fehlende Kartenbilder ergaenzen
-        run: python3 aktualisieren.py --ziel public --nur-bilder
+      - run: pip install --quiet cryptography
+
+      - name: Daten und Bilder holen
+        run: |
+          python3 aktualisieren.py \
+            --ziel public \
+            --tage 30 \
+            --bounty 25_1000,1000_2000,2000_3000 \
+            --bilder
 
       - run: npm ci
       - run: npm run build
+
+      - name: Daten verschluesseln
+        env:
+          SEITEN_PASSWORT: ${{ secrets.SEITEN_PASSWORT }}
+        run: python3 verschluesseln.py --ziel dist
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

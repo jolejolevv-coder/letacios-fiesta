@@ -1,7 +1,17 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import gsap from "gsap";
 import Sombrero from "./Sombrero.jsx";
-import { anzahl, bildpfad, holen, kartenLaden, kennung, satzLaden, zeitraumLaden } from "./daten.js";
+import {
+  anmelden,
+  anzahl,
+  bildpfad,
+  holen,
+  kartenLaden,
+  kennung,
+  satzLaden,
+  verschluesselung,
+  zeitraumLaden,
+} from "./daten.js";
 
 /* --------------------------------------------------------------------------
    Kleine Helfer
@@ -814,10 +824,87 @@ function Rangliste({ satz, namen }) {
 }
 
 /* --------------------------------------------------------------------------
+   Schloss
+   -------------------------------------------------------------------------- */
+
+function Schloss({ aufSchliessen }) {
+  const [passwort, setPasswort] = useState("");
+  const [fehler, setFehler] = useState("");
+  const [laeuft, setLaeuft] = useState(false);
+
+  async function absenden(e) {
+    e.preventDefault();
+    if (!passwort || laeuft) return;
+    setLaeuft(true);
+    setFehler("");
+    const ok = await anmelden(passwort);
+    setLaeuft(false);
+    if (!ok) {
+      setFehler("That password does not fit.");
+      setPasswort("");
+      return;
+    }
+    try {
+      localStorage.setItem("lf.pw", passwort);
+    } catch {
+      /* egal */
+    }
+    aufSchliessen();
+  }
+
+  return (
+    <div className="grid min-h-screen place-items-center px-5">
+      <form onSubmit={absenden} className="w-full max-w-[340px] text-center">
+        <span className="mx-auto mb-5 block w-fit">
+          <Sombrero groesse={72} />
+        </span>
+        <h1 className="breit text-[26px] font-bold leading-tight">
+          Letacios <span style={{ color: "var(--akzent)" }}>Fiesta</span>
+        </h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--still)" }}>
+          Enter the password to continue.
+        </p>
+        <input
+          type="password"
+          autoFocus
+          autoComplete="current-password"
+          value={passwort}
+          onChange={(e) => setPasswort(e.target.value)}
+          className="mt-5 w-full rounded-md border px-3 py-2 text-center"
+          style={{
+            background: "var(--flaeche2)",
+            borderColor: fehler ? "var(--niederlage)" : "var(--linie)",
+            color: "var(--text)",
+          }}
+        />
+        <button
+          type="submit"
+          disabled={laeuft || !passwort}
+          className="mt-3 w-full rounded-md px-3 py-2 text-sm font-semibold transition-opacity"
+          style={{
+            background: "var(--akzent)",
+            color: "#fff",
+            opacity: laeuft || !passwort ? 0.5 : 1,
+          }}
+        >
+          {laeuft ? "Checking" : "Continue"}
+        </button>
+        {fehler ? (
+          <p className="mt-3 text-sm" style={{ color: "var(--niederlage)" }}>
+            {fehler}
+          </p>
+        ) : null}
+      </form>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------------------
    Die Seite
    -------------------------------------------------------------------------- */
 
 export default function App() {
+  const [entsperrt, setEntsperrt] = useState(null);
   const [verzeichnis, setVerzeichnis] = useState(null);
   const [satz, setSatz] = useState(null);
   const [laedt, setLaedt] = useState(true);
@@ -868,13 +955,42 @@ export default function App() {
     };
   }, [quelleOffen]);
 
+  /* Liegt eine Verschluesselung vor, und passt ein gemerktes Passwort noch? */
+  useEffect(() => {
+    let abgebrochen = false;
+    (async () => {
+      const info = await verschluesselung();
+      if (abgebrochen) return;
+      if (!info) {
+        setEntsperrt(true);
+        return;
+      }
+      let gemerkt = null;
+      try {
+        gemerkt = localStorage.getItem("lf.pw");
+      } catch {
+        /* egal */
+      }
+      if (gemerkt && (await anmelden(gemerkt))) {
+        if (!abgebrochen) setEntsperrt(true);
+        return;
+      }
+      if (!abgebrochen) setEntsperrt(false);
+    })();
+    return () => {
+      abgebrochen = true;
+    };
+  }, []);
+
   /* Kartennamen, unabhaengig vom Datensatz */
   useEffect(() => {
+    if (entsperrt !== true) return;
     kartenLaden().then(setNamen);
-  }, []);
+  }, [entsperrt]);
 
   /* Verzeichnis holen */
   useEffect(() => {
+    if (entsperrt !== true) return undefined;
     holen("verzeichnis.json.gz")
       .then((v) => {
         setVerzeichnis(v);
@@ -891,7 +1007,8 @@ export default function App() {
         );
         setLaedt(false);
       });
-  }, []);
+    return undefined;
+  }, [entsperrt]);
 
   /* Satz nach Wahl laden */
   useEffect(() => {
@@ -997,6 +1114,9 @@ export default function App() {
     });
     return r;
   }, [leader, mindest, sortListen, karteFilter]);
+
+  if (entsperrt === null) return null;
+  if (entsperrt === false) return <Schloss aufSchliessen={() => setEntsperrt(true)} />;
 
   if (fehlerText && !satz) {
     return (

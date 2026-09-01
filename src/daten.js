@@ -39,13 +39,86 @@ export function anzahl(text) {
   return t ? parseInt(t[1], 10) : 1;
 }
 
+/* ---------------------------------------------------------------------------
+   Passwort.
+
+   Die Seite liegt statisch und oeffentlich auf GitHub Pages. Eine Abfrage, die nur
+   etwas ein- und ausblendet, waere dort wirkungslos: die Datendateien laegen daneben.
+   Deshalb sind die Daten selbst verschluesselt, AES-256-GCM, der Schluessel kommt aus
+   PBKDF2 ueber das Passwort. Ohne Passwort laedt die Huelle, aber es gibt nichts zu
+   sehen. Verschluesselt wird beim Bauen, siehe verschluesseln.py.
+
+   Beim Entwickeln liegt keine schluessel.json neben der Seite. Dann laeuft alles
+   unverschluesselt weiter, ohne Abfrage.
+   --------------------------------------------------------------------------- */
+
+let schluesselInfo;
+let sitzungsSchluessel = null;
+
+function ausBase64(text) {
+  const roh = atob(text);
+  const feld = new Uint8Array(roh.length);
+  for (let i = 0; i < roh.length; i += 1) feld[i] = roh.charCodeAt(i);
+  return feld;
+}
+
+/** Liegt eine Verschluesselung vor? Gibt die Angaben zurueck oder false. */
+export async function verschluesselung() {
+  if (schluesselInfo !== undefined) return schluesselInfo;
+  try {
+    const antwort = await fetch(basis() + "schluessel.json", { cache: "no-cache" });
+    schluesselInfo = antwort.ok ? await antwort.json() : false;
+  } catch {
+    schluesselInfo = false;
+  }
+  return schluesselInfo;
+}
+
+async function entschluesseln(schluessel, feld) {
+  const iv = feld.slice(0, 12);
+  const rest = feld.slice(12);
+  return new Uint8Array(
+    await crypto.subtle.decrypt({ name: "AES-GCM", iv }, schluessel, rest)
+  );
+}
+
+/** Prueft das Passwort an der Probe und merkt sich den Schluessel fuer die Sitzung. */
+export async function anmelden(passwort) {
+  const info = await verschluesselung();
+  if (!info) return true;
+  const roh = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(passwort), "PBKDF2", false, ["deriveKey"]
+  );
+  const schluessel = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: ausBase64(info.salz), iterations: info.runden, hash: "SHA-256" },
+    roh,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["decrypt"]
+  );
+  try {
+    const probe = await entschluesseln(schluessel, ausBase64(info.probe));
+    if (new TextDecoder().decode(probe) !== "letacios-fiesta") return false;
+  } catch {
+    return false;
+  }
+  sitzungsSchluessel = schluessel;
+  return true;
+}
+
 /** Holt eine .json.gz Datei und entpackt sie. Ergebnisse bleiben im Speicher. */
 export async function holen(datei) {
   if (zwischenspeicher.has(datei)) return zwischenspeicher.get(datei);
   const versprechen = (async () => {
-    const antwort = await fetch(basis() + datei, { cache: "no-cache" });
+    const verschluesselt = sitzungsSchluessel !== null;
+    const antwort = await fetch(basis() + datei + (verschluesselt ? ".enc" : ""), {
+      cache: "no-cache",
+    });
     if (!antwort.ok) throw new Error(datei + ": HTTP " + antwort.status);
-    const puffer = await antwort.arrayBuffer();
+    let puffer = await antwort.arrayBuffer();
+    if (verschluesselt) {
+      puffer = (await entschluesseln(sitzungsSchluessel, new Uint8Array(puffer))).buffer;
+    }
     const kopf = new Uint8Array(puffer.slice(0, 2));
     // Manche Server entpacken gzip bereits selbst. Dann fehlt die Signatur 1f 8b.
     if (kopf[0] !== 0x1f || kopf[1] !== 0x8b) {
