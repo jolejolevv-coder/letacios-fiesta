@@ -1445,6 +1445,59 @@ function ereignisart(text) {
 // Die kleinste Stufe heisst "Mobil" statt "70 %". Sie ist keine Zoomstufe unter
 // anderen, sondern die Groesse, auf die das Telefonlayout ausgelegt ist; eine
 // Prozentzahl daneben legt nahe, sie sei nur eine Verkleinerung.
+/* Steuerzeichen als SVG statt als Unicode. Zeichen wie U+25B6 rendert manches
+   Geraet, allen voran iOS, als farbiges Emoji; die Leiste sah dann nach Chat aus
+   statt nach Wiedergabe. Ein Pfad erbt dagegen die Textfarbe und bleibt ueberall
+   gleich. */
+function Symbol({ art }) {
+  const gemeinsam = {
+    width: 13, height: 13, viewBox: "0 0 16 16",
+    fill: "currentColor", "aria-hidden": "true",
+    style: { display: "block" },
+  };
+  if (art === "anfang") {
+    return (
+      <svg {...gemeinsam}>
+        <path d="M3 2h2v12H3zM14 2.5v11a.5.5 0 0 1-.77.42L6 9.42v4.08a.5.5 0 0 1-.77.42l-.23-.15V2.23l.23-.15A.5.5 0 0 1 6 2.5v4.08l7.23-4.5A.5.5 0 0 1 14 2.5z" />
+      </svg>
+    );
+  }
+  if (art === "ende") {
+    return (
+      <svg {...gemeinsam}>
+        <path d="M11 2h2v12h-2zM2 2.5v11a.5.5 0 0 0 .77.42L10 9.42v4.08a.5.5 0 0 0 .77.42l.23-.15V2.23l-.23-.15A.5.5 0 0 0 10 2.5v4.08L2.77 2.08A.5.5 0 0 0 2 2.5z" />
+      </svg>
+    );
+  }
+  if (art === "zurueck") {
+    return (
+      <svg {...gemeinsam}>
+        <path d="M12 2.5v11a.5.5 0 0 1-.77.42l-8.5-5.5a.5.5 0 0 1 0-.84l8.5-5.5A.5.5 0 0 1 12 2.5z" />
+      </svg>
+    );
+  }
+  if (art === "vor") {
+    return (
+      <svg {...gemeinsam}>
+        <path d="M4 2.5v11a.5.5 0 0 0 .77.42l8.5-5.5a.5.5 0 0 0 0-.84l-8.5-5.5A.5.5 0 0 0 4 2.5z" />
+      </svg>
+    );
+  }
+  if (art === "pause") {
+    return (
+      <svg {...gemeinsam}>
+        <path d="M4 2.5h3v11H4zM9 2.5h3v11H9z" />
+      </svg>
+    );
+  }
+  // spielen
+  return (
+    <svg {...gemeinsam}>
+      <path d="M4.5 2.4v11.2a.6.6 0 0 0 .92.5l8.6-5.6a.6.6 0 0 0 0-1L5.42 1.9a.6.6 0 0 0-.92.5z" />
+    </svg>
+  );
+}
+
 const ZOOMSTUFEN = [0.7, 1, 1.3, 1.6, 2];
 const zoomName = (z) => (z === 0.7 ? "Mobile" : Math.round(z * 100) + "%");
 const TEMPO = [0.5, 1, 2, 4];
@@ -1555,11 +1608,15 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
   // einem Umschalter, der die Stufen durchgeht. Die Knoepfe sind dafuer groesser
   // als auf dem Rechner, nicht kleiner.
   const knopf =
-    "rounded-md border px-3 py-2.5 text-sm font-semibold transition-colors " +
+    "inline-flex items-center justify-center rounded-md border px-3 py-2.5 " +
+    "text-sm font-semibold transition-colors " +
     "hover:bg-[var(--flaeche2)] disabled:opacity-40 " +
     "min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:px-2.5 sm:py-1.5";
-  const nurGross = " hidden sm:inline-flex";
-  const nurKlein = " sm:hidden";
+  // Beide Klassen setzen `display`, genau wie der Grundknopf. Ohne das Ausrufezeichen
+  // entscheidet die Reihenfolge im erzeugten CSS, und die Sprungknoepfe standen auf
+  // dem Telefon wieder da.
+  const nurGross = " !hidden sm:!inline-flex";
+  const nurKlein = " sm:!hidden";
   const weiter = (liste, wert) => liste[(liste.indexOf(wert) + 1) % liste.length];
   const stufe = (an) => ({
     background: an ? "var(--akzentweich)" : "var(--flaeche2)",
@@ -1579,19 +1636,24 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
 
         <span className="flex items-center gap-1">
           <button type="button" className={knopf + nurGross} style={stufe(false)}
-                  disabled={nr <= 0} onClick={() => setI(0)}>&#9198;</button>
+                  disabled={nr <= 0} onClick={() => setI(0)}
+                  aria-label="first step"><Symbol art="anfang" /></button>
           <button type="button" className={knopf} style={stufe(false)}
-                  disabled={nr <= 0} onClick={() => setI((n) => Math.max(0, n - 1))}>&#9664;</button>
+                  disabled={nr <= 0} onClick={() => setI((n) => Math.max(0, n - 1))}
+                  aria-label="previous step"><Symbol art="zurueck" /></button>
           <button type="button" className={knopf} style={stufe(laeuft)}
-                  onClick={() => setLaeuft((l) => !l)}>
-            {laeuft ? "\u23F8" : "\u25B6"}
+                  onClick={() => setLaeuft((l) => !l)}
+                  aria-label={laeuft ? "pause" : "play"}>
+            <Symbol art={laeuft ? "pause" : "spielen"} />
           </button>
           <button type="button" className={knopf} style={stufe(false)}
                   disabled={nr >= schritte.length - 1}
-                  onClick={() => setI((n) => Math.min(schritte.length - 1, n + 1))}>&#9654;</button>
+                  onClick={() => setI((n) => Math.min(schritte.length - 1, n + 1))}
+                  aria-label="next step"><Symbol art="vor" /></button>
           <button type="button" className={knopf + nurGross} style={stufe(false)}
                   disabled={nr >= schritte.length - 1}
-                  onClick={() => setI(schritte.length - 1)}>&#9197;</button>
+                  onClick={() => setI(schritte.length - 1)}
+                  aria-label="last step"><Symbol art="ende" /></button>
         </span>
 
         <span className={"items-center gap-1" + nurGross}>
