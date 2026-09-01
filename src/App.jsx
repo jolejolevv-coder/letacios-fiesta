@@ -1098,38 +1098,57 @@ function kartenliste(text) {
  * Hand, Board und Trash nicht als Zahl, sondern mit den Kartennummern. Damit laesst
  * sich das Brett am Ende jedes Zuges wirklich zeigen, statt es zu beschreiben.
  */
-function zuegeBauen(zeilen) {
-  const zuege = [];
+/**
+ * Aus den Logzeilen eine Schrittliste bauen, eine Zeile ein Schritt.
+ *
+ * Frueher wurde nach "End Turn" zu Zuegen gebuendelt. Das ueberspringt aber genau
+ * das, was man sehen will: den einzelnen Angriff, den einzelnen Counter. Hier
+ * bekommt jede Klartextzeile ihren eigenen Schritt, und zu jedem Schritt gehoert
+ * der Zustand, wie er nach dieser Zeile galt.
+ *
+ * Zwei Quellen speisen den Zustand, und sie sind unterschiedlich fein:
+ *   - die CHK Zeilen liefern nach jedem Schritt die Zaehler, also Life, Don, Deck,
+ *     Hand, Trash. Die laufen mit.
+ *   - die Klartextabzuege am Zugende liefern die Kartennummern von Hand, Board und
+ *     Trash. Die stehen nur dort, dazwischen bleibt die letzte bekannte Aufstellung
+ *     stehen.
+ * Das ist ehrlicher, als Karten zwischen den Abzuegen zu erfinden.
+ */
+function schritteBauen(zeilen) {
   const leader = {};
-  const nummern = {};         // Name -> Spielernummer aus den RZ1 Zeilen
-  const zuName = {};          // Spielernummer -> Name
-  let aktuell = { schritte: [], stand: {}, amZug: null };
+  const zuName = {};
+  const nummern = {};
+  const schritte = [];
+
+  let stand = {};        // Name -> Zustand, wird fortgeschrieben
+  let zug = 1;
+  let amZug = null;
+
+  const kopie = () => {
+    const k = {};
+    for (const [wer, s] of Object.entries(stand)) k[wer] = { ...s };
+    return k;
+  };
 
   for (const z of zeilen) {
-    // RZ1 PLY: Nummer, Name, Leader. Diese Zuordnung ist verbindlich. Die
-    // Reihenfolge der "Leader is" Zeilen im Klartext ist es NICHT: sie folgt der
-    // Verbindungsreihenfolge, und in rund jedem fuenften Log sind beide vertauscht.
     if (z.p) {
       zuName[z.p[0]] = z.p[1];
       nummern[z.p[1]] = z.p[0];
       leader[z.p[1]] = z.p[2];
       continue;
     }
-    // RZ1 CHK, Reihenfolge:
-    //   0 player, 1 deck, 2 hand, 3 board, 4 life,
-    //   5 donDeck, 6 donActive, 7 trash, 8 stage, 9 donRested
     if (z.c) {
       const wer = zuName[z.c[0]];
       if (!wer) continue;
-      const s = (aktuell.stand[wer] = aktuell.stand[wer] || {});
+      const s = (stand[wer] = stand[wer] || {});
       s.don = {
         deck: z.c[1], handzahl: z.c[2], boardzahl: z.c[3],
         donDeck: z.c[5], aktiv: z.c[6], trash: z.c[7],
         stage: z.c[8], gerastet: z.c[9],
       };
-      // Immer der juengste Stand. Zu Zugbeginn steht dort 0, weil die Lifekarten
-      // noch nicht liegen; der erste Wert waere also falsch.
       if (z.c[4] > 0 || s.life !== undefined) s.life = z.c[4];
+      // Ein Checkpoint ist kein eigener Schritt, er praezisiert den letzten.
+      if (schritte.length) schritte[schritte.length - 1].stand = kopie();
       continue;
     }
 
@@ -1142,33 +1161,28 @@ function zuegeBauen(zeilen) {
     const zustand = ZUSTAND.exec(text);
     if (zustand) {
       const [, wer, feld, wert] = zustand;
-      const s = (aktuell.stand[wer] = aktuell.stand[wer] || {});
+      const s = (stand[wer] = stand[wer] || {});
       if (feld === "Life") s.life = parseInt(wert, 10);
       else s[feld.toLowerCase()] = kartenliste(wert);
-      continue;
+      if (schritte.length) schritte[schritte.length - 1].stand = kopie();
+      continue;   // Abzuege sind Buchhaltung, kein Ereignis
     }
 
     const spr = SPRECHER.exec(text);
     const wer = spr ? spr[1] : null;
-    aktuell.schritte.push({ wer, text: spr ? spr[2] : text, karten: z.k || [] });
-    if (/End Turn/i.test(text)) {
-      if (wer) aktuell.amZug = wer;
-      zuege.push(aktuell);
-      aktuell = { schritte: [], stand: {}, amZug: null };
-    }
+    if (wer) amZug = wer;
+    schritte.push({
+      wer,
+      text: spr ? spr[2] : text,
+      karten: z.k || [],
+      zug,
+      amZug,
+      stand: kopie(),
+    });
+    if (/End Turn/i.test(text)) zug += 1;
   }
-  if (aktuell.schritte.length || Object.keys(aktuell.stand).length) zuege.push(aktuell);
 
-  // Der letzte bekannte Stand gilt weiter, solange kein neuer kommt. Ohne das
-  // flackert das Brett leer, sobald ein Zug keinen Abzug erzeugt hat.
-  const letzter = {};
-  for (const zug of zuege) {
-    for (const wer of Object.keys(letzter)) {
-      zug.stand[wer] = { ...letzter[wer], ...(zug.stand[wer] || {}) };
-    }
-    for (const [wer, s] of Object.entries(zug.stand)) letzter[wer] = s;
-  }
-  return { zuege, leader, nummern };
+  return { schritte, leader, nummern, zuege: zug };
 }
 
 /** Ein verdeckter Stapel mit seiner Zahl. Deck, Don-Deck und Trash liegen so. */
@@ -1361,23 +1375,19 @@ function Kartenband({ karten, namen }) {
  */
 function Replay({ pfad, namen, eigenerLeader, zurueck }) {
   const [zeilen, setZeilen] = useState(null);
-  const [alles, setAlles] = useState(false);
-  const [zug, setZug] = useState(0);
+  const [i, setI] = useState(0);
   const [zoom, setZoom] = useState(() =>
     typeof window !== "undefined" && window.innerWidth < 720 ? 0.7 : 1
   );
   const [tempo, setTempo] = useState(1);
   const [laeuft, setLaeuft] = useState(false);
-  // Das Log steht standardmaessig zu: es traegt alles, aber das Brett ist das,
-  // weswegen man hier ist.
   const [logOffen, setLogOffen] = useState(false);
+  const listeRef = useRef(null);
 
   useEffect(() => {
     let abgebrochen = false;
     setZeilen(null);
-    setZug(0);
-    // Erst hier wird geladen, eine Datei je Partie, rund vier Kilobyte. Nichts
-    // davon haengt am Seitenaufruf.
+    setI(0);
     holen("replays/" + dateiname(pfad))
       .then((d) => !abgebrochen && setZeilen(d.zeilen || []))
       .catch(() => !abgebrochen && setZeilen(false));
@@ -1386,44 +1396,52 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
     };
   }, [pfad]);
 
-  const { zuege, leader, nummern } = useMemo(
-    () => (zeilen ? zuegeBauen(zeilen) : { zuege: [], leader: {}, nummern: {} }),
+  const { schritte, leader, zuege } = useMemo(
+    () => (zeilen ? schritteBauen(zeilen) : { schritte: [], leader: {}, zuege: 0 }),
     [zeilen]
   );
 
-  /* Abspielen. Der Takt haengt am Tempo, und am Ende haelt es von selbst an. */
+  /* Abspielen, Schritt fuer Schritt. Am Ende haelt es von selbst an. */
   useEffect(() => {
-    if (!laeuft || !zuege.length) return;
+    if (!laeuft || !schritte.length) return;
     const uhr = setTimeout(() => {
-      setZug((z) => {
-        if (z >= zuege.length - 1) {
+      setI((n) => {
+        if (n >= schritte.length - 1) {
           setLaeuft(false);
-          return z;
+          return n;
         }
-        return z + 1;
+        return n + 1;
       });
-    }, 1600 / tempo);
+    }, 700 / tempo);
     return () => clearTimeout(uhr);
-  }, [laeuft, tempo, zug, zuege.length]);
+  }, [laeuft, tempo, i, schritte.length]);
 
-  /* Tastatur: Leertaste spielt, Pfeile blaettern, Bild auf und ab springt weit. */
+  /* Tastatur: Leertaste spielt, Pfeile einen Schritt, Bild springt zehn. */
   useEffect(() => {
     function taste(e) {
       if (e.target.matches("input, textarea, select")) return;
+      const max = schritte.length - 1;
       if (e.key === " ") { e.preventDefault(); setLaeuft((l) => !l); }
-      else if (e.key === "ArrowRight") setZug((z) => Math.min(zuege.length - 1, z + 1));
-      else if (e.key === "ArrowLeft") setZug((z) => Math.max(0, z - 1));
-      else if (e.key === "PageDown") setZug((z) => Math.min(zuege.length - 1, z + 5));
-      else if (e.key === "PageUp") setZug((z) => Math.max(0, z - 5));
+      else if (e.key === "ArrowRight") setI((n) => Math.min(max, n + 1));
+      else if (e.key === "ArrowLeft") setI((n) => Math.max(0, n - 1));
+      else if (e.key === "PageDown") setI((n) => Math.min(max, n + 10));
+      else if (e.key === "PageUp") setI((n) => Math.max(0, n - 10));
     }
     window.addEventListener("keydown", taste);
     return () => window.removeEventListener("keydown", taste);
-  }, [zuege.length]);
+  }, [schritte.length]);
+
+  /* Die laufende Zeile in der Liste sichtbar halten. */
+  useEffect(() => {
+    if (!logOffen || !listeRef.current) return;
+    const el = listeRef.current.querySelector('[data-jetzt="1"]');
+    if (el) el.scrollIntoView({ block: "nearest" });
+  }, [i, logOffen]);
 
   if (zeilen === null) {
     return <p className="py-4 text-sm" style={{ color: "var(--still)" }}>Loading replay ...</p>;
   }
-  if (zeilen === false || !zuege.length) {
+  if (zeilen === false || !schritte.length) {
     return (
       <p className="py-4 text-sm" style={{ color: "var(--still)" }}>
         No replay stored for this game. The client only uploads part of them.
@@ -1431,21 +1449,11 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
     );
   }
 
-  const nr = Math.min(zug, zuege.length - 1);
-  const jetzt = zuege[nr];
+  const nr = Math.min(i, schritte.length - 1);
+  const jetzt = schritte[nr];
   const spieler = Object.entries(leader).find(([, k]) => k === eigenerLeader)?.[0];
-  // Der betrachtete Spieler steht unten, der Gegner oben und gedreht.
-  const seiten = [...new Set(zuege.flatMap((z) => Object.keys(z.stand)))]
+  const seiten = [...new Set(schritte.flatMap((s) => Object.keys(s.stand)))]
     .sort((a, b) => (a === spieler ? 1 : b === spieler ? -1 : 0));
-
-  const schritte = alles
-    ? jetzt.schritte
-    : jetzt.schritte.filter(
-        (s) =>
-          !/^(Version is|Waiting for|Hand (before|after) Mulligan|Drew card from deck|Draw \d|Placing Cards)/i.test(
-            s.text
-          )
-      );
 
   const knopf =
     "rounded-md border px-2.5 py-1.5 text-sm font-semibold transition-colors hover:bg-[var(--flaeche2)] disabled:opacity-40";
@@ -1457,8 +1465,6 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
 
   return (
     <div className="brett" style={{ "--sk": zoom }}>
-      {/* Steuerleiste, wie im Viewer des Simulators: springen, abspielen, Tempo,
-          Zoom, Zugzaehler. */}
       <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2">
         {zurueck ? (
           <button type="button" onClick={zurueck} className={knopf}
@@ -1469,19 +1475,19 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
 
         <span className="flex items-center gap-1.5">
           <button type="button" className={knopf} style={stufe(false)}
-                  disabled={nr <= 0} onClick={() => setZug(0)}>&#9198;</button>
+                  disabled={nr <= 0} onClick={() => setI(0)}>&#9198;</button>
           <button type="button" className={knopf} style={stufe(false)}
-                  disabled={nr <= 0} onClick={() => setZug((z) => Math.max(0, z - 1))}>&#9664;</button>
+                  disabled={nr <= 0} onClick={() => setI((n) => Math.max(0, n - 1))}>&#9664;</button>
           <button type="button" className={knopf} style={stufe(laeuft)}
                   onClick={() => setLaeuft((l) => !l)}>
             {laeuft ? "\u23F8" : "\u25B6"}
           </button>
           <button type="button" className={knopf} style={stufe(false)}
-                  disabled={nr >= zuege.length - 1}
-                  onClick={() => setZug((z) => Math.min(zuege.length - 1, z + 1))}>&#9654;</button>
+                  disabled={nr >= schritte.length - 1}
+                  onClick={() => setI((n) => Math.min(schritte.length - 1, n + 1))}>&#9654;</button>
           <button type="button" className={knopf} style={stufe(false)}
-                  disabled={nr >= zuege.length - 1}
-                  onClick={() => setZug(zuege.length - 1)}>&#9197;</button>
+                  disabled={nr >= schritte.length - 1}
+                  onClick={() => setI(schritte.length - 1)}>&#9197;</button>
         </span>
 
         <span className="flex items-center gap-1.5">
@@ -1503,21 +1509,29 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
         </span>
 
         <span className="zahl text-sm" style={{ color: "var(--leise)" }}>
-          Zug {nr + 1} / {zuege.length}
+          Schritt {nr + 1} / {schritte.length}
+          <span style={{ color: "var(--still)" }}> &middot; Zug {jetzt.zug} / {zuege}</span>
         </span>
 
-        <span className="ml-auto flex items-center gap-1.5">
-          <button type="button" className={knopf} style={stufe(logOffen)}
-                  onClick={() => setLogOffen((o) => !o)}>
-            {logOffen ? "Ereignisse ausblenden" : "Ereignisse"}
-          </button>
-          {logOffen ? (
-            <button type="button" className={knopf} style={stufe(alles)}
-                    onClick={() => setAlles((a) => !a)}>
-              {alles ? "Alles" : "Kurzfassung"}
-            </button>
+        <button type="button" className={knopf + " ml-auto"} style={stufe(logOffen)}
+                onClick={() => setLogOffen((o) => !o)}>
+          {logOffen ? "Ereignisse ausblenden" : "Ereignisse"}
+        </button>
+      </div>
+
+      {/* Die laufende Zeile steht immer da, auch wenn die Liste zu ist. */}
+      <div className="mb-3 rounded-lg border px-3 py-2"
+           style={{ borderColor: "var(--linie)", background: "var(--flaeche)" }}>
+        <p className="text-[13px] leading-tight">
+          {jetzt.wer ? (
+            <span className="mr-1.5 font-semibold"
+                  style={{ color: jetzt.wer === spieler ? "var(--akzent)" : "var(--leise)" }}>
+              {jetzt.wer.split("#")[0]}
+            </span>
           ) : null}
-        </span>
+          <span style={{ color: jetzt.wer ? "var(--text)" : "var(--still)" }}>{jetzt.text}</span>
+          <Kartenband karten={jetzt.karten} namen={namen} />
+        </p>
       </div>
 
       <div
@@ -1526,59 +1540,58 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           (logOffen ? "lg:grid-cols-[300px_minmax(0,1fr)]" : "lg:grid-cols-1")
         }
       >
-        {/* Ereignisliste links, wie im Viewer, aber nur auf Wunsch. */}
         <div
+          ref={listeRef}
           className={
             "max-h-[70vh] overflow-y-auto rounded-lg border p-3 " +
             (logOffen ? "" : "hidden")
           }
           style={{ borderColor: "var(--linie)", background: "var(--flaeche)" }}
         >
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-sm font-semibold">Zug {nr + 1}</span>
-            <span className="zahl text-xs" style={{ color: "var(--still)" }}>
-              {schritte.length} Ereignisse
-            </span>
-          </div>
           <div className="grid gap-1.5">
-            {schritte.length ? (
-              schritte.map((s, j) => {
-                const art = ereignisart(s.text);
-                return (
-                  <div key={j} className={"ereignis " + art}>
-                    <div className="art">{art}</div>
-                    <div className="text-[13px] leading-tight">
-                      {s.wer ? (
-                        <span className="mr-1 font-semibold"
-                              style={{ color: s.wer === spieler ? "var(--akzent)" : "var(--leise)" }}>
-                          {s.wer.split("#")[0]}
-                        </span>
-                      ) : null}
-                      {s.text}
-                      <Kartenband karten={s.karten} namen={namen} />
-                    </div>
+            {schritte.map((s, j) => {
+              const art = ereignisart(s.text);
+              const dran = j === nr;
+              return (
+                <button
+                  key={j}
+                  type="button"
+                  data-jetzt={dran ? "1" : "0"}
+                  onClick={() => setI(j)}
+                  className={"ereignis " + art + " w-full text-left"}
+                  style={{
+                    background: dran ? "var(--akzentweich)" : "transparent",
+                    opacity: j > nr ? 0.45 : 1,
+                  }}
+                >
+                  <div className="art">
+                    {art} &middot; Zug {s.zug}
                   </div>
-                );
-              })
-            ) : (
-              <p className="text-[13px]" style={{ color: "var(--still)" }}>
-                In diesem Zug stehen nur Zustandsabzuege.
-              </p>
-            )}
+                  <div className="text-[13px] leading-tight">
+                    {s.wer ? (
+                      <span className="mr-1 font-semibold"
+                            style={{ color: s.wer === spieler ? "var(--akzent)" : "var(--leise)" }}>
+                        {s.wer.split("#")[0]}
+                      </span>
+                    ) : null}
+                    {s.text}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         <div className="grid gap-2 overflow-x-auto">
-          {seiten.map((n, i) => (
+          {seiten.map((n, k) => (
             <Brett
               key={n}
               wer={n}
-              nummer={nummern[n]}
               stand={jetzt.stand[n]}
               leader={leader[n]}
               namen={namen}
               eigen={n === spieler}
-              gedreht={i === 0}
+              gedreht={k === 0}
               amZug={jetzt.amZug === n}
             />
           ))}
