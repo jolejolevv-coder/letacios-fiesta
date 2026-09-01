@@ -87,8 +87,30 @@ def eindampfen(text):
     zeilen = []
     for roh in text.splitlines():
         roh = roh.strip()
-        if not roh or roh.startswith("RZ1|"):
+        if not roh:
             continue
+
+        # RZ1 CHK: der einzige Ort, an dem die Don-Zaehler stehen. Der Klartext
+        # fuehrt Hand, Board, Trash und Life, aber kein Don. Ohne diese Zeilen
+        # kann ein Brett die Don nicht zeigen.
+        if roh.startswith("RZ1|CHK|"):
+            f = roh.split("|")
+            # Abgeschnittene Checkpoints kommen vor. Lieber ueberspringen als mit
+            # Nullen auffuellen, sonst sind die Zaehler frei erfunden.
+            if len(f) >= 14:
+                zeilen.append({"c": [int(f[3]), int(f[9]), int(f[13]),
+                                     int(f[7]), int(f[5])]})
+            continue
+        # RZ1 PLY nennt die Spielernummer zum Namen und zum Leader. Die CHK Zeilen
+        # fuehren nur die Nummer, ohne diese Zuordnung waeren sie nicht zuzuordnen.
+        if roh.startswith("RZ1|PLY|"):
+            f = roh.split("|")
+            if len(f) >= 5:
+                zeilen.append({"p": [int(f[2]), UNSICHTBAR.sub("", f[3]), f[4]]})
+            continue
+        if roh.startswith("RZ1|"):
+            continue
+
         karten = KARTE.findall(roh)
         sauber = UNSICHTBAR.sub("", TAG.sub("", roh)).strip()
         if not sauber:

@@ -1070,10 +1070,32 @@ function kartenliste(text) {
 function zuegeBauen(zeilen) {
   const zuege = [];
   const leader = {};
+  const nummer = {};          // Spielernummer aus den RZ1 Zeilen -> Name
+  const don = {};             // letzter bekannter Don-Stand je Spielernummer
   let aktuell = { schritte: [], stand: {} };
 
   for (const z of zeilen) {
+    // RZ1 PLY: Nummer, Name, Leader.
+    if (z.p) {
+      nummer[z.p[0]] = z.p[1];
+      leader[z.p[1]] = z.p[2];
+      continue;
+    }
+    // RZ1 CHK: [Spieler, don_aktiv, don_gerastet, life, deck]. Der einzige Ort
+    // mit Don-Zaehlern; der Klartext fuehrt sie nicht.
+    if (z.c) {
+      don[z.c[0]] = { aktiv: z.c[1], gerastet: z.c[2], deck: z.c[4] };
+      const wer = nummer[z.c[0]];
+      if (wer) {
+        const s = (aktuell.stand[wer] = aktuell.stand[wer] || {});
+        s.don = don[z.c[0]];
+        if (s.life === undefined) s.life = z.c[3];
+      }
+      continue;
+    }
+
     const text = z.t;
+    if (!text) continue;
 
     const ld = LEADERZEILE.exec(text);
     if (ld) leader[ld[1]] = ld[2];
@@ -1112,6 +1134,30 @@ function zuegeBauen(zeilen) {
   return { zuege, leader };
 }
 
+/** Don als Muenzreihe, aktive gefuellt, gerastete blass und gekippt. */
+function Don({ aktiv, gerastet }) {
+  const gesamt = (aktiv || 0) + (gerastet || 0);
+  if (!gesamt) return null;
+  return (
+    <span className="flex flex-wrap items-center gap-[3px]">
+      {Array.from({ length: Math.min(gesamt, 12) }, (_, i) => (
+        <i
+          key={i}
+          className="block h-[11px] w-[11px] rounded-full"
+          style={{
+            background: i < (aktiv || 0) ? "var(--akzent)" : "var(--linie)",
+            opacity: i < (aktiv || 0) ? 1 : 0.7,
+          }}
+        />
+      ))}
+      <span className="zahl ml-1 text-[11px]" style={{ color: "var(--still)" }}>
+        {aktiv || 0}
+        {gerastet ? ` +${gerastet}` : ""}
+      </span>
+    </span>
+  );
+}
+
 function Reihe({ karten, namen, leer }) {
   if (!karten || !karten.length) {
     return (
@@ -1136,8 +1182,14 @@ function Reihe({ karten, namen, leer }) {
   );
 }
 
-function Brett({ wer, stand, leader, namen, eigen }) {
+/**
+ * Ein Spielerbrett, wie es der Simulatorviewer zeigt: Leader links, Charaktere in
+ * der Mitte, daneben die Zaehler. Der Gegner steht oben und gespiegelt, damit die
+ * beiden Seiten sich gegenueberliegen statt untereinander zu stehen.
+ */
+function Brett({ wer, stand, leader, namen, eigen, gespiegelt }) {
   const s = stand || {};
+  const life = s.life;
   return (
     <div
       className="rounded-lg border p-3"
@@ -1146,21 +1198,51 @@ function Brett({ wer, stand, leader, namen, eigen }) {
         background: "var(--flaeche)",
       }}
     >
-      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-        {leader ? (
-          <Bild id={leader} breite={120} hoehe={168}
-                className="h-[38px] w-[27px] shrink-0 rounded-[3px] object-cover" />
-        ) : null}
-        <span className="font-semibold" style={{ color: eigen ? "var(--akzent)" : "var(--text)" }}>
-          {wer.split("#")[0]}
-        </span>
-        <span className="zahl text-xs" style={{ color: "var(--still)" }}>
-          {s.life !== undefined ? `${s.life} life` : ""}
-          {s.hand ? ` · ${s.hand.length} hand` : ""}
-          {s.trash ? ` · ${s.trash.length} trash` : ""}
-        </span>
+      <div
+        className={
+          "grid items-center gap-3 " +
+          (gespiegelt ? "grid-cols-[auto_minmax(0,1fr)]" : "grid-cols-[auto_minmax(0,1fr)]")
+        }
+      >
+        <div className="flex w-[74px] shrink-0 flex-col items-center gap-1">
+          {leader ? (
+            <Bild id={leader} breite={120} hoehe={168}
+                  className="h-[74px] w-[53px] rounded object-cover" />
+          ) : null}
+          <span
+            className="zahl rounded px-1.5 py-0.5 text-[11px] font-bold"
+            style={{
+              background: life <= 1 ? "var(--niederlageweich)" : "var(--flaeche2)",
+              color: life <= 1 ? "var(--niederlage)" : "var(--leise)",
+            }}
+          >
+            {life !== undefined ? `${life} life` : "-"}
+          </span>
+        </div>
+
+        <div className="min-w-0">
+          <div className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="font-semibold"
+                  style={{ color: eigen ? "var(--akzent)" : "var(--text)" }}>
+              {wer.split("#")[0]}
+            </span>
+            <Don aktiv={s.don && s.don.aktiv} gerastet={s.don && s.don.gerastet} />
+            <span className="zahl text-[11px]" style={{ color: "var(--still)" }}>
+              {s.hand ? `${s.hand.length} hand` : ""}
+              {s.trash ? ` · ${s.trash.length} trash` : ""}
+              {s.don && s.don.deck !== undefined ? ` · ${s.don.deck} deck` : ""}
+            </span>
+          </div>
+          <Reihe karten={s.board} namen={namen} leer="empty board" />
+        </div>
       </div>
-      <Reihe karten={s.board} namen={namen} leer="empty board" />
+
+      {eigen && s.hand && s.hand.length ? (
+        <div className="mt-2 border-t pt-2" style={{ borderColor: "var(--linie)" }}>
+          <span className="etikett mb-1 block">Hand</span>
+          <Reihe karten={s.hand} namen={namen} leer="" />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1189,7 +1271,7 @@ function Kartenband({ karten, namen }) {
  *   Spielnamen, und die sind andere. FabaniniOvert heisst dort
  *   OvertimeChampanzini#2775. Ueber den Leader geht es zuverlaessig.
  */
-function Replay({ pfad, namen, eigenerLeader }) {
+function Replay({ pfad, namen, eigenerLeader, zurueck }) {
   const [zeilen, setZeilen] = useState(null);
   const [alles, setAlles] = useState(false);
 
@@ -1238,9 +1320,20 @@ function Replay({ pfad, namen, eigenerLeader }) {
       );
 
   return (
-    <div className="mt-3">
+    <div>
+      {zurueck ? (
+        <button
+          type="button"
+          onClick={zurueck}
+          className="mb-4 w-fit rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-[var(--flaeche2)]"
+          style={{ borderColor: "var(--linie)", color: "var(--leise)" }}
+        >
+          &larr; Back
+        </button>
+      ) : null}
       {/* Schrittsteuerung. Der Schieber traegt die Zugnummer, damit man springen
-          kann, statt sich durchzuklicken. */}
+          kann, statt sich durchzuklicken. Sie steht oben, damit sie beim Blaettern
+          nicht unter das Brett rutscht. */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -1283,17 +1376,20 @@ function Replay({ pfad, namen, eigenerLeader }) {
         </button>
       </div>
 
+      {/* Gegner oben, eigener Spieler unten, wie am Tisch. */}
       <div className="grid gap-2">
-        {namenListe.map((n) => (
-          <Brett
-            key={n}
-            wer={n}
-            stand={jetzt.stand[n]}
-            leader={leader[n]}
-            namen={namen}
-            eigen={n === spieler}
-          />
-        ))}
+        {[...namenListe].sort((a, b) => (a === spieler ? 1 : b === spieler ? -1 : 0))
+          .map((n, i) => (
+            <Brett
+              key={n}
+              wer={n}
+              stand={jetzt.stand[n]}
+              leader={leader[n]}
+              namen={namen}
+              eigen={n === spieler}
+              gespiegelt={i === 0}
+            />
+          ))}
       </div>
 
       <div className="mt-2 grid gap-0.5 rounded-lg border px-3 py-2.5"
@@ -1325,15 +1421,16 @@ function Replay({ pfad, namen, eigenerLeader }) {
   );
 }
 
-function Partie({ p, namen }) {
+function Partie({ p, namen, replayOeffnen }) {
   const [offen, setOffen] = useState(false);
-  const [replay, setReplay] = useState(false);
   const karten = (p.deck || []).slice(1);
   return (
     <div className="rounded-lg border" style={{ borderColor: "var(--linie)", background: "var(--flaeche)" }}>
+      {/* Feste Spalten statt fliessender Reihe: sonst wandert das "vs" je nach
+          Namenslaenge, und die Zeilen stehen untereinander nicht auf einer Linie. */}
       <button
         type="button"
-        className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
+        className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-2.5 text-left"
         onClick={() => setOffen((o) => !o)}
       >
         <span
@@ -1345,19 +1442,38 @@ function Partie({ p, namen }) {
         >
           {p.gewonnen ? "W" : "L"}
         </span>
-        <Bild id={p.eigener_leader} breite={120} hoehe={168}
-              className="h-[38px] w-[27px] shrink-0 rounded-[3px] object-cover" />
-        <span className="min-w-0 flex-1">
-          <LeaderName id={p.eigener_leader} namen={namen} klein />
-          <span className="block text-xs" style={{ color: "var(--still)" }}>
-            vs {(namen[p.gegner_leader] || {}).n || p.gegner_leader} &middot; {p.gegner}
+        {/* Eigene Seite: Bild links, Text rechts daneben. */}
+        <span className="flex min-w-0 items-center gap-2">
+          <Bild id={p.eigener_leader} breite={120} hoehe={168}
+                className="h-[38px] w-[27px] shrink-0 rounded-[3px] object-cover" />
+          <span className="min-w-0">
+            <LeaderName id={p.eigener_leader} namen={namen} klein />
           </span>
         </span>
-        <span className="zahl hidden shrink-0 text-xs sm:block" style={{ color: "var(--still)" }}>
-          {String(p.zeit).slice(0, 16).replace("T", " ")}
+
+        <span className="px-1 text-xs" style={{ color: "var(--still)" }}>vs</span>
+
+        {/* Gegnerseite gespiegelt: Text links, Bild rechts, alles rechtsbuendig. */}
+        <span className="flex min-w-0 items-center justify-end gap-2">
+          <span className="min-w-0 text-right">
+            <span className="block truncate text-[13px] font-semibold">
+              {(namen[p.gegner_leader] || {}).n || p.gegner_leader}
+            </span>
+            <span className="block truncate text-xs" style={{ color: "var(--still)" }}>
+              {p.gegner}
+            </span>
+          </span>
+          <Bild id={p.gegner_leader} breite={120} hoehe={168}
+                className="h-[38px] w-[27px] shrink-0 rounded-[3px] object-cover" />
         </span>
-        <span className="zahl w-12 shrink-0 text-right text-xs" style={{ color: "var(--still)" }}>
-          {fmtDauer(p.dauer)}
+
+        <span className="flex shrink-0 items-center gap-3">
+          <span className="zahl hidden text-xs sm:block" style={{ color: "var(--still)" }}>
+            {String(p.zeit).slice(0, 16).replace("T", " ")}
+          </span>
+          <span className="zahl w-12 text-right text-xs" style={{ color: "var(--still)" }}>
+            {fmtDauer(p.dauer)}
+          </span>
         </span>
       </button>
 
@@ -1389,9 +1505,9 @@ function Partie({ p, namen }) {
                 type="button"
                 className="rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-[var(--flaeche2)]"
                 style={{ borderColor: "var(--linie)", color: "var(--akzent)" }}
-                onClick={() => setReplay((r) => !r)}
+                onClick={() => replayOeffnen(p.replay, p.eigener_leader)}
               >
-                {replay ? "Hide replay" : "Watch replay"}
+                Watch replay
               </button>
               <a
                 href={replayAdresse(p.replay)}
@@ -1404,17 +1520,14 @@ function Partie({ p, namen }) {
               </a>
             </div>
           ) : null}
-          {replay && p.replay ? (
-            <Replay pfad={p.replay} namen={namen}
-                    eigenerLeader={p.eigener_leader} />
-          ) : null}
+
         </div>
       ) : null}
     </div>
   );
 }
 
-function Spieler({ eintrag, daten, namen, zurueck }) {
+function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen }) {
   if (!eintrag) {
     return (
       <p className="py-10 text-center" style={{ color: "var(--still)" }}>
@@ -1486,7 +1599,8 @@ function Spieler({ eintrag, daten, namen, zurueck }) {
       {partien.length ? (
         <div className="grid gap-2">
           {partien.map((p, i) => (
-            <Partie key={(p.replay || "") + i} p={p} namen={namen} />
+            <Partie key={(p.replay || "") + i} p={p} namen={namen}
+                    replayOeffnen={replayOeffnen} />
           ))}
         </div>
       ) : (
@@ -1515,6 +1629,7 @@ const PFADE = {
   rang: "/rankings",
   beste: "/leaderboard",
   spieler: "/player",
+  replay: "/replay",
 };
 
 function reiterAusPfad(pfad) {
@@ -1522,10 +1637,15 @@ function reiterAusPfad(pfad) {
   return treffer ? treffer[0] : "decks";
 }
 
-function adresseSetzen(reiter, leader, ersetzen, spielerId) {
-  // Die Spielerseite haengt an einer user_id, alle anderen Reiter am Leader.
+function adresseSetzen(reiter, leader, ersetzen, spielerId, replayPfad) {
+  // Die Spielerseite haengt an einer user_id, die Replayseite am Storagepfad,
+  // alle anderen Reiter am Leader.
   const abfrage =
-    reiter === "spieler"
+    reiter === "replay"
+      ? replayPfad
+        ? "?p=" + encodeURIComponent(replayPfad)
+        : ""
+      : reiter === "spieler"
       ? spielerId
         ? "?id=" + encodeURIComponent(spielerId)
         : ""
@@ -1646,6 +1766,13 @@ export default function App() {
   const [spielerId, setSpielerId] = useState(
     () => new URLSearchParams(window.location.search).get("id") || null
   );
+  // Der Leader, den der betrachtete Spieler in dieser Partie gespielt hat. Der
+  // Viewer erkennt daran, welche Seite im Log die des Spielers ist; ueber den
+  // Namen ginge es nicht, im Log stehen andere.
+  const [replayLeader, setReplayLeader] = useState(null);
+  const [replayPfad, setReplayPfad] = useState(
+    () => new URLSearchParams(window.location.search).get("p") || null
+  );
   const [matrixTop, setMatrixTop] = useState(12);
   const [matrixMindest, setMatrixMindest] = useState(50);
   const [sitzModus, setSitzModus] = useState(false);
@@ -1744,6 +1871,12 @@ export default function App() {
     if (entsperrt !== true || reiter !== "spieler") return;
     adresseSetzen("spieler", null, false, spielerId);
   }, [reiter, spielerId, entsperrt]);
+
+  /* Adresse der Replayseite mitfuehren. */
+  useEffect(() => {
+    if (entsperrt !== true || reiter !== "replay") return;
+    adresseSetzen("replay", null, false, null, replayPfad);
+  }, [reiter, replayPfad, entsperrt]);
 
   /* Verzeichnis holen */
   useEffect(() => {
@@ -1896,6 +2029,7 @@ export default function App() {
     const zurueck = () => {
       setReiter(reiterAusPfad(window.location.pathname));
       setSpielerId(new URLSearchParams(window.location.search).get("id") || null);
+      setReplayPfad(new URLSearchParams(window.location.search).get("p") || null);
       const wunsch = new URLSearchParams(window.location.search).get("leader");
       if (wunsch && satz) {
         const treffer = satz.leader.find((e) => kennung(e.id) === wunsch);
@@ -2477,6 +2611,21 @@ export default function App() {
                 <>
                   <Rangliste satz={satz} namen={namen} />
                 </>
+              ) : reiter === "replay" ? (
+                <>
+                  {replayPfad ? (
+                    <Replay
+                      pfad={replayPfad}
+                      namen={namen}
+                      eigenerLeader={replayLeader}
+                      zurueck={() => setReiter(spielerId ? "spieler" : "beste")}
+                    />
+                  ) : (
+                    <p className="py-10 text-center" style={{ color: "var(--still)" }}>
+                      No replay selected.
+                    </p>
+                  )}
+                </>
               ) : reiter === "spieler" ? (
                 <>
                   {beste === null || spielerAlle === null ? (
@@ -2499,6 +2648,12 @@ export default function App() {
                       }
                       namen={namen}
                       zurueck={() => setReiter("beste")}
+                      replayOeffnen={(pfad, ldr) => {
+                        setReplayPfad(pfad);
+                        setReplayLeader(ldr);
+                        setReiter("replay");
+                        window.scrollTo(0, 0);
+                      }}
                     />
                   )}
                 </>
