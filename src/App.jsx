@@ -861,9 +861,6 @@ function Schloss({ aufSchliessen }) {
         <h1 className="breit text-[26px] font-bold leading-tight">
           Letacios <span style={{ color: "var(--akzent)" }}>Fiesta</span>
         </h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--still)" }}>
-          Enter the password to continue.
-        </p>
         <input
           type="password"
           autoFocus
