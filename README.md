@@ -20,7 +20,7 @@ Die Oberflaeche ist englisch, der Code und diese Anleitung sind deutsch.
       tage/                 je Tag, Modus und Bountybereich eine Datei
       img/                  rund 2200 Kartenbilder
     aktualisieren.py    holt und baut alles unter public/
-    dist/               das fertige Ergebnis, nur dieses kommt auf den Server
+    dist/               das fertige Ergebnis, das laedt die Action nach Pages
 
 Stack: React 18, Tailwind 4, GSAP, gebaut mit Vite.
 
@@ -53,67 +53,62 @@ npm run build
 Danach liegt alles in `dist/`, rund 30 MB, davon 21 MB Bilder und Tagesdaten.
 
 `--bilder` nimmt die Bilder aus einer lokalen OPTCGSim Installation, wenn eine da ist,
-und holt den Rest von der offiziellen Kartenseite. Auf einem Server ohne Spiel laeuft es
-also genauso, der erste Lauf dauert dann nur laenger.
+und holt den Rest von der offiziellen Kartenseite. In der Action gibt es keine
+Installation, dort kommt alles von der Kartenseite; der erste Lauf dauert deshalb rund
+eine halbe Stunde, jeder weitere Sekunden.
+
+Je Karte entstehen zwei Groessen: 120 Pixel breit fuers Raster und 400 fuer die Lupe. Die
+Kartenseite liefert im Mittel 189 KB je Bild, ein voller Decklistenreiter waere damit
+ueber 80 MB gewesen.
 
 ## Veroeffentlichen
 
-Aufteilung: **der Homeserver frischt die Daten auf, GitHub Pages liefert aus.** Damit muss
-der Mac nie laufen, und wenn der Server aus ist, bleibt der letzte Stand online.
+Die Seite laeuft unter **https://fiesta.nahobinoco.com** auf GitHub Pages. Es ist nichts
+zu betreiben: die Action holt taeglich selbst die Daten, baut und veroeffentlicht. Weder
+ein Mac noch ein Homeserver muss dafuer laufen.
 
-    Homeserver, taeglich   server-aktualisieren.sh  ->  git push
-    GitHub Action          baut bei jedem Push      ->  GitHub Pages
+    .github/workflows/veroeffentlichen.yml
+      schedule           taeglich 06:20 UTC
+      push auf main      bei jeder Aenderung
+      workflow_dispatch  von Hand
 
-### Einmalig bei GitHub
-
-1. Repo anlegen, den Ordner hineinschieben, Branch `main`.
-2. Settings, Pages, Source auf "GitHub Actions" stellen.
-3. Fuer die eigene Domain `public/CNAME` mit dem Hostnamen anlegen, etwa
-   `ladder.nahobinoco.com`, und bei Namecheap einen CNAME auf `<benutzer>.github.io`
-   zeigen lassen.
-
-### Einmalig auf dem Server
-
-```bash
-ssh <benutzer>@<serverip>
-ssh-keygen -t ed25519 -C "fiesta-server" -f ~/.ssh/fiesta -N ""
-cat ~/.ssh/fiesta.pub
-```
-
-Den Schluessel im Repo unter Settings, Deploy keys eintragen, **mit Schreibrecht**. Dann:
-
-```bash
-printf 'Host github.com\n  IdentityFile ~/.ssh/fiesta\n' >> ~/.ssh/config
-git clone git@github.com:<benutzer>/letacios-fiesta.git ~/letacios-fiesta
-cd ~/letacios-fiesta && ./server-aktualisieren.sh
-```
-
-Der erste Lauf holt rund 2200 Kartenbilder von der offiziellen Kartenseite und dauert
-entsprechend. Danach kommen nur noch neue dazu.
-
-### Zeitplan auf dem Server
-
-```
-crontab -e
-```
-
-```
-23 6 * * * cd $HOME/letacios-fiesta && ./server-aktualisieren.sh >> aktualisieren.log 2>&1
-```
-
-Das Skript bricht ab, wenn sich nichts geaendert hat, es gibt also keine leeren Commits.
-
-### Ohne Server
-
-Geht auch: in `.github/workflows/veroeffentlichen.yml` den auskommentierten Schritt
-"Daten holen" aktivieren und einen `schedule` ergaenzen. Dann darf der Server aber nicht
-mehr pushen, sonst schreiben zwei Stellen dieselben Dateien.
+Der Lauf holt die Statistiken vom CDN, ergaenzt fehlende Kartenbilder, verschluesselt die
+Daten und schiebt das Ergebnis nach Pages. Mit warmem Zwischenspeicher dauert er ein bis
+zwei Minuten.
 
 ### Was im Repo liegt
 
-Die Daten unter `public/` werden mitversioniert, weil der Server sie dorthin schiebt. Das
-sind rund 21 MB Kartenbilder einmalig und etwa 250 KB je Tag, der dazukommt. Tage ausserhalb
-des Fensters raeumt das Skript selbst weg.
+Nur Quelltext, 17 Dateien. Keine Statistiken, keine Kartenbilder. Beides haelt die Action
+in ihrem Zwischenspeicher, siehe `.gitignore`. Faellt der aus, holt der naechste Lauf
+alles neu; das dauert dann rund eine halbe Stunde und heilt sich selbst.
+
+### Passwort
+
+Die Datendateien werden beim Bauen mit AES-256-GCM verschluesselt, der Schluessel kommt
+aus PBKDF2 ueber das Passwort. Es liegt als Repository Secret `SEITEN_PASSWORT` und in
+keiner Datei. Ohne Passwort laedt die Huelle, aber es gibt nichts zu sehen; die
+unverschluesselten Dateien liegen gar nicht erst auf dem Server.
+
+Passwort aendern: das Secret unter Settings, Secrets and variables, Actions ersetzen und
+den Workflow einmal von Hand ausloesen. Beim naechsten Aufruf fragt die Seite neu.
+
+Die Kartenbilder bleiben unverschluesselt. Es sind oeffentliche Kartenscans ohne Aussage.
+
+### Einmalig eingerichtet, zum Nachschlagen
+
+    Repo         jolejolevv-coder/letacios-fiesta, oeffentlich
+    Pages        Source auf "GitHub Actions"
+    Domain       ueber die Pages API gesetzt, nicht ueber eine CNAME Datei im Artefakt
+                 (die greift nur beim Bauen aus einem Branch, nicht ueber Actions)
+    DNS          CNAME fiesta -> jolejolevv-coder.github.io, bei CLOUDFLARE, nicht bei
+                 Namecheap, und auf "DNS only" statt Proxied
+
+### Ein Cron auf einem eigenen Server waere jetzt falsch
+
+Ein frueherer Entwurf liess den Homeserver die Daten holen und pushen. Das ist ersetzt.
+Zwei Gruende, warum es nicht mehr passt: das Repo verfolgt die Daten nicht mehr, ein Push
+wuerde also nichts mitnehmen, und zwei Schreiber auf denselben Dateien waeren ein
+Konflikt ohne Gewinn.
 
 ## Filterachsen
 
