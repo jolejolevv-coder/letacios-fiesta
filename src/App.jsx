@@ -1129,6 +1129,60 @@ const LISTENZONEN = {
  * Klartextabzuegen kam. Ein gespielter Charakter erschien dadurch erst Zuege
  * spaeter auf dem Brett.
  */
+/**
+ * Spielernummer zu Name, wenn die RZ1 Zeilen dazu fehlen.
+ *
+ * In 223 von 373 Replays gibt es keine PLY Zeile. Ohne sie liessen sich die
+ * Checkpoints und Bewegungen keinem Namen zuordnen und das Brett blieb leer.
+ *
+ * Die Reihenfolge der "Leader is" Zeilen taugt NICHT als Ersatz: sie folgt der
+ * Verbindungsreihenfolge, nicht der Spielernummer, und in rund jedem fuenften Log
+ * sind beide vertauscht. Entschieden wird deshalb gemessen, genau wie in
+ * `player_mapping` des Simulators: beide Zuordnungen durchspielen und die nehmen,
+ * unter der die Lebenspunkte der Checkpoints zu den Klartextzeilen passen.
+ */
+function zuordnungRaten(zeilen) {
+  const namen = [];
+  for (const z of zeilen) {
+    const t = z.t;
+    if (!t) continue;
+    const m = LEADERZEILE.exec(t);
+    if (m && !namen.includes(m[1])) namen.push(m[1]);
+    if (namen.length === 2) break;
+  }
+  if (namen.length < 2) return null;
+
+  const punkte = (zuordnung) => {
+    const life = {};
+    let treffer = 0;
+    for (const z of zeilen) {
+      if (z.c) {
+        life[z.c[0]] = z.c[4];
+        continue;
+      }
+      const t = z.t;
+      if (!t) continue;
+      const m = /^\[(.+?)\]\s+Life:\s*(\d+)$/.exec(t);
+      if (!m) continue;
+      const nr = zuordnung[m[1]];
+      if (nr !== undefined && life[nr] === parseInt(m[2], 10)) treffer += 1;
+    }
+    return treffer;
+  };
+
+  const a = { [namen[0]]: 1, [namen[1]]: 2 };
+  const b = { [namen[0]]: 2, [namen[1]]: 1 };
+  const pa = punkte(a);
+  const pb = punkte(b);
+  // Gleichstand heisst: nicht entscheidbar. Dann lieber die Reihenfolge nehmen,
+  // als eine Seite zu erfinden; die Zaehler sind dann im Zweifel vertauscht, die
+  // Karten der Klartextabzuege stimmen aber weiter, weil sie am Namen haengen.
+  const gewaehlt = pb > pa ? b : a;
+  const aus = {};
+  for (const [name, nr] of Object.entries(gewaehlt)) aus[nr] = name;
+  return aus;
+}
+
 function schritteBauen(zeilen) {
   const leader = {};
   const zuName = {};
@@ -1138,6 +1192,17 @@ function schritteBauen(zeilen) {
   let stand = {};
   let zug = 1;
   let amZug = null;
+
+  // Fehlen die PLY Zeilen, wird die Zuordnung gemessen statt geraten.
+  if (!zeilen.some((z) => z.p)) {
+    const geraten = zuordnungRaten(zeilen);
+    if (geraten) {
+      for (const [nr, name] of Object.entries(geraten)) {
+        zuName[Number(nr)] = name;
+        nummern[name] = Number(nr);
+      }
+    }
+  }
 
   const seite = (wer) => {
     let s = stand[wer];
