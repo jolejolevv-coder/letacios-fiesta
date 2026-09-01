@@ -1314,6 +1314,7 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
   const hand = s.hand || [];
   const board = s.board || [];
   const angelegt = s.angelegt || {};
+  const angelegtGesamt = Object.values(angelegt).reduce((a, b) => a + b, 0);
   const life = s.life || 0;
 
   return (
@@ -1330,6 +1331,11 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
         </span>
         <span className="pille">
           Don <b>{don.aktiv || 0}</b>/{(don.aktiv || 0) + (don.gerastet || 0)}
+          {/* Auf dem Telefon ist die Cost Area ausgeblendet, deshalb steht das
+              angelegte Don hier als Zahl statt als Reihe unter den Karten. */}
+          {angelegtGesamt ? (
+            <span className="sm:hidden"> &middot; {angelegtGesamt} angelegt</span>
+          ) : null}
         </span>
         <span className="pille">Deck <b>{don.deck ?? "-"}</b></span>
         <span className="pille">Trash <b>{s.trash ? s.trash.length : don.trash ?? 0}</b></span>
@@ -1410,6 +1416,7 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
         </div>
       </div>
 
+      <div className="z-hand">
       <div className="zonenname" style={{ marginTop: 8 }}>Hand</div>
       <div className="hand">
         {hand.length ? (
@@ -1420,6 +1427,7 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
         ) : (
           <span className="brettleer">leere Hand</span>
         )}
+      </div>
       </div>
     </div>
   );

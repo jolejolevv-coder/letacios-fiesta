@@ -400,3 +400,49 @@ header {
   .pille { padding: 1px 7px; font-size: 11px; }
   .lifeleiste i { width: 7px; height: 12px; }
 }
+
+/* ---------------------------------------------------------------------------
+   Telefon: beide Bretter auf einen Schirm
+
+   Das Zonenraster des Tisches braucht Hoehe, die ein Telefon nicht hat. Ein
+   einzelnes Brett fuellte den Schirm, man sah nie beide Spieler zugleich.
+
+   Der Ausweg ist keine Verkleinerung, sondern eine Auswahl: Deck, Don-Deck und
+   Trash verschwinden als Stapel, weil ihre Zahlen schon in den Pillen der
+   Kopfzeile stehen. Die Cost Area wird zur Zahl in derselben Zeile. Uebrig
+   bleiben die drei Dinge, die man wirklich sehen will: Leader, Charaktere, Hand.
+   --------------------------------------------------------------------------- */
+@media (max-width: 639px) {
+  .mat,
+  .mat.gedreht {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "mid chars";
+    gap: 6px;
+  }
+  /* Was die Kopfzeile schon als Zahl fuehrt, braucht kein eigenes Feld. */
+  .z-deck, .z-dond, .z-trash, .z-cost, .z-life { display: none; }
+
+  .seite { padding: 8px; }
+  .feld { padding: 4px 6px 5px; }
+  .zonenname { font-size: 9px; padding: 0 0 2px; }
+  .mitte { gap: 6px; }
+
+  .karten { min-height: calc(58px * var(--sk)); gap: 4px; }
+  .brett .hand { gap: 3px; margin-top: 4px; }
+  .brettleer { padding: 8px 4px; font-size: 11px; }
+
+  /* Charaktere und Hand rollen waagerecht, statt in zweite Zeilen zu brechen. */
+  .karten, .brett .hand {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .karten::-webkit-scrollbar, .brett .hand::-webkit-scrollbar { display: none; }
+  .karten > *, .brett .hand > * { flex: 0 0 auto; }
+
+  .bkarte { width: calc(44px * var(--sk)); }
+  .bkarte.leader { width: calc(50px * var(--sk)); }
+  .brett .hand .bkarte { width: calc(34px * var(--sk)); }
+  .dons { max-width: calc(48px * var(--sk)); }
+  .dons i { width: calc(11px * var(--sk)); height: calc(15px * var(--sk)); }
+}
