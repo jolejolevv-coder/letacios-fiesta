@@ -23,7 +23,11 @@ import json
 import os
 import sys
 
-WERKZEUGE = os.path.expanduser("~/Downloads/xebec-mirror-sim/tools")
+# Die Leser fuer das Mitschnittformat liegen im Simulatorprojekt. Auf dem Server
+# stehen sie woanders, deshalb ueberschreibbar.
+WERKZEUGE = os.environ.get(
+    "OPBOUNTY_WERKZEUGE",
+    os.path.expanduser("~/Downloads/xebec-mirror-sim/tools"))
 ZIEL = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                     "public", "bestenliste.json.gz")
 
