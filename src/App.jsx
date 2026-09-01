@@ -147,12 +147,12 @@ function Zaehler({ wert, nachkomma = 0, suffix = "" }) {
   return <span ref={knoten} className="zahl">0{suffix}</span>;
 }
 
-function Kennzahl({ etikett, kind, unter }) {
+function Kennzahl({ etikett, kind, unter, nurGross = false }) {
   return (
-    <div className="grid gap-0.5">
+    <div className={"grid gap-0.5" + (nurGross ? " hidden sm:grid" : "")}>
       <div className="etikett">{etikett}</div>
       <div
-        className="breit text-[21px] font-bold leading-tight sm:text-[27px]"
+        className="breit text-[19px] font-bold leading-tight sm:text-[27px]"
         style={{ fontFamily: "var(--font-anzeige)", fontVariantNumeric: "tabular-nums" }}
       >
         {kind}
@@ -1484,13 +1484,13 @@ export default function App() {
           {leader ? (
             <>
               {leaderbezogen ? (
-              <section className="grid grid-cols-[80px_minmax(0,1fr)] gap-4 pb-1 sm:grid-cols-[112px_minmax(0,1fr)] sm:gap-5">
+              <section className="grid grid-cols-[66px_minmax(0,1fr)] gap-3 pb-1 sm:grid-cols-[112px_minmax(0,1fr)] sm:gap-5">
                 <span className="relative block">
                   <Bild
                     id={kennung(leader.id)}
                     breite={112}
                     hoehe={156}
-                    className="h-[112px] w-20 rounded object-cover sm:h-[156px] sm:w-28"
+                    className="h-[92px] w-[66px] rounded object-cover sm:h-[156px] sm:w-28"
                   />
                   <span
                     className="absolute -left-2 top-1 block w-[3px] rounded-full"
@@ -1502,7 +1502,7 @@ export default function App() {
                 </span>
                 <div>
                   <h1
-                    className="breit text-[26px] font-extrabold leading-[1.05] sm:text-[34px]"
+                    className="breit text-[22px] font-extrabold leading-[1.05] sm:text-[34px]"
                     style={{
                       fontFamily: "var(--font-anzeige)",
                       textWrap: "balance",
@@ -1521,8 +1521,8 @@ export default function App() {
                       unter={"± " + fehler(leader.w + leader.l).toFixed(1)}
                     />
                     <Kennzahl etikett="Games" kind={<Zaehler wert={leader.w + leader.l} />} />
-                    <Kennzahl etikett="Wins" kind={<Zaehler wert={leader.w} />} />
-                    <Kennzahl etikett="Losses" kind={<Zaehler wert={leader.l} />} />
+                    <Kennzahl etikett="Wins" kind={<Zaehler wert={leader.w} />} nurGross />
+                    <Kennzahl etikett="Losses" kind={<Zaehler wert={leader.l} />} nurGross />
                     <Kennzahl
                       etikett="Going first"
                       kind={<Zaehler wert={proz(leader.fw, leader.fw + leader.fl)} nachkomma={1} suffix=" %" />}
@@ -1531,8 +1531,8 @@ export default function App() {
                       etikett="Going second"
                       kind={<Zaehler wert={proz(leader.sw, leader.sw + leader.sl)} nachkomma={1} suffix=" %" />}
                     />
-                    <Kennzahl etikett="Duration" kind={<span className="zahl">{fmtDauer(leader.dur)}</span>} />
-                    <Kennzahl etikett="Lists" kind={<Zaehler wert={leader.listen.length} />} />
+                    <Kennzahl etikett="Duration" kind={<span className="zahl">{fmtDauer(leader.dur)}</span>} nurGross />
+                    <Kennzahl etikett="Lists" kind={<Zaehler wert={leader.listen.length} />} nurGross />
                   </div>
                 </div>
               </section>

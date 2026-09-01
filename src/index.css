@@ -127,6 +127,12 @@ header {
   background-position: center;
   background-repeat: no-repeat;
 }
+
+/* Auf Touchgeraeten gibt es kein Zeigen, also auch keine Lupe. Sie ragte mit 208 Pixel
+   Breite ueber den rechten Rand hinaus und verschob die ganze Seite seitlich. */
+@media (hover: none), (max-width: 639px) {
+  .lupe { display: none; }
+}
 .group:hover > .lupe,
 .group:focus-within > .lupe {
   background-image: var(--bild);
