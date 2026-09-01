@@ -342,3 +342,24 @@ header {
 .ereignis.kampf  { border-left-color: var(--niederlage); }
 .ereignis.info   { border-left-color: var(--linie); }
 .ereignis.start  { border-left-color: var(--sieg); }
+
+/* Auf dem Telefon ist die Hoehe knapp, nicht die Breite. Das dreispaltige Raster
+   des Tisches reisst dort auseinander, deshalb ein gestapeltes: Leader mit Life,
+   darunter die Charaktere, die Kostenzone und zuletzt die drei Stapel in einer
+   Reihe. Gespiegelt wird auf dem Telefon nicht; oben und unten reicht als
+   Unterscheidung, und ein gedrehtes Raster kostet nur Orientierung. */
+@media (max-width: 639px) {
+  .mat,
+  .mat.gedreht {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "mid   mid  life"
+      "chars chars chars"
+      "cost  cost cost"
+      "deck  dond trash";
+    gap: 8px;
+  }
+  .z-deck, .z-dond, .z-trash { padding-bottom: 0; }
+  .seite { padding: 10px; }
+  .kopf { gap: 6px; }
+}

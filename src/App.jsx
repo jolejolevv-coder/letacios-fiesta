@@ -506,7 +506,7 @@ function Matchups({ leader, mindest, namen }) {
         <tbody>
           {zeilen.map((r) => (
             <tr key={r.id} className="transition-colors hover:bg-[var(--flaeche2)]">
-              <td className="border-b px-3 py-1.5" style={{ borderColor: "var(--linie)" }}>
+              <td className="border-b px-2 py-1.5 sm:px-3" style={{ borderColor: "var(--linie)" }}>
                 <span className="flex items-center gap-2.5">
                   <Bild id={r.id} className="block h-9 w-[26px] rounded-[3px] object-cover" />
                   <LeaderName id={r.id} namen={namen} />
@@ -758,7 +758,7 @@ function Rangliste({ satz, namen }) {
       className="tabellenhuelle overflow-x-auto rounded-lg border"
       style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
     >
-      <table className="w-full min-w-[720px] border-collapse">
+      <table className="w-full min-w-[340px] border-collapse sm:min-w-[720px]">
         <thead>
           <tr>
             <th className="sticky top-0 border-b px-3 py-2 text-left etikett"
@@ -877,13 +877,15 @@ function Bestenliste({ daten, namen, oeffnen }) {
 
   // Gleiche Spaltendefinition wie in den uebrigen Tabellen der Seite: Sortierschluessel
   // am Kopf, Zahlen rechtsbuendig, Text links.
+  // `nurGross` blendet die Spalte unter 640 Pixel aus. Rang, Name, Bounty und
+  // Winrate tragen die Tabelle; Partien und Spielzeit sind dort Beiwerk.
   const SPALTEN = [
     { t: "#", s: "rang" },
     { t: "Player", links: true },
     { t: "Bounty", s: "bounty" },
-    { t: "Games", s: "partien" },
+    { t: "Games", s: "partien", nurGross: true },
     { t: "Win rate", s: "wr" },
-    { t: "Time", s: "spielzeit" },
+    { t: "Time", s: "spielzeit", nurGross: true },
     { t: "Most played", links: true },
   ];
 
@@ -911,7 +913,7 @@ function Bestenliste({ daten, namen, oeffnen }) {
         className="tabellenhuelle overflow-x-auto rounded-lg border"
         style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
       >
-        <table className="w-full min-w-[720px] border-collapse">
+        <table className="w-full min-w-[340px] border-collapse sm:min-w-[720px]">
           <thead>
             <tr>
               {SPALTEN.map((sp) => (
@@ -919,9 +921,10 @@ function Bestenliste({ daten, namen, oeffnen }) {
                   key={sp.t}
                   scope="col"
                   className={
-                    "sticky top-0 z-10 border-b px-3 py-2 etikett " +
+                    "sticky top-0 z-10 whitespace-nowrap border-b px-2 py-2 etikett sm:px-3 " +
                     (sp.links ? "text-left" : "text-right") +
-                    (sp.s ? " cursor-pointer select-none" : "")
+                    (sp.s ? " cursor-pointer select-none" : "") +
+                    (sp.nurGross ? " hidden sm:table-cell" : "")
                   }
                   style={{
                     background: "var(--flaeche)",
@@ -964,27 +967,27 @@ function Bestenliste({ daten, namen, oeffnen }) {
                     className="cursor-pointer transition-colors hover:bg-[var(--flaeche2)]"
                     onClick={() => oeffnen(e.user_id)}
                   >
-                    <td className="zahl border-b px-3 py-1.5 text-right"
+                    <td className="zahl border-b px-2 py-1.5 text-right sm:px-3"
                         style={{ borderColor: "var(--linie)", color: "var(--still)" }}>
                       {e.rang}
                     </td>
-                    <td className="border-b px-3 py-1.5 font-semibold"
+                    <td className="border-b px-2 py-1.5 font-semibold sm:px-3"
                         style={{ borderColor: "var(--linie)" }}>
                       {/* Der Name fuehrt auf die Spielerseite, die Zeile daneben
                           klappt nur die Aufstellung auf. Zwei Ziele in einer Zeile,
                           deshalb haelt der Name das Klicken auf. */}
                       <span style={{ color: "var(--akzent)" }}>{e.name}</span>
                     </td>
-                    <td className="zahl border-b px-3 py-1.5 text-right font-semibold"
+                    <td className="zahl whitespace-nowrap border-b px-2 py-1.5 text-right font-semibold sm:px-3"
                         style={{ borderColor: "var(--linie)" }}>
                       {fmtZahl(e.bounty)}
                     </td>
-                    <td className="zahl border-b px-3 py-1.5 text-right"
+                    <td className="zahl hidden border-b px-2 py-1.5 text-right sm:table-cell sm:px-3"
                         style={{ borderColor: "var(--linie)", color: "var(--leise)" }}>
                       {fmtZahl(e.partien)}
                     </td>
                     <td
-                      className="zahl border-b px-3 py-1.5 text-right font-semibold"
+                      className="zahl whitespace-nowrap border-b px-2 py-1.5 text-right font-semibold sm:px-3"
                       style={{
                         borderColor: "var(--linie)",
                         color: e.partien ? farbe(e.siege, e.partien) : "var(--still)",
@@ -992,18 +995,22 @@ function Bestenliste({ daten, namen, oeffnen }) {
                     >
                       {e.partien ? e.wr.toFixed(1) + " %" : "-"}
                     </td>
-                    <td className="zahl border-b px-3 py-1.5 text-right"
+                    <td className="zahl hidden border-b px-2 py-1.5 text-right sm:table-cell sm:px-3"
                         style={{ borderColor: "var(--linie)", color: "var(--leise)" }}>
                       {stunden(e.spielzeit || 0)}
                     </td>
-                    <td className="border-b px-3 py-1.5" style={{ borderColor: "var(--linie)" }}>
+                    <td className="border-b px-2 py-1.5 sm:px-3" style={{ borderColor: "var(--linie)" }}>
                       {top ? (
                         <span className="flex items-center gap-2">
                           <Bild id={top.leader} breite={120} hoehe={168}
                                 className="h-[38px] w-[27px] shrink-0 rounded-[3px] object-cover" />
-                          <LeaderName id={top.leader} namen={namen} klein />
-                          <span className="zahl text-xs" style={{ color: "var(--still)" }}>
-                            {top.siege}&ndash;{top.niederlagen}
+                          {/* Auf dem Telefon traegt das Kartenbild die Aussage, der
+                              Name kostet dort nur Breite. */}
+                          <span className="hidden sm:contents">
+                            <LeaderName id={top.leader} namen={namen} klein />
+                            <span className="zahl text-xs" style={{ color: "var(--still)" }}>
+                              {top.siege}&ndash;{top.niederlagen}
+                            </span>
                           </span>
                         </span>
                       ) : (
@@ -1328,7 +1335,9 @@ function ereignisart(text) {
   return "effekt";
 }
 
-const ZOOMSTUFEN = [1, 1.3, 1.6, 2];
+// 70 Prozent ist die Telefonstufe: bei voller Groesse passt ein Brett dort nicht
+// nebeneinander und muss gescrollt werden.
+const ZOOMSTUFEN = [0.7, 1, 1.3, 1.6, 2];
 const TEMPO = [0.5, 1, 2, 4];
 
 function Kartenband({ karten, namen }) {
@@ -1354,7 +1363,9 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
   const [zeilen, setZeilen] = useState(null);
   const [alles, setAlles] = useState(false);
   const [zug, setZug] = useState(0);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 720 ? 0.7 : 1
+  );
   const [tempo, setTempo] = useState(1);
   const [laeuft, setLaeuft] = useState(false);
   // Das Log steht standardmaessig zu: es traegt alles, aber das Brett ist das,
@@ -1448,7 +1459,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
     <div className="brett" style={{ "--sk": zoom }}>
       {/* Steuerleiste, wie im Viewer des Simulators: springen, abspielen, Tempo,
           Zoom, Zugzaehler. */}
-      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2">
         {zurueck ? (
           <button type="button" onClick={zurueck} className={knopf}
                   style={{ borderColor: "var(--linie)", color: "var(--leise)" }}>
@@ -1456,7 +1467,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           </button>
         ) : null}
 
-        <span className="flex items-center gap-1">
+        <span className="flex items-center gap-1.5">
           <button type="button" className={knopf} style={stufe(false)}
                   disabled={nr <= 0} onClick={() => setZug(0)}>&#9198;</button>
           <button type="button" className={knopf} style={stufe(false)}
@@ -1473,7 +1484,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
                   onClick={() => setZug(zuege.length - 1)}>&#9197;</button>
         </span>
 
-        <span className="flex items-center gap-1">
+        <span className="flex items-center gap-1.5">
           {TEMPO.map((t) => (
             <button key={t} type="button" className={knopf} style={stufe(tempo === t)}
                     onClick={() => setTempo(t)}>
@@ -1482,7 +1493,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           ))}
         </span>
 
-        <span className="flex items-center gap-1">
+        <span className="flex items-center gap-1.5">
           {ZOOMSTUFEN.map((z) => (
             <button key={z} type="button" className={knopf} style={stufe(zoom === z)}
                     onClick={() => setZoom(z)}>
@@ -1495,7 +1506,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           Zug {nr + 1} / {zuege.length}
         </span>
 
-        <span className="ml-auto flex items-center gap-1">
+        <span className="ml-auto flex items-center gap-1.5">
           <button type="button" className={knopf} style={stufe(logOffen)}
                   onClick={() => setLogOffen((o) => !o)}>
             {logOffen ? "Ereignisse ausblenden" : "Ereignisse"}
