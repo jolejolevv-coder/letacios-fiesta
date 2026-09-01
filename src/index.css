@@ -373,3 +373,23 @@ header {
   .seite { padding: 10px; }
   .kopf { gap: 6px; }
 }
+
+/* Angelegtes Don haengt unter seiner Karte, nicht darin: bei einer gerasteten
+   Karte soll es waagerecht lesbar bleiben. */
+.platz { display: flex; flex-direction: column; align-items: center; gap: 0; }
+.dons {
+  display: flex;
+  gap: 1px;
+  justify-content: center;
+  flex-wrap: wrap;
+  max-width: calc(58px * var(--sk));
+  margin-top: 3px;
+  min-height: calc(10px * var(--sk));
+}
+.dons i {
+  width: calc(15px * var(--sk));
+  height: calc(21px * var(--sk));
+  border-radius: 2px;
+  display: block;
+  background: url("/rueckseiten/don.jpg") center / cover no-repeat;
+}

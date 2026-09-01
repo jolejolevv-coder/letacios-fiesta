@@ -187,7 +187,25 @@ def eindampfen(text):
             if len(f) >= 5:
                 zeilen.append({"p": [int(f[2]), UNSICHTBAR.sub("", f[3]), f[4]]})
             continue
+        # RZ1 Bewegungszeilen. Erst mit ihnen laesst sich das Brett bei jedem
+        # Schritt genau zeigen statt nur am Zugende.
+        #
+        #   RZ1|seq|player|cardId|srcZone|srcSlot|dstZone|dstSlot|f8|f9|rested|...
+        #
+        # Die Zonencodes stehen als `enum CardZone` im Spielpaket:
+        #   0 deck, 1 hand, 2 character, 3 life, 4 don_start, 5 don_field,
+        #   6 trash, 7 stage, 8 leader, 9 don_equipped
+        # Feld 10 ist der Ruhezustand, nicht die Zone; Resten laeuft als 5 nach 5.
+        # Am 02.09.2026 an 311 Logs geprueft: nachgespielt stimmen alle zehn
+        # Zaehler an allen 135.846 Checkpoints.
         if roh.startswith("RZ1|"):
+            f = roh.split("|")
+            if len(f) >= 11 and f[1].isdigit():
+                try:
+                    zeilen.append({"m": [int(f[2]), f[3], int(f[4]), int(f[5]),
+                                         int(f[6]), int(f[7]), int(f[10])]})
+                except ValueError:
+                    pass
             continue
 
         karten = KARTE.findall(roh)

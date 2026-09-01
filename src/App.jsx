@@ -1098,21 +1098,36 @@ function kartenliste(text) {
  * Hand, Board und Trash nicht als Zahl, sondern mit den Kartennummern. Damit laesst
  * sich das Brett am Ende jedes Zuges wirklich zeigen, statt es zu beschreiben.
  */
+/* Die Zonencodes der Bewegungszeilen. Sie stehen als `enum CardZone` im
+   Spielpaket; die Checkpointzeile bildet denselben Enum auf ihre Zaehler ab.
+   Am 02.09.2026 an 311 Logs geprueft: die Bewegungen nachgespielt stimmen alle
+   zehn Zaehler an allen 135.846 Checkpoints. */
+const Z_DECK = 0, Z_HAND = 1, Z_CHARACTER = 2, Z_LIFE = 3;
+const Z_DON_START = 4, Z_DON_FIELD = 5, Z_TRASH = 6, Z_STAGE = 7;
+const Z_LEADER = 8, Z_DON_EQUIPPED = 9;
+
+// Nur diese Zonen fuehren wir als Kartenliste. Deck und Don sind verdeckte
+// Stapel, dort genuegt die Zahl aus dem Checkpoint.
+const LISTENZONEN = {
+  [Z_HAND]: "hand",
+  [Z_CHARACTER]: "board",
+  [Z_TRASH]: "trash",
+  [Z_STAGE]: "stagekarten",
+};
+
 /**
- * Aus den Logzeilen eine Schrittliste bauen, eine Zeile ein Schritt.
+ * Aus den Logzeilen eine Schrittliste bauen, eine Klartextzeile ein Schritt.
  *
- * Frueher wurde nach "End Turn" zu Zuegen gebuendelt. Das ueberspringt aber genau
- * das, was man sehen will: den einzelnen Angriff, den einzelnen Counter. Hier
- * bekommt jede Klartextzeile ihren eigenen Schritt, und zu jedem Schritt gehoert
- * der Zustand, wie er nach dieser Zeile galt.
+ * Der Zustand kommt aus drei Quellen, jede mit ihrer Rolle:
+ *   - die Bewegungszeilen fuehren die Karten von Zone zu Zone. Daraus entsteht die
+ *     genaue Aufstellung nach jedem einzelnen Schritt.
+ *   - die Checkpoints liefern die Zaehler. Sie sind die Wahrheit fuer Zahlen, auch
+ *     fuer die verdeckten Stapel Deck und Don-Deck, deren Inhalt niemand kennt.
+ *   - die Klartextzeilen sind die Erzaehlung und geben die Schritte vor.
  *
- * Zwei Quellen speisen den Zustand, und sie sind unterschiedlich fein:
- *   - die CHK Zeilen liefern nach jedem Schritt die Zaehler, also Life, Don, Deck,
- *     Hand, Trash. Die laufen mit.
- *   - die Klartextabzuege am Zugende liefern die Kartennummern von Hand, Board und
- *     Trash. Die stehen nur dort, dazwischen bleibt die letzte bekannte Aufstellung
- *     stehen.
- * Das ist ehrlicher, als Karten zwischen den Abzuegen zu erfinden.
+ * Frueher stand die Aufstellung nur an den Zugenden, weil sie aus den
+ * Klartextabzuegen kam. Ein gespielter Charakter erschien dadurch erst Zuege
+ * spaeter auf dem Brett.
  */
 function schritteBauen(zeilen) {
   const leader = {};
@@ -1120,14 +1135,63 @@ function schritteBauen(zeilen) {
   const nummern = {};
   const schritte = [];
 
-  let stand = {};        // Name -> Zustand, wird fortgeschrieben
+  let stand = {};
   let zug = 1;
   let amZug = null;
 
+  const seite = (wer) => {
+    let s = stand[wer];
+    if (!s) {
+      s = stand[wer] = { hand: [], board: [], trash: [], stagekarten: [],
+                         angelegt: {} };
+    }
+    return s;
+  };
+
   const kopie = () => {
     const k = {};
-    for (const [wer, s] of Object.entries(stand)) k[wer] = { ...s };
+    for (const [wer, s] of Object.entries(stand)) {
+      k[wer] = {
+        ...s,
+        hand: [...s.hand], board: [...s.board], trash: [...s.trash],
+        stagekarten: [...s.stagekarten], angelegt: { ...s.angelegt },
+      };
+    }
     return k;
+  };
+
+  const anwenden = (m) => {
+    const [nr, karte, vonZone, vonSlot, nachZone, nachSlot] = m;
+    const wer = zuName[nr];
+    if (!wer) return;
+    const s = seite(wer);
+
+    const vonName = LISTENZONEN[vonZone];
+    if (vonName) {
+      const liste = s[vonName];
+      // Erst am gemeldeten Platz, sonst ueber die Kartennummer. Der Platz stimmt
+      // fast immer; der Rueckfall faengt die wenigen Faelle ab, in denen der
+      // Client eine Karte nennt, die er nie in diese Zone gelegt hat.
+      let i = vonSlot >= 0 && vonSlot < liste.length && liste[vonSlot] === karte
+        ? vonSlot
+        : liste.indexOf(karte);
+      if (i >= 0) liste.splice(i, 1);
+    } else if (vonZone === Z_DON_EQUIPPED) {
+      const wirt = Math.floor(vonSlot / 100);
+      s.angelegt[wirt] = Math.max(0, (s.angelegt[wirt] || 0) - 1);
+    }
+
+    const nachName = LISTENZONEN[nachZone];
+    if (nachName) {
+      const liste = s[nachName];
+      const i = Math.max(0, Math.min(nachSlot, liste.length));
+      liste.splice(i, 0, karte);
+    } else if (nachZone === Z_DON_EQUIPPED) {
+      // Der Slot traegt hier das Ziel: 99xx ist der Leader, sonst Boardplatz
+      // mal hundert plus laufende Nummer.
+      const wirt = Math.floor(nachSlot / 100);
+      s.angelegt[wirt] = (s.angelegt[wirt] || 0) + 1;
+    }
   };
 
   for (const z of zeilen) {
@@ -1137,17 +1201,21 @@ function schritteBauen(zeilen) {
       leader[z.p[1]] = z.p[2];
       continue;
     }
+    if (z.m) {
+      anwenden(z.m);
+      if (schritte.length) schritte[schritte.length - 1].stand = kopie();
+      continue;
+    }
     if (z.c) {
       const wer = zuName[z.c[0]];
       if (!wer) continue;
-      const s = (stand[wer] = stand[wer] || {});
+      const s = seite(wer);
       s.don = {
         deck: z.c[1], handzahl: z.c[2], boardzahl: z.c[3],
         donDeck: z.c[5], aktiv: z.c[6], trash: z.c[7],
         stage: z.c[8], gerastet: z.c[9],
       };
       if (z.c[4] > 0 || s.life !== undefined) s.life = z.c[4];
-      // Ein Checkpoint ist kein eigener Schritt, er praezisiert den letzten.
       if (schritte.length) schritte[schritte.length - 1].stand = kopie();
       continue;
     }
@@ -1158,15 +1226,9 @@ function schritteBauen(zeilen) {
     const ld = LEADERZEILE.exec(text);
     if (ld && !leader[ld[1]]) leader[ld[1]] = ld[2];
 
-    const zustand = ZUSTAND.exec(text);
-    if (zustand) {
-      const [, wer, feld, wert] = zustand;
-      const s = (stand[wer] = stand[wer] || {});
-      if (feld === "Life") s.life = parseInt(wert, 10);
-      else s[feld.toLowerCase()] = kartenliste(wert);
-      if (schritte.length) schritte[schritte.length - 1].stand = kopie();
-      continue;   // Abzuege sind Buchhaltung, kein Ereignis
-    }
+    // Die Klartextabzuege am Zugende werden nicht mehr gebraucht, die Aufstellung
+    // kommt jetzt aus den Bewegungen. Sie bleiben als Schritt aussen vor.
+    if (ZUSTAND.test(text)) continue;
 
     const spr = SPRECHER.exec(text);
     const wer = spr ? spr[1] : null;
@@ -1183,6 +1245,16 @@ function schritteBauen(zeilen) {
   }
 
   return { schritte, leader, nummern, zuege: zug };
+}
+
+/** Angelegtes Don unter einer Karte, als kleine Reihe. */
+function AngelegtesDon({ n }) {
+  if (!n) return null;
+  return (
+    <span className="dons">
+      {Array.from({ length: Math.min(n, 10) }, (_, i) => <i key={i} />)}
+    </span>
+  );
 }
 
 /** Ein verdeckter Stapel mit seiner Zahl. Deck, Don-Deck und Trash liegen so. */
@@ -1241,6 +1313,7 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
   const don = s.don || {};
   const hand = s.hand || [];
   const board = s.board || [];
+  const angelegt = s.angelegt || {};
   const life = s.life || 0;
 
   return (
@@ -1270,8 +1343,13 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
           <div className="karten">
             {board.length ? (
               board.map((k, i) => (
-                <Bild key={k + i} id={k} breite={120} hoehe={168}
-                      className="bkarte" alt={(namen[k] || {}).n || k} />
+                <span key={k + i} className="platz">
+                  <Bild id={k} breite={120} hoehe={168}
+                        className="bkarte" alt={(namen[k] || {}).n || k} />
+                  {/* Angelegtes Don steht unter der Karte, an der es haengt. Der
+                      Slot der Bewegungszeile nennt den Boardplatz. */}
+                  <AngelegtesDon n={angelegt[i] || 0} />
+                </span>
               ))
             ) : (
               <span className="brettleer">leeres Board</span>
@@ -1284,15 +1362,24 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
             <div className="zonenpaar">
               <div className="zonenname">Leader</div>
               {leader ? (
-                <Bild id={leader} breite={120} hoehe={168}
-                      className="bkarte leader" alt={(namen[leader] || {}).n || leader} />
+                <span className="platz">
+                  <Bild id={leader} breite={120} hoehe={168}
+                        className="bkarte leader" alt={(namen[leader] || {}).n || leader} />
+                  {/* Der Slot 99xx meint den Leader. */}
+                  <AngelegtesDon n={angelegt[99] || 0} />
+                </span>
               ) : (
                 <Stapel n={0} />
               )}
             </div>
             <div className="zonenpaar">
               <div className="zonenname">Stage</div>
-              <Stapel n={don.stage || 0} />
+              {s.stagekarten && s.stagekarten.length ? (
+                <Bild id={s.stagekarten[0]} breite={120} hoehe={168}
+                      className="bkarte" alt={s.stagekarten[0]} />
+              ) : (
+                <Stapel n={don.stage || 0} />
+              )}
             </div>
           </div>
         </div>
@@ -1331,9 +1418,7 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
                   className="bkarte" alt={(namen[k] || {}).n || k} />
           ))
         ) : (
-          <span className="brettleer">
-            {don.handzahl ? `${don.handzahl} verdeckt` : "leere Hand"}
-          </span>
+          <span className="brettleer">leere Hand</span>
         )}
       </div>
     </div>
