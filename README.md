@@ -61,6 +61,30 @@ Je Karte entsteht ein Bild, 120 Pixel breit; im Raster sind sie 46 bis 54 breit,
 deckt auch hohe Bildschirmdichten. Die Kartenseite liefert im Mittel 189 KB je Bild, ein
 voller Decklistenreiter waere damit ueber 80 MB gewesen.
 
+## Bestenliste
+
+Die Top 100 der Western Ladder, unter `/leaderboard`. Je Spieler Rang, Bounty, Partien,
+Spielzeit und die Leaderaufstellung mit Sitzsplit; letztere zeigt der Spielclient selbst
+nicht.
+
+Diese Daten kommen **nicht** vom CDN. Die Rangfolge rechnet der Spielserver und schickt
+sie ueber das Spielprotokoll, sie liegt in keiner Datenbank. Ein eigener Laeufer wurde
+gebaut und scheitert an einer Stelle, die in `specs/features/bestenliste.md` mit allen
+ausgeschlossenen Ursachen dokumentiert ist. Der Weg ist deshalb ein Mitschnitt:
+
+```bash
+sudo tcpdump -i any -n -s 0 -w ~/Downloads/bestenliste.pcap 'udp port 4694'
+# Spiel oeffnen, Bestenliste, fuenfmal "Next Page", dann Strg+C
+python3 bestenliste_einbauen.py ~/Downloads/bestenliste.pcap
+```
+
+Das Skript schreibt `public/bestenliste.json.gz` und **schreibt den Bestand fort**: wer in
+einer neuen Aufnahme fehlt, bleibt mit seinem alten Stand und seinem Datum stehen. Die
+Discord-Kennungen, die der Server ungefragt mitschickt, werden dabei verworfen.
+
+Der Mitschnitt enthaelt das Spielpasswort im Klartext, wenn er die Anmeldung erfasst.
+Also nicht aufbewahren und nirgends synchronisieren.
+
 ## Veroeffentlichen
 
 Die Seite laeuft unter **https://fiesta.nahobinoco.com** auf GitHub Pages. Es ist nichts

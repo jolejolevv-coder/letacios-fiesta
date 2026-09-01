@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+"""Die Bestenliste aus einem Mitschnitt in die Seite legen.
+
+Der Auslöser für die Daten ist der Spielclient: er stellt die Anfrage, tcpdump hört
+mit, dieses Skript wertet aus. Warum es keinen eigenen Läufer gibt, steht in
+`specs/features/bestenliste.md` unter "Was am eigenen Laeufer gescheitert ist".
+
+    sudo tcpdump -i any -n -s 0 -w ~/Downloads/bestenliste.pcap 'udp port 4694'
+    # Spiel öffnen, Bestenliste, fünfmal blättern, Strg+C
+    python3 bestenliste_einbauen.py ~/Downloads/bestenliste.pcap
+
+Der Bestand wird fortgeschrieben, nicht ersetzt: Spieler, die in einer neuen Aufnahme
+fehlen, bleiben mit ihrem alten Stand und ihrem Datum stehen. So wächst die Liste über
+die Aufnahmen hinweg, statt bei jeder Lücke Löcher zu bekommen.
+
+Ausgabe ist `public/bestenliste.json.gz`. Sie wird beim Bauen mit verschlüsselt, weil
+`verschluesseln.py` alle `*.json.gz` im Zielverzeichnis erfasst.
+"""
+import argparse
+import datetime
+import gzip
+import json
+import os
+import sys
+
+WERKZEUGE = os.path.expanduser("~/Downloads/xebec-mirror-sim/tools")
+ZIEL = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                    "public", "bestenliste.json.gz")
+
+
+def aus_mitschnitt(pfad):
+    """Die Spielerliste aus einem pcap lesen. Nutzt die Werkzeuge des Simulators."""
+    if not os.path.isdir(WERKZEUGE):
+        raise SystemExit(f"Werkzeuge nicht gefunden: {WERKZEUGE}")
+    sys.path.insert(0, WERKZEUGE)
+    from bestenliste_lesen import seiten, zeile_bauen, SPALTEN
+
+    eintraege, gesehen = [], set()
+    for seite in seiten(pfad):
+        for feld in seite["zeilen"]:
+            if not isinstance(feld, list) or len(feld) < len(SPALTEN):
+                continue
+            e = zeile_bauen(feld)
+            if not e.get("login") or e["login"] in gesehen:
+                continue
+            gesehen.add(e["login"])
+            if e.get("bounty") is not None:
+                # Das Spiel zeigt eine Nachkommastelle, der volle double bringt nichts.
+                e["bounty"] = round(e["bounty"], 1)
+            eintraege.append(e)
+    eintraege.sort(key=lambda e: e.get("rang") or 10 ** 9)
+    return eintraege
+
+
+def alt_laden():
+    if not os.path.exists(ZIEL):
+        return {}
+    try:
+        with gzip.open(ZIEL, "rb") as datei:
+            paket = json.loads(datei.read())
+        return {e["login"]: e for e in paket.get("spieler", [])}
+    except Exception:
+        return {}
+
+
+def main():
+    p = argparse.ArgumentParser(description="Bestenliste in die Seite legen")
+    p.add_argument("mitschnitt")
+    p.add_argument("--stand", help="Datum der Aufnahme, sonst heute")
+    p.add_argument("--ersetzen", action="store_true",
+                   help="alten Bestand verwerfen statt fortschreiben")
+    a = p.parse_args()
+
+    stand = a.stand or datetime.date.today().isoformat()
+    neu = aus_mitschnitt(a.mitschnitt)
+    if not neu:
+        raise SystemExit("keine Bestenliste im Mitschnitt gefunden")
+
+    bestand = {} if a.ersetzen else alt_laden()
+    for e in neu:
+        e["stand"] = stand
+        bestand[e["login"]] = e
+
+    spieler = sorted(bestand.values(), key=lambda e: e.get("rang") or 10 ** 9)
+    frisch = sum(1 for e in spieler if e.get("stand") == stand)
+    paket = {"stand": stand, "spieler": spieler}
+
+    os.makedirs(os.path.dirname(ZIEL), exist_ok=True)
+    roh = json.dumps(paket, ensure_ascii=False, separators=(",", ":")).encode()
+    with gzip.open(ZIEL, "wb", compresslevel=9) as datei:
+        datei.write(roh)
+
+    print(f"  {len(neu)} Spieler aus dem Mitschnitt, {len(spieler)} im Bestand, "
+          f"{frisch} davon von heute")
+    print(f"  {len(roh) // 1024} KB roh, "
+          f"{os.path.getsize(ZIEL) // 1024} KB gepackt -> {ZIEL}")
+
+
+if __name__ == "__main__":
+    main()

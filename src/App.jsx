@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import gsap from "gsap";
 import Sombrero from "./Sombrero.jsx";
 import {
@@ -834,6 +834,162 @@ function Rangliste({ satz, namen }) {
 }
 
 /* --------------------------------------------------------------------------
+   Bestenliste
+
+   Die Top 100 der Western Ladder. Die Daten kommen nicht vom CDN, sondern aus einem
+   Mitschnitt der Spielverbindung; warum das so ist, steht in
+   specs/features/bestenliste.md. Je Spieler liegt die Leaderaufstellung mit Sitzsplit
+   vor, und die ist der eigentliche Gewinn: der Client selbst zeigt sie nicht.
+   -------------------------------------------------------------------------- */
+
+function Bestenliste({ daten, namen }) {
+  const [offen, setOffen] = useState(null);
+  const [suche, setSuche] = useState("");
+
+  const spieler = useMemo(() => {
+    const s = suche.trim().toLowerCase();
+    if (!s) return daten.spieler;
+    return daten.spieler.filter((e) => (e.name || "").toLowerCase().includes(s));
+  }, [daten, suche]);
+
+  const stunden = (sek) => (sek / 3600).toFixed(1) + " h";
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3 py-1">
+        <span className="flex items-center gap-2">
+          <label className="etikett" htmlFor="spielerSuche">
+            player
+          </label>
+          <input
+            id="spielerSuche"
+            type="search"
+            autoComplete="off"
+            placeholder="name"
+            className="w-36 rounded-md border px-2.5 py-1.5 text-sm"
+            style={{ background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--text)" }}
+            value={suche}
+            onChange={(e) => setSuche(e.target.value)}
+          />
+        </span>
+        <span className="zahl text-[13px]" style={{ color: "var(--still)" }}>
+          {spieler.length} of {daten.spieler.length} players
+        </span>
+        <span className="text-[13px]" style={{ color: "var(--still)" }}>
+          as of {daten.stand}
+        </span>
+      </div>
+
+      <div className="tabellenhuelle overflow-x-auto">
+        <table className="w-full min-w-[680px] border-collapse text-sm">
+          <thead>
+            <tr style={{ color: "var(--still)" }}>
+              {["#", "Player", "Bounty", "Games", "Time", "Most played"].map((t, i) => (
+                <th
+                  key={t}
+                  className={"border-b px-3 py-2 font-medium " +
+                    (i === 1 || i === 5 ? "text-left" : "text-right")}
+                  style={{ borderColor: "var(--linie)" }}
+                >
+                  {t}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {spieler.map((e) => {
+              const top = (e.leader || [])[0];
+              const auf = offen === e.login;
+              return (
+                <Fragment key={e.login}>
+                  <tr
+                    className="cursor-pointer transition-colors hover:bg-[var(--flaeche2)]"
+                    onClick={() => setOffen(auf ? null : e.login)}
+                  >
+                    <td className="zahl border-b px-3 py-2 text-right"
+                        style={{ borderColor: "var(--linie)", color: "var(--still)" }}>
+                      {e.rang}
+                    </td>
+                    <td className="border-b px-3 py-2 font-semibold"
+                        style={{ borderColor: "var(--linie)" }}>
+                      {e.name}
+                    </td>
+                    <td className="zahl border-b px-3 py-2 text-right"
+                        style={{ borderColor: "var(--linie)" }}>
+                      {fmtZahl(e.bounty)}
+                    </td>
+                    <td className="zahl border-b px-3 py-2 text-right"
+                        style={{ borderColor: "var(--linie)", color: "var(--leise)" }}>
+                      {fmtZahl(e.partien)}
+                    </td>
+                    <td className="zahl border-b px-3 py-2 text-right"
+                        style={{ borderColor: "var(--linie)", color: "var(--leise)" }}>
+                      {stunden(e.spielzeit || 0)}
+                    </td>
+                    <td className="border-b px-3 py-2" style={{ borderColor: "var(--linie)" }}>
+                      {top ? (
+                        <span className="flex items-center gap-2">
+                          <Bild id={top.leader} breite={120} hoehe={168}
+                                className="h-[38px] w-[27px] shrink-0 rounded-[3px] object-cover" />
+                          <LeaderName id={top.leader} namen={namen} klein />
+                          <span className="zahl text-xs" style={{ color: "var(--still)" }}>
+                            {top.siege}&ndash;{top.niederlagen}
+                          </span>
+                        </span>
+                      ) : (
+                        <span style={{ color: "var(--still)" }}>no data</span>
+                      )}
+                    </td>
+                  </tr>
+                  {auf ? (
+                    <tr>
+                      <td colSpan={6} className="border-b px-3 pb-4 pt-1"
+                          style={{ borderColor: "var(--linie)", background: "var(--flaeche)" }}>
+                        {(e.leader || []).length ? (
+                          <div className="grid gap-2">
+                            {e.leader.map((l) => (
+                              <div key={l.leader}
+                                   className="grid grid-cols-[34px_minmax(0,1fr)_auto] items-center gap-3">
+                                <Bild id={l.leader} breite={120} hoehe={168}
+                                      className="h-[46px] w-[34px] rounded-[3px] object-cover" />
+                                <span className="min-w-0">
+                                  <LeaderName id={l.leader} namen={namen} klein />
+                                  <span className="zahl block text-xs" style={{ color: "var(--still)" }}>
+                                    {l.siege}&ndash;{l.niederlagen} in {l.partien} games
+                                    {" · "}going first {proz(l.erst_siege, l.erst_siege + l.erst_niederlagen).toFixed(1)} %
+                                    {" · "}going second {proz(l.zweit_siege, l.zweit_siege + l.zweit_niederlagen).toFixed(1)} %
+                                  </span>
+                                </span>
+                                <span className="w-32 shrink-0">
+                                  <Balken w={l.siege} g={l.partien} schmal />
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p style={{ color: "var(--still)" }}>
+                            This player reports no leader breakdown.
+                          </p>
+                        )}
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {!spieler.length ? (
+        <p className="py-10 text-center" style={{ color: "var(--still)" }}>
+          No player matches.
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+/* --------------------------------------------------------------------------
    Adressen
 
    Der Reiter steht im Pfad, der gewaehlte Leader als Abfrage dahinter. Damit ist jede
@@ -848,6 +1004,7 @@ const PFADE = {
   matchups: "/matchups",
   matrix: "/matrix",
   rang: "/rankings",
+  beste: "/leaderboard",
 };
 
 function reiterAusPfad(pfad) {
@@ -965,6 +1122,8 @@ export default function App() {
   // machten den Wechsel auf den Decklistenreiter traege.
   const [sichtbar, setSichtbar] = useState(12);
   const [namen, setNamen] = useState({});
+  // null heisst "noch nicht geholt", false heisst "nicht da". Beides ist erlaubt.
+  const [beste, setBeste] = useState(null);
   const [matrixTop, setMatrixTop] = useState(12);
   const [matrixMindest, setMatrixMindest] = useState(50);
   const [sitzModus, setSitzModus] = useState(false);
@@ -1030,6 +1189,19 @@ export default function App() {
     if (entsperrt !== true) return;
     kartenLaden().then(setNamen);
   }, [entsperrt]);
+
+  /* Bestenliste. Eigene Datei, eigener Rhythmus, und sie darf fehlen: faellt sie
+     aus, bleibt der Reiter leer und der Rest der Seite laeuft weiter. */
+  useEffect(() => {
+    if (entsperrt !== true || reiter !== "beste" || beste !== null) return;
+    let abgebrochen = false;
+    holen("bestenliste.json.gz")
+      .then((d) => !abgebrochen && setBeste(d))
+      .catch(() => !abgebrochen && setBeste(false));
+    return () => {
+      abgebrochen = true;
+    };
+  }, [entsperrt, reiter, beste]);
 
   /* Verzeichnis holen */
   useEffect(() => {
@@ -1291,6 +1463,7 @@ export default function App() {
             ["matchups", "Matchups", "Matchups"],
             ["matrix", "Matchup matrix", "Matrix"],
             ["rang", "Power rankings", "Ranking"],
+            ["beste", "Leaderboard", "Ladder"],
           ].map(([k, lang, kurz]) => (
             <button
               key={k}
@@ -1757,9 +1930,23 @@ export default function App() {
                     setSitzModus={setSitzModus}
                   />
                 </>
-              ) : (
+              ) : reiter === "rang" ? (
                 <>
                   <Rangliste satz={satz} namen={namen} />
+                </>
+              ) : (
+                <>
+                  {beste === null ? (
+                    <p className="py-10 text-center" style={{ color: "var(--still)" }}>
+                      Loading the ladder ...
+                    </p>
+                  ) : beste === false ? (
+                    <p className="py-10 text-center" style={{ color: "var(--still)" }}>
+                      No ladder snapshot available yet.
+                    </p>
+                  ) : (
+                    <Bestenliste daten={beste} namen={namen} />
+                  )}
                 </>
               )}
             </>
