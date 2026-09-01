@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Taegliche Auffrischung auf dem Homeserver (192.168.178.182).
+# Taegliche Auffrischung auf dem Homeserver.
 #
 # Holt die neuen Tage und die fertigen Saetze, legt fehlende Kartenbilder an und schiebt
 # das Ergebnis ins Repo. Den Bau und die Veroeffentlichung uebernimmt danach die

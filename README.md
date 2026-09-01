@@ -72,10 +72,10 @@ der Mac nie laufen, und wenn der Server aus ist, bleibt der letzte Stand online.
    `ladder.nahobinoco.com`, und bei Namecheap einen CNAME auf `<benutzer>.github.io`
    zeigen lassen.
 
-### Einmalig auf dem Server (192.168.178.182)
+### Einmalig auf dem Server
 
 ```bash
-ssh jole@192.168.178.182
+ssh <benutzer>@<serverip>
 ssh-keygen -t ed25519 -C "fiesta-server" -f ~/.ssh/fiesta -N ""
 cat ~/.ssh/fiesta.pub
 ```
