@@ -18,7 +18,7 @@ Die Oberflaeche ist englisch, der Code und diese Anleitung sind deutsch.
       verzeichnis.json.gz   was es an Saetzen und Tagen gibt
       saetze/               die sechs fertigen Saetze des Clients
       tage/                 je Tag, Modus und Bountybereich eine Datei
-      img/                  rund 2200 Kartenbilder
+      img/                  rund 2200 Kartenbilder, je 120 Pixel breit
     aktualisieren.py    holt und baut alles unter public/
     dist/               das fertige Ergebnis, das laedt die Action nach Pages
 
@@ -57,9 +57,9 @@ und holt den Rest von der offiziellen Kartenseite. In der Action gibt es keine
 Installation, dort kommt alles von der Kartenseite; der erste Lauf dauert deshalb rund
 eine halbe Stunde, jeder weitere Sekunden.
 
-Je Karte entstehen zwei Groessen: 120 Pixel breit fuers Raster und 400 fuer die Lupe. Die
-Kartenseite liefert im Mittel 189 KB je Bild, ein voller Decklistenreiter waere damit
-ueber 80 MB gewesen.
+Je Karte entsteht ein Bild, 120 Pixel breit; im Raster sind sie 46 bis 54 breit, das
+deckt auch hohe Bildschirmdichten. Die Kartenseite liefert im Mittel 189 KB je Bild, ein
+voller Decklistenreiter waere damit ueber 80 MB gewesen.
 
 ## Veroeffentlichen
 

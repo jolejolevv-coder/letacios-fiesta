@@ -395,7 +395,7 @@ function Deckliste({ liste }) {
           const id = kennung(eintrag);
           const n = anzahl(eintrag);
           return (
-            <span key={id + i} className="group relative block w-[46px] sm:w-[54px]">
+            <span key={id + i} className="relative block w-[46px] sm:w-[54px]">
               <Bild
                 id={id}
                 alt={id}
@@ -411,14 +411,6 @@ function Deckliste({ liste }) {
                   {n}
                 </b>
               ) : null}
-              {/* Die Lupe ist ein leeres Feld mit Hintergrundbild statt eines zweiten
-                  img. Das Bild holt der Browser erst, wenn die Regel beim Zeigen
-                  greift, und es spart bei sechzig Listen ueber tausend Elemente. */}
-              <span
-                aria-hidden="true"
-                className="lupe pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-30 h-[290px] w-[208px] -translate-x-1/2 scale-95 rounded-md opacity-0 transition duration-150 group-hover:scale-100 group-hover:opacity-100"
-                style={{ "--bild": "url(" + bildpfad(id, true) + ")", boxShadow: "var(--schatten)" }}
-              />
             </span>
           );
         })}

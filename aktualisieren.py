@@ -297,24 +297,20 @@ def namen_holen(ziel: str) -> int:
     return len(karten)
 
 
-# Zwei Groessen je Karte. Die Rasteransicht zeigt 46 bis 54 Pixel breit, die Lupe 208.
-# Die offizielle Kartenseite liefert Bilder in voller Groesse, im Mittel 189 KB; ein
-# voller Decklistenreiter waere damit ueber 80 MB. Klein reicht fuer das Raster, gross
-# wird nur geholt, wenn jemand auf eine Karte zeigt.
+# Eine Groesse je Karte. Die Rasteransicht zeigt 46 bis 54 Pixel breit, 120 deckt auch
+# hohe Bildschirmdichten. Die offizielle Kartenseite liefert Bilder in voller Groesse,
+# im Mittel 189 KB; ein voller Decklistenreiter waere damit ueber 80 MB gewesen.
 BREITE_KLEIN = 120
-BREITE_GROSS = 400
 
 
-def bild_ablegen(roh: bytes, klein: str, gross: str) -> None:
+def bild_ablegen(roh: bytes, klein: str) -> None:
     from PIL import Image
 
     with Image.open(io.BytesIO(roh)) as bild:
         bild = bild.convert("RGB")
-        for pfad, breite in ((klein, BREITE_KLEIN), (gross, BREITE_GROSS)):
-            kopie = bild.copy()
-            if kopie.width > breite:
-                kopie.thumbnail((breite, breite * 4), Image.LANCZOS)
-            kopie.save(pfad, "JPEG", quality=80, optimize=True)
+        if bild.width > BREITE_KLEIN:
+            bild.thumbnail((BREITE_KLEIN, BREITE_KLEIN * 4), Image.LANCZOS)
+        bild.save(klein, "JPEG", quality=80, optimize=True)
 
 
 def bilder_kopieren(ziel: str) -> None:
@@ -341,33 +337,26 @@ def bilder_kopieren(ziel: str) -> None:
                 if k:
                     gebraucht.add(k)
     neu, geladen, fehlt = 0, 0, []
-    os.makedirs(os.path.join(ziel, "img", "gross"), exist_ok=True)
+    # Die Kartenvorschau ist entfallen, die grossen Bilder werden nicht mehr gebraucht.
+    # Aus aelteren Laeufen liegen sie noch im Zwischenspeicher, hier wandern sie weg.
+    grossordner = os.path.join(ziel, "img", "gross")
+    if os.path.isdir(grossordner):
+        shutil.rmtree(grossordner)
+        print("  alte Vorschaubilder entfernt")
     offizielle = None
     for k in sorted(gebraucht):
         # Kennungen mit vorangestelltem X meinen dieselbe Karte, siehe daten.js.
         basiskennung = k[1:] if re.match(r"^X[A-Z]{2,4}\d{2}-\d{3}$", k) else k
         zieldatei = os.path.join(ziel, "img", basiskennung + ".jpg")
-        grossdatei = os.path.join(ziel, "img", "gross", basiskennung + ".jpg")
-        if os.path.exists(zieldatei) and os.path.exists(grossdatei):
+        if os.path.exists(zieldatei):
             continue
-        # Aus einem aelteren Lauf liegt vielleicht noch das ungerechnete Original da.
-        # Dann daraus beide Groessen bauen, statt es erneut zu holen.
-        if os.path.exists(zieldatei) and not os.path.exists(grossdatei):
-            with open(zieldatei, "rb") as datei:
-                vorhanden = datei.read()
-            try:
-                bild_ablegen(vorhanden, zieldatei, grossdatei)
-                neu += 1
-                continue
-            except Exception:
-                pass
         treffer = []
         if basis is not None:
             treffer = (glob.glob(os.path.join(basis, "*", basiskennung + "_small.*"))
                        or glob.glob(os.path.join(basis, "*", basiskennung + ".*")))
         if treffer:
             with open(treffer[0], "rb") as datei:
-                bild_ablegen(datei.read(), zieldatei, grossdatei)
+                bild_ablegen(datei.read(), zieldatei)
             neu += 1
             continue
         # Karten aus Sets, die neuer sind als die lokale Installation. Punk Records
@@ -382,7 +371,7 @@ def bilder_kopieren(ziel: str) -> None:
         try:
             with urllib.request.urlopen(url, timeout=120) as antwort:
                 daten = antwort.read()
-            bild_ablegen(daten, zieldatei, grossdatei)
+            bild_ablegen(daten, zieldatei)
             geladen += 1
         except Exception:
             fehlt.append(basiskennung)
