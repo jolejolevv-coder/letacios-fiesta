@@ -1084,12 +1084,16 @@ function zuegeBauen(zeilen) {
     // RZ1 CHK: [Spieler, don_aktiv, don_gerastet, life, deck]. Der einzige Ort
     // mit Don-Zaehlern; der Klartext fuehrt sie nicht.
     if (z.c) {
-      don[z.c[0]] = { aktiv: z.c[1], gerastet: z.c[2], deck: z.c[4] };
+      // Feld 5 ist die Handzahl, nicht das Deck; die Reihenfolge im CHK ist
+      // deck, hand, board, life, donDeck, donActive, trash, stage, leader, donRested.
+      don[z.c[0]] = { aktiv: z.c[1], gerastet: z.c[2], handzahl: z.c[4] };
       const wer = nummer[z.c[0]];
       if (wer) {
         const s = (aktuell.stand[wer] = aktuell.stand[wer] || {});
         s.don = don[z.c[0]];
-        if (s.life === undefined) s.life = z.c[3];
+        // Immer der juengste Stand. Zu Zugbeginn steht hier 0, weil die
+        // Lifekarten noch nicht liegen; der erste Wert waere also falsch.
+        if (z.c[3] > 0 || s.life !== undefined) s.life = z.c[3];
       }
       continue;
     }
@@ -1230,7 +1234,9 @@ function Brett({ wer, stand, leader, namen, eigen, gespiegelt }) {
             <span className="zahl text-[11px]" style={{ color: "var(--still)" }}>
               {s.hand ? `${s.hand.length} hand` : ""}
               {s.trash ? ` · ${s.trash.length} trash` : ""}
-              {s.don && s.don.deck !== undefined ? ` · ${s.don.deck} deck` : ""}
+              {!s.hand && s.don && s.don.handzahl !== undefined
+                ? ` · ${s.don.handzahl} hand`
+                : ""}
             </span>
           </div>
           <Reihe karten={s.board} namen={namen} leer="empty board" />
@@ -1316,7 +1322,10 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
   const schritte = alles
     ? jetzt.schritte
     : jetzt.schritte.filter(
-        (s) => !/^(Version is|Waiting for|Hand after Mulligan)/i.test(s.text)
+        (s) =>
+          !/^(Version is|Waiting for|Hand (before|after) Mulligan|Drew card from deck|Draw \d|Placing Cards)/i.test(
+            s.text
+          )
       );
 
   return (
@@ -1392,7 +1401,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           ))}
       </div>
 
-      <div className="mt-2 grid gap-0.5 rounded-lg border px-3 py-2.5"
+      <div className="mt-2 grid max-h-[42vh] gap-0.5 overflow-y-auto rounded-lg border px-3 py-2.5"
            style={{ borderColor: "var(--linie)" }}>
         {schritte.length ? (
           schritte.map((s, j) => (
