@@ -79,15 +79,25 @@ sagen "Mitschnitt laeuft"
 
 # --- Blaettern --------------------------------------------------------------
 # Erst zurueck an den Anfang, egal wo die Liste gerade steht: das Skript laeuft
-# taeglich, und die letzte Sitzung hat sie irgendwo stehen lassen. Danach vorwaerts
-# durch alle Seiten. Jeder Klick loest eine eigene Anfrage aus.
+# taeglich, und die letzte Sitzung hat sie irgendwo stehen lassen.
 xdotool windowactivate --sync "$WID" 2>/dev/null || xdotool windowraise "$WID"
 sleep 1
 for _ in $(seq "$SEITEN"); do klick "$ZURUECK_X" "$ZURUECK_Y"; sleep 0.8; done
 sagen "auf Seite 1 zurueckgesetzt"
+
+# Vorwaerts durch die Seiten 2 bis $SEITEN, dann rueckwaerts zurueck. Der Umweg ist
+# noetig, weil Seite 1 beim Oeffnen schon steht: ein "Prev" darauf loest keine neue
+# Anfrage aus, also faenge tcpdump die Top 20 sonst nie ein. Der Rueckweg fragt sie
+# auf dem letzten Klick neu an. Doppelt gesehene Seiten schaden nicht, die Namen
+# werden beim Auswerten entdoppelt.
 for i in $(seq $((SEITEN - 1))); do
   klick "$VOR_X" "$VOR_Y"
   sagen "Seite $((i + 1)) angefragt"
+  sleep 1.5
+done
+for i in $(seq $((SEITEN - 1)) -1 1); do
+  klick "$ZURUECK_X" "$ZURUECK_Y"
+  sagen "Seite $i erneut angefragt"
   sleep 1.5
 done
 sleep 2
