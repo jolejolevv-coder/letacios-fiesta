@@ -58,6 +58,32 @@ def verschluesseln(schl: bytes, klartext: bytes) -> bytes:
     return iv + AESGCM(schl).encrypt(iv, klartext, None)
 
 
+def entschluesseln(schl: bytes, geheim: bytes) -> bytes:
+    """Gegenstueck zu `verschluesseln`. Die ersten zwoelf Byte sind der Zufallswert."""
+    return AESGCM(schl).decrypt(geheim[:12], geheim[12:], None)
+
+
+def lesen(pfad: str) -> bytes:
+    """Eine Datendatei lesen, egal ob im Klartext oder verschluesselt daneben.
+
+    Gebraucht in der Action: dort liegt die Bestenliste nur als `.enc` im Repo, weil
+    ein oeffentliches Repo keine Klartextdaten fremder Spieler tragen soll. Der
+    taegliche Lauf braucht daraus aber die user_ids.
+    """
+    if os.path.exists(pfad):
+        with open(pfad, "rb") as datei:
+            return datei.read()
+    if not os.path.exists(pfad + ".enc"):
+        raise FileNotFoundError(pfad)
+    passwort = os.environ.get("SEITEN_PASSWORT", "").strip()
+    if not passwort:
+        raise SystemExit(
+            f"{pfad} liegt nur verschluesselt vor, aber SEITEN_PASSWORT ist nicht "
+            "gesetzt.")
+    with open(pfad + ".enc", "rb") as datei:
+        return entschluesseln(schluessel(passwort, salz_holen()), datei.read())
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ziel", default="public")
@@ -79,6 +105,7 @@ def main() -> None:
         os.path.join(args.ziel, "*.json.gz"),
         os.path.join(args.ziel, "saetze", "*.json.gz"),
         os.path.join(args.ziel, "tage", "*.json.gz"),
+        os.path.join(args.ziel, "replays", "*.json.gz"),
     ]
     dateien = [p for m in muster for p in glob.glob(m)]
     for pfad in dateien:

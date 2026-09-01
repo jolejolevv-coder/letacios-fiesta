@@ -13,3 +13,5 @@ __pycache__/
 public/spieler.json.gz
 public/replays/*.json.gz
 !public/replays/*.json.gz.enc
+public/spieler.json.gz.enc
+public/replays/

@@ -6,6 +6,14 @@
 # Was NICHT im Repo liegt und deshalb im Zwischenspeicher gehalten wird:
 #   public/tage   die Tagesdateien, sonst muesste jeder Lauf dreissig Tage neu holen
 #   public/img    rund 2200 Kartenbilder, die einmalig von der Kartenseite kommen
+#   ~/.opbounty_replays   die Rohlogs der Replays, sie aendern sich nie
+#
+# Was der Lauf selbst erzeugt und was deshalb NICHT im Repo liegt: die Spielerdaten
+# und die eingedampften Replays. Beides sind Daten fremder Spieler; ein oeffentliches
+# Repo soll sie nicht tragen, auch nicht verschluesselt.
+#
+# Die Bestenliste ist die Ausnahme: sie kann nur der Spielclient anfragen, kommt also
+# von Hand herein und liegt verschluesselt im Repo.
 # Faellt der Zwischenspeicher aus, holt der naechste Lauf alles neu. Das heilt sich also
 # selbst, es dauert nur laenger.
 #
@@ -63,6 +71,35 @@ jobs:
             --tage 30 \
             --bounty 25_1000,1000_2000,2000_3000 \
             --bilder
+
+      # Die Rohlogs der Replays aendern sich nie. Ohne Zwischenspeicher zoege jeder
+      # Lauf dreihundert Dateien neu vom Storage.
+      - name: Zwischenspeicher fuer Replaylogs
+        uses: actions/cache@v4
+        with:
+          path: ~/.opbounty_replays
+          key: replays-${{ github.run_id }}
+          restore-keys: replays-
+
+      # Die Bestenliste liegt nur verschluesselt im Repo, deshalb braucht auch dieser
+      # Schritt das Seitenpasswort: er liest die user_ids daraus.
+      - name: Spielerdaten holen
+        env:
+          OPBOUNTY_API_KEY: ${{ secrets.OPBOUNTY_API_KEY }}
+          OPBOUNTY_PROJECT: ${{ secrets.OPBOUNTY_PROJECT }}
+          OPBOUNTY_BUCKET: ${{ secrets.OPBOUNTY_BUCKET }}
+          OPBOUNTY_EMAIL: ${{ secrets.OPBOUNTY_EMAIL }}
+          OPBOUNTY_PASSWORT: ${{ secrets.OPBOUNTY_PASSWORT }}
+          SEITEN_PASSWORT: ${{ secrets.SEITEN_PASSWORT }}
+        run: python3 spieler_daten.py
+        # Ein Ausfall bei Firestore darf nicht die ganze Seite kosten. Die Anzeige
+        # kommt ohne diese Daten aus, der Spielerreiter meldet dann, dass nichts da
+        # ist. Lieber eine Seite ohne Spielerdaten als gar keine.
+        continue-on-error: true
+
+      - name: Replays holen
+        run: python3 replays_holen.py
+        continue-on-error: true
 
       - run: npm ci
       - run: npm run build

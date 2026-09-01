@@ -31,7 +31,9 @@ import json
 import os
 import sys
 
-WERKZEUGE = os.path.expanduser("~/Downloads/xebec-mirror-sim/tools")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from firestore import Db, wert, entpacke  # noqa: E402
+
 HIER = os.path.dirname(os.path.abspath(__file__))
 BESTE = os.path.join(HIER, "public", "bestenliste.json.gz")
 ZIEL = os.path.join(HIER, "public", "spieler.json.gz")
@@ -135,9 +137,6 @@ def partie(zeile, eigene_id):
 
 def holen(db, user_id):
     d = db.dokument(f"PublicUsers/{user_id}", felder=["Western"])
-    sys.path.insert(0, WERKZEUGE)
-    from firestore_browser import wert, entpacke
-
     west = entpacke(wert(d.get("fields", {}).get("Western")))
     if not west:
         return None
@@ -160,71 +159,15 @@ def alt_laden():
         return {}
 
 
-def replay_pruefen(pfad):
-    """Laesst sich eine Replaydatei ohne Anmeldung holen?
-
-    Beantwortet die offene Frage aus specs/features/bestenliste.md. Gefragt wird
-    zweimal: einmal nackt, einmal mit dem Token des Dienstkontos aus dem Spielpaket.
-    Davon haengt ab, ob die Seite Replays verlinken kann oder sie mit ausliefern
-    muesste.
-    """
-    import urllib.error
-    import urllib.parse
-    import urllib.request
-
-    sys.path.insert(0, WERKZEUGE)
-    from firestore_browser import zugang, anmelden
-
-    c = zugang()
-    adresse = ("https://firebasestorage.googleapis.com/v0/b/"
-               + c["storageBucket"] + "/o/"
-               + urllib.parse.quote(pfad, safe="") + "?alt=media")
-
-    def versuch(name, kopf=None):
-        anfrage = urllib.request.Request(adresse)
-        for k, v in (kopf or {}).items():
-            anfrage.add_header(k, v)
-        try:
-            with urllib.request.urlopen(anfrage, timeout=30) as antwort:
-                roh = antwort.read()
-            print(f"  {name}: HTTP {antwort.status}, {len(roh)} Bytes")
-            return roh
-        except urllib.error.HTTPError as fehler:
-            print(f"  {name}: HTTP {fehler.code}")
-        except Exception as fehler:
-            print(f"  {name}: {type(fehler).__name__}")
-        return None
-
-    print(f"  Pfad: {pfad}")
-    roh = versuch("ohne Anmeldung")
-    if roh is None:
-        token = anmelden(c)["idToken"]
-        roh = versuch("mit Dienstkonto", {"Authorization": "Bearer " + token})
-    if roh:
-        kopf = roh[:120].decode("utf-8", "replace").replace("\n", " | ")
-        print(f"  Anfang: {kopf}")
-
-
 def main():
     p = argparse.ArgumentParser(description="Spielerdaten holen")
     p.add_argument("--grenze", type=int, default=0)
-    p.add_argument("--replay-pruefen", metavar="PFAD",
-                   help="einen Replaypfad testweise abrufen")
     a = p.parse_args()
 
-    if a.replay_pruefen:
-        replay_pruefen(a.replay_pruefen)
-        return
-
-    if not os.path.exists(BESTE):
-        raise SystemExit(f"Bestenliste fehlt: {BESTE}")
-    with gzip.open(BESTE, "rb") as datei:
-        beste = json.loads(datei.read())["spieler"]
+    from verschluesseln import lesen
+    beste = json.loads(gzip.decompress(lesen(BESTE)))["spieler"]
     if a.grenze:
         beste = beste[:a.grenze]
-
-    sys.path.insert(0, WERKZEUGE)
-    from firestore_browser import Db
 
     db = Db()
     bestand = alt_laden()
