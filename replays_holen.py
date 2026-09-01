@@ -56,6 +56,72 @@ def adresse(pfad, eimer):
             + urllib.parse.quote(pfad, safe="") + "?alt=media")
 
 
+DATEINAME = re.compile(r"([A-Za-z0-9-]+)_(-?\d+)_(-?\d+)\.log$")
+# Bis zu dieser Summe an Abweichung gilt ein Kandidat als dieselbe Partie. Gemessen
+# am 01.09.2026: exakte Treffer und Abweichungen von 1 oder 2 kommen vor, danach
+# klafft eine Luecke bis ueber 50. Was weiter weg liegt, ist eine fremde Partie im
+# selben Ordner, kein Rundungsfehler.
+TOLERANZ = 2
+_ordner = {}
+
+
+def ordner_lesen(praefix, eimer):
+    """Alle Dateinamen unter einem Praefix. Der Storage laesst sich auflisten, was
+    das Raten ueberfluessig macht."""
+    if praefix in _ordner:
+        return _ordner[praefix]
+    aus, token = [], None
+    while True:
+        u = ("https://firebasestorage.googleapis.com/v0/b/" + eimer + "/o?prefix="
+             + urllib.parse.quote(praefix, safe="") + "&maxResults=1000")
+        if token:
+            u += "&pageToken=" + urllib.parse.quote(token, safe="")
+        try:
+            with urllib.request.urlopen(u, timeout=60) as antwort:
+                d = json.loads(antwort.read())
+        except Exception:
+            break
+        aus += [i["name"] for i in d.get("items", [])]
+        token = d.get("nextPageToken")
+        if not token:
+            break
+    _ordner[praefix] = aus
+    return aus
+
+
+def nachbar_suchen(pfad, eimer):
+    """Den echten Dateinamen zu einem knapp danebenliegenden Pfad finden.
+
+    Die Bounty im Dateinamen stammt vom hochladenden Client, die in der Partienzeile
+    aus dem Profil. Beide runden gelegentlich verschieden, dann fehlt eine Eins. Hier
+    wird der Ordner gelesen und der naechste Kandidat genommen, aber nur innerhalb
+    der Toleranz und nur wenn er eindeutig ist: im selben Ordner liegen hunderte
+    fremder Partien derselben Leaderpaarung.
+    """
+    teile = pfad.rsplit("/", 1)
+    if len(teile) != 2:
+        return None
+    t = DATEINAME.search(teile[1])
+    if not t:
+        return None
+    verlierer, s_mmr, v_mmr = t.group(1), int(t.group(2)), int(t.group(3))
+    treffer = []
+    for name in ordner_lesen(teile[0] + "/", eimer):
+        k = DATEINAME.search(name)
+        if not k or k.group(1) != verlierer:
+            continue
+        abstand = abs(int(k.group(2)) - s_mmr) + abs(int(k.group(3)) - v_mmr)
+        if abstand <= TOLERANZ:
+            treffer.append((abstand, name))
+    if not treffer:
+        return None
+    treffer.sort()
+    # Zwei gleich nahe Kandidaten heissen: nicht entscheidbar. Dann lieber nichts.
+    if len(treffer) > 1 and treffer[0][0] == treffer[1][0]:
+        return None
+    return treffer[0][1]
+
+
 def laden(pfad, eimer):
     """Ein Log holen, mit lokalem Zwischenspeicher. Logs aendern sich nie."""
     os.makedirs(ZWISCHEN, exist_ok=True)
@@ -68,7 +134,15 @@ def laden(pfad, eimer):
         with urllib.request.urlopen(adresse(pfad, eimer), timeout=30) as antwort:
             roh = antwort.read()
     except urllib.error.HTTPError:
-        return None
+        # Knapp daneben? Der Ordner verraet den echten Namen.
+        nachbar = nachbar_suchen(pfad, eimer)
+        if not nachbar:
+            return None
+        try:
+            with urllib.request.urlopen(adresse(nachbar, eimer), timeout=30) as antwort:
+                roh = antwort.read()
+        except Exception:
+            return None
     except Exception:
         return None
     with open(datei, "wb") as f:
