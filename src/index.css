@@ -147,3 +147,22 @@ header {
   content-visibility: auto;
   contain-intrinsic-size: auto 600px;
 }
+
+/* Die Matrix auf schmalen Schirmen. Zeilenkopf und Spalten schrumpfen, sonst passen
+   nicht einmal zwei Gegner ins Bild. Ab 640 Pixel gelten wieder die vollen Masse. */
+.matrix { min-width: max-content; }
+.matrix th:first-child, .matrix td:first-child { min-width: 54px; }
+.matrix td { min-width: 54px; }
+@media (min-width: 640px) {
+  .matrix th:first-child, .matrix td:first-child { min-width: 150px; }
+  .matrix td { min-width: 86px; }
+}
+
+/* Hinweis, dass seitlich mehr steht: eine weiche Kante am rechten Rand. */
+.tabellenhuelle, .matrixhuelle {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+@media (min-width: 900px) {
+  .tabellenhuelle, .matrixhuelle { -webkit-mask-image: none; mask-image: none; }
+}

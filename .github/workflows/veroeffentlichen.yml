@@ -67,6 +67,12 @@ jobs:
       - run: npm ci
       - run: npm run build
 
+      # GitHub Pages liefert bei unbekannten Pfaden 404.html aus. Ist das eine Kopie
+      # der Startseite, laedt /matrix und /rankings auch beim direkten Aufruf und die
+      # Anwendung uebernimmt von dort.
+      - name: Adressen wie /matrix beim Direktaufruf ermoeglichen
+        run: cp dist/index.html dist/404.html
+
       - name: Daten verschluesseln
         env:
           SEITEN_PASSWORT: ${{ secrets.SEITEN_PASSWORT }}

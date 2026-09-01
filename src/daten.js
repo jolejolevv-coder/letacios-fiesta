@@ -9,10 +9,9 @@
 
 const zwischenspeicher = new Map();
 
-/** Basis der Datendateien, damit die Seite auch in einem Unterverzeichnis laeuft. */
+/** Basis der Datendateien. Feste Wurzel, weil Adressen wie /matrix sonst danebengreifen. */
 function basis() {
-  const pfad = window.location.pathname;
-  return pfad.endsWith("/") ? pfad : pfad.replace(/[^/]*$/, "");
+  return "/";
 }
 
 /**

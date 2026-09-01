@@ -152,7 +152,7 @@ function Kennzahl({ etikett, kind, unter }) {
     <div className="grid gap-0.5">
       <div className="etikett">{etikett}</div>
       <div
-        className="breit text-[27px] font-bold leading-tight"
+        className="breit text-[21px] font-bold leading-tight sm:text-[27px]"
         style={{ fontFamily: "var(--font-anzeige)", fontVariantNumeric: "tabular-nums" }}
       >
         {kind}
@@ -474,7 +474,7 @@ function Matchups({ leader, mindest, namen }) {
 
   return (
     <div
-      className="overflow-x-auto rounded-lg border"
+      className="tabellenhuelle overflow-x-auto rounded-lg border"
       style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
     >
       <table className="w-full min-w-[680px] border-collapse">
@@ -589,15 +589,15 @@ function Matrix({ satz, top, mindest, namen, sitzModus, setSitzModus }) {
 
   return (
     <div
-      className="overflow-auto rounded-lg border"
+      className="matrixhuelle overflow-auto rounded-lg border"
       style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
     >
-      <table className="border-collapse" style={{ minWidth: 140 + leader.length * 86 }}>
+      <table className="matrix border-collapse">
         <thead>
           <tr>
             <th
               className="sticky left-0 top-0 z-20 border-b border-r p-2 text-left etikett"
-              style={{ background: "var(--flaeche)", borderColor: "var(--linie)", minWidth: 140 }}
+              style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
               scope="col"
             >
               Row beats column
@@ -606,12 +606,20 @@ function Matrix({ satz, top, mindest, namen, sitzModus, setSitzModus }) {
               <th
                 key={e.id}
                 scope="col"
-                className="sticky top-0 z-10 border-b border-l p-1.5"
-                style={{ background: "var(--flaeche)", borderColor: "var(--linie)", width: 86 }}
+                className="sticky top-0 z-10 border-b border-l p-1 sm:p-1.5"
+                style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
               >
                 <span className="grid justify-items-center gap-1" title={(namen[kennung(e.id)] || {}).n || ""}>
-                  <Bild id={kennung(e.id)} className="block h-[46px] w-8 rounded-[3px] object-cover" />
-                  <span className="text-[10px] font-semibold leading-tight" style={{ color: "var(--still)" }}>
+                  <Bild
+                    id={kennung(e.id)}
+                    breite={32}
+                    hoehe={46}
+                    className="block h-[38px] w-[27px] rounded-[3px] object-cover sm:h-[46px] sm:w-8"
+                  />
+                  <span
+                    className="hidden text-[10px] font-semibold leading-tight sm:block"
+                    style={{ color: "var(--still)" }}
+                  >
                     {((namen[kennung(e.id)] || {}).n || kennung(e.id)).slice(0, 13)}
                   </span>
                 </span>
@@ -630,8 +638,13 @@ function Matrix({ satz, top, mindest, namen, sitzModus, setSitzModus }) {
                   style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
                 >
                   <span className="flex items-center gap-2">
-                    <Bild id={kennung(zeile.id)} className="block h-11 w-8 rounded-[3px] object-cover" />
-                    <span className="min-w-0">
+                    <Bild
+                      id={kennung(zeile.id)}
+                      breite={32}
+                      hoehe={44}
+                      className="block h-9 w-[26px] rounded-[3px] object-cover sm:h-11 sm:w-8"
+                    />
+                    <span className="hidden min-w-0 sm:block">
                       <LeaderName id={zeile.id} namen={namen} klein />
                       <span className="zahl block text-[11px]" style={{ color: "var(--still)" }}>
                         {fmtProz(zeile.w, g)}
@@ -749,7 +762,7 @@ function Rangliste({ satz, namen }) {
 
   return (
     <div
-      className="overflow-x-auto rounded-lg border"
+      className="tabellenhuelle overflow-x-auto rounded-lg border"
       style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
     >
       <table className="w-full min-w-[720px] border-collapse">
@@ -825,6 +838,35 @@ function Rangliste({ satz, namen }) {
       </table>
     </div>
   );
+}
+
+/* --------------------------------------------------------------------------
+   Adressen
+
+   Der Reiter steht im Pfad, der gewaehlte Leader als Abfrage dahinter. Damit ist jede
+   Ansicht verlinkbar und der Zurueckknopf tut, was man erwartet.
+
+   GitHub Pages liefert bei unbekannten Pfaden 404.html aus; die Action legt dort eine
+   Kopie der Startseite ab, deshalb laedt /matrix auch beim direkten Aufruf.
+   -------------------------------------------------------------------------- */
+
+const PFADE = {
+  decks: "/decklists",
+  matchups: "/matchups",
+  matrix: "/matrix",
+  rang: "/rankings",
+};
+
+function reiterAusPfad(pfad) {
+  const treffer = Object.entries(PFADE).find(([, p]) => p === pfad.replace(/\/$/, ""));
+  return treffer ? treffer[0] : "decks";
+}
+
+function adresseSetzen(reiter, leader, ersetzen) {
+  const ziel =
+    PFADE[reiter] + (leader ? "?leader=" + encodeURIComponent(kennung(leader)) : "");
+  if (window.location.pathname + window.location.search === ziel) return;
+  window.history[ersetzen ? "replaceState" : "pushState"]({}, "", ziel);
 }
 
 /* --------------------------------------------------------------------------
@@ -921,7 +963,7 @@ export default function App() {
   const [gewaehlt, setGewaehlt] = useState(null);
   const [suche, setSuche] = useState("");
   const [sortLeader, setSortLeader] = useState("partien");
-  const [reiter, setReiter] = useState("decks");
+  const [reiter, setReiter] = useState(() => reiterAusPfad(window.location.pathname));
   const [mindest, setMindest] = useState(50);
   const [mindestGeg, setMindestGeg] = useState(100);
   const [sortListen, setSortListen] = useState("wr");
@@ -1049,7 +1091,12 @@ export default function App() {
       .then((s) => {
         if (abgebrochen) return;
         setSatz(s);
-        const ersterMitListen = s.leader.find((e) => e.listen.length > 0) || s.leader[0];
+        const gewuenscht = new URLSearchParams(window.location.search).get("leader");
+        const ausAdresse = gewuenscht
+          ? s.leader.find((e) => kennung(e.id) === gewuenscht)
+          : null;
+        const ersterMitListen =
+          ausAdresse || s.leader.find((e) => e.listen.length > 0) || s.leader[0];
         setGewaehlt(ersterMitListen ? ersterMitListen.id : null);
         setLaedt(false);
       })
@@ -1139,6 +1186,26 @@ export default function App() {
       </div>
     );
   }
+
+  /* Adresse mitfuehren, sobald Reiter oder Leader stehen. */
+  useEffect(() => {
+    if (entsperrt !== true || !gewaehlt) return;
+    adresseSetzen(reiter, gewaehlt, false);
+  }, [reiter, gewaehlt, entsperrt]);
+
+  /* Vor und Zurueck im Browser */
+  useEffect(() => {
+    const zurueck = () => {
+      setReiter(reiterAusPfad(window.location.pathname));
+      const wunsch = new URLSearchParams(window.location.search).get("leader");
+      if (wunsch && satz) {
+        const treffer = satz.leader.find((e) => kennung(e.id) === wunsch);
+        if (treffer) setGewaehlt(treffer.id);
+      }
+    };
+    window.addEventListener("popstate", zurueck);
+    return () => window.removeEventListener("popstate", zurueck);
+  }, [satz]);
 
   const leaderbezogen = reiter === "decks" || reiter === "matchups";
 
@@ -1416,9 +1483,14 @@ export default function App() {
           {leader ? (
             <>
               {leaderbezogen ? (
-              <section className="grid gap-5 pb-1 sm:grid-cols-[112px_minmax(0,1fr)]">
+              <section className="grid grid-cols-[80px_minmax(0,1fr)] gap-4 pb-1 sm:grid-cols-[112px_minmax(0,1fr)] sm:gap-5">
                 <span className="relative block">
-                  <Bild id={kennung(leader.id)} className="h-[156px] w-28 rounded object-cover" />
+                  <Bild
+                    id={kennung(leader.id)}
+                    breite={112}
+                    hoehe={156}
+                    className="h-[112px] w-20 rounded object-cover sm:h-[156px] sm:w-28"
+                  />
                   <span
                     className="absolute -left-2 top-1 block w-[3px] rounded-full"
                     style={{
@@ -1429,7 +1501,7 @@ export default function App() {
                 </span>
                 <div>
                   <h1
-                    className="breit text-[34px] font-extrabold leading-[1.05]"
+                    className="breit text-[26px] font-extrabold leading-[1.05] sm:text-[34px]"
                     style={{
                       fontFamily: "var(--font-anzeige)",
                       textWrap: "balance",
@@ -1441,7 +1513,7 @@ export default function App() {
                   <p className="zahl text-[13px]" style={{ color: "var(--still)" }}>
                     {kennung(leader.id)}
                   </p>
-                  <div className="mt-5 flex flex-wrap gap-x-9 gap-y-4">
+                  <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3 sm:mt-5 sm:gap-x-9 sm:gap-y-4">
                     <Kennzahl
                       etikett="Win rate"
                       kind={<Zaehler wert={proz(leader.w, leader.w + leader.l)} nachkomma={1} suffix=" %" />}
