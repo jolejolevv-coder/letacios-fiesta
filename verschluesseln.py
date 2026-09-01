@@ -35,6 +35,20 @@ RUNDEN = 200_000
 PROBE = b"letacios-fiesta"
 
 
+SALZDATEI = os.path.join(os.path.dirname(os.path.abspath(__file__)), "salz.txt")
+
+
+def salz_holen() -> bytes:
+    """Das feste Salz. Fehlt die Datei, wird eines erzeugt und abgelegt."""
+    if os.path.exists(SALZDATEI):
+        with open(SALZDATEI, encoding="utf-8") as datei:
+            return base64.b64decode(datei.read().strip())
+    salz = secrets.token_bytes(16)
+    with open(SALZDATEI, "w", encoding="utf-8") as datei:
+        datei.write(base64.b64encode(salz).decode() + "\n")
+    return salz
+
+
 def schluessel(passwort: str, salz: bytes) -> bytes:
     return hashlib.pbkdf2_hmac("sha256", passwort.encode("utf-8"), salz, RUNDEN, 32)
 
@@ -53,7 +67,12 @@ def main() -> None:
     if not passwort:
         sys.exit("  SEITEN_PASSWORT ist nicht gesetzt.")
 
-    salz = secrets.token_bytes(16)
+    # Festes Salz aus salz.txt. Es muss fest sein, weil die Bestenliste schon lokal
+    # verschluesselt ins Repo geht und in der Action mit demselben Schluessel
+    # aufgeschlossen werden muss. Ein Salz ist kein Geheimnis; es verhindert
+    # vorberechnete Tabellen ueber verschiedene Seiten hinweg, nicht das Raten
+    # dieses einen Passworts. Dafuer sind die 200.000 Runden da.
+    salz = salz_holen()
     schl = schluessel(passwort, salz)
 
     muster = [

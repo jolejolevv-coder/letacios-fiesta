@@ -94,6 +94,45 @@ def main():
           f"{frisch} davon von heute")
     print(f"  {len(roh) // 1024} KB roh, "
           f"{os.path.getsize(ZIEL) // 1024} KB gepackt -> {ZIEL}")
+    verschluesselt_ablegen()
+
+
+def seitenpasswort():
+    """Das Seitenpasswort, aus der Umgebung oder aus einer Datei ausserhalb des Repos."""
+    p = os.environ.get("SEITEN_PASSWORT", "").strip()
+    if p:
+        return p
+    datei = os.path.expanduser("~/.fiesta_passwort")
+    if os.path.exists(datei):
+        with open(datei, encoding="utf-8") as f:
+            return f.read().strip()
+    return ""
+
+
+def verschluesselt_ablegen():
+    """Die verschluesselte Fassung neben die Klartextdatei legen.
+
+    Nur diese geht ins Repo. Das Repo ist oeffentlich, und in der Liste stehen Namen
+    und Werte von hundert echten Leuten; unverschluesselt hat das dort nichts zu
+    suchen. Moeglich ist es, weil das Salz in `salz.txt` festliegt und die Action
+    denselben Schluessel bildet.
+    """
+    passwort = seitenpasswort()
+    if not passwort:
+        print("  kein SEITEN_PASSWORT gesetzt, keine verschluesselte Fassung "
+              "geschrieben (die Seite zeigt dann keine Bestenliste)")
+        return
+    hier = os.path.dirname(os.path.abspath(__file__))
+    sys.path.insert(0, hier)
+    from verschluesseln import salz_holen, schluessel, verschluesseln
+
+    schl = schluessel(passwort, salz_holen())
+    with open(ZIEL, "rb") as datei:
+        klartext = datei.read()
+    with open(ZIEL + ".enc", "wb") as datei:
+        datei.write(verschluesseln(schl, klartext))
+    print(f"  verschluesselt -> {ZIEL}.enc "
+          f"({os.path.getsize(ZIEL + '.enc') // 1024} KB, geht ins Repo)")
 
 
 if __name__ == "__main__":
