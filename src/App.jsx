@@ -1540,11 +1540,17 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
   const seiten = [...new Set(schritte.flatMap((s) => Object.keys(s.stand)))]
     .sort((a, b) => (a === spieler ? 1 : b === spieler ? -1 : 0));
 
-  // Auf dem Telefon kleiner: die Leiste stand sonst vierzeilig ueber dem Brett und
-  // schob es aus dem Bild.
+  // Auf dem Telefon zaehlt Treffsicherheit, nicht Vollstaendigkeit. Dort bleiben
+  // Zurueck, ein Schritt vor und zurueck, Abspielen; Tempo und Zoom stecken je in
+  // einem Umschalter, der die Stufen durchgeht. Die Knoepfe sind dafuer groesser
+  // als auf dem Rechner, nicht kleiner.
   const knopf =
-    "rounded-md border px-1.5 py-1 text-xs font-semibold transition-colors " +
-    "hover:bg-[var(--flaeche2)] disabled:opacity-40 sm:px-2.5 sm:py-1.5 sm:text-sm";
+    "rounded-md border px-3 py-2.5 text-sm font-semibold transition-colors " +
+    "hover:bg-[var(--flaeche2)] disabled:opacity-40 " +
+    "min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:px-2.5 sm:py-1.5";
+  const nurGross = " hidden sm:inline-flex";
+  const nurKlein = " sm:hidden";
+  const weiter = (liste, wert) => liste[(liste.indexOf(wert) + 1) % liste.length];
   const stufe = (an) => ({
     background: an ? "var(--akzentweich)" : "var(--flaeche2)",
     borderColor: an ? "var(--akzent)" : "var(--linie)",
@@ -1562,7 +1568,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
         ) : null}
 
         <span className="flex items-center gap-1">
-          <button type="button" className={knopf} style={stufe(false)}
+          <button type="button" className={knopf + nurGross} style={stufe(false)}
                   disabled={nr <= 0} onClick={() => setI(0)}>&#9198;</button>
           <button type="button" className={knopf} style={stufe(false)}
                   disabled={nr <= 0} onClick={() => setI((n) => Math.max(0, n - 1))}>&#9664;</button>
@@ -1573,12 +1579,12 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           <button type="button" className={knopf} style={stufe(false)}
                   disabled={nr >= schritte.length - 1}
                   onClick={() => setI((n) => Math.min(schritte.length - 1, n + 1))}>&#9654;</button>
-          <button type="button" className={knopf} style={stufe(false)}
+          <button type="button" className={knopf + nurGross} style={stufe(false)}
                   disabled={nr >= schritte.length - 1}
                   onClick={() => setI(schritte.length - 1)}>&#9197;</button>
         </span>
 
-        <span className="flex items-center gap-1">
+        <span className={"items-center gap-1" + nurGross}>
           {TEMPO.map((t) => (
             <button key={t} type="button" className={knopf} style={stufe(tempo === t)}
                     onClick={() => setTempo(t)}>
@@ -1587,7 +1593,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           ))}
         </span>
 
-        <span className="flex items-center gap-1">
+        <span className={"items-center gap-1" + nurGross}>
           {ZOOMSTUFEN.map((z) => (
             <button key={z} type="button" className={knopf} style={stufe(zoom === z)}
                     onClick={() => setZoom(z)}>
@@ -1596,9 +1602,21 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           ))}
         </span>
 
+        {/* Auf dem Telefon je ein Umschalter statt einer Reihe. */}
+        <button type="button" className={knopf + nurKlein} style={stufe(tempo !== 1)}
+                onClick={() => setTempo((t) => weiter(TEMPO, t))}>
+          {tempo === 0.5 ? "\u00BDx" : tempo + "x"}
+        </button>
+        <button type="button" className={knopf + nurKlein} style={stufe(zoom !== 1)}
+                onClick={() => setZoom((z) => weiter(ZOOMSTUFEN, z))}>
+          {Math.round(zoom * 100)}%
+        </button>
+
         <span className="zahl text-xs sm:text-sm" style={{ color: "var(--leise)" }}>
-          Schritt {nr + 1} / {schritte.length}
-          <span style={{ color: "var(--still)" }}> &middot; Zug {jetzt.zug} / {zuege}</span>
+          {nr + 1} / {schritte.length}
+          <span className="hidden sm:inline" style={{ color: "var(--still)" }}>
+            {" "}&middot; Zug {jetzt.zug} / {zuege}
+          </span>
         </span>
 
         <button type="button" className={knopf + " ml-auto"} style={stufe(logOffen)}
