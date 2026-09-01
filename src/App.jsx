@@ -417,7 +417,7 @@ function Deckliste({ liste }) {
               <span
                 aria-hidden="true"
                 className="lupe pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-30 h-[290px] w-[208px] -translate-x-1/2 scale-95 rounded-md opacity-0 transition duration-150 group-hover:scale-100 group-hover:opacity-100"
-                style={{ "--bild": "url(" + bildpfad(id) + ")", boxShadow: "var(--schatten)" }}
+                style={{ "--bild": "url(" + bildpfad(id, true) + ")", boxShadow: "var(--schatten)" }}
               />
             </span>
           );
@@ -928,7 +928,7 @@ export default function App() {
   const [karteFilter, setKarteFilter] = useState("");
   // Nur zwoelf Listen bauen. Sechzig auf einmal sind ueber tausend Kartenfelder und
   // machten den Wechsel auf den Decklistenreiter traege.
-  const [sichtbar, setSichtbar] = useState(24);
+  const [sichtbar, setSichtbar] = useState(12);
   const [namen, setNamen] = useState({});
   const [matrixTop, setMatrixTop] = useState(12);
   const [matrixMindest, setMatrixMindest] = useState(50);
@@ -1102,7 +1102,7 @@ export default function App() {
   }, [satz, suche, sortLeader]);
 
   useEffect(() => {
-    setSichtbar(24);
+    setSichtbar(12);
   }, [gewaehlt, mindest, sortListen, karteFilter, satz]);
 
   const listen = useMemo(() => {

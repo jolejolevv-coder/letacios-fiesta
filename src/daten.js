@@ -22,9 +22,10 @@ function basis() {
  * eigenes Bild dazu gibt es nirgends, gemeint ist dieselbe Karte. Fuer die Anzeige wird
  * das X deshalb abgestreift, in den Daten bleibt die Kennung unveraendert.
  */
-export function bildpfad(id) {
+export function bildpfad(id, gross = false) {
   const ohneX = /^X([A-Z]{2,4}\d{2}-\d{3})$/.exec(String(id));
-  return basis() + "img/" + (ohneX ? ohneX[1] : id) + ".jpg";
+  const kennzahl = ohneX ? ohneX[1] : id;
+  return basis() + "img/" + (gross ? "gross/" : "") + kennzahl + ".jpg";
 }
 
 export const KARTE = /([A-Z]{2,4}\d{2}-\d{3}|P-\d{3})/;

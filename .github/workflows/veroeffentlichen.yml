@@ -54,7 +54,7 @@ jobs:
           key: daten-${{ github.run_id }}
           restore-keys: daten-
 
-      - run: pip install --quiet cryptography
+      - run: pip install --quiet cryptography pillow
 
       - name: Daten und Bilder holen
         run: |

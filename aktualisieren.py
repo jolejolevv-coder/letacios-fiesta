@@ -23,6 +23,7 @@ Client in `merge_statlists`, und genau das macht `zusammenfuehren` hier.
 """
 import argparse
 import base64
+import io
 import glob
 import gzip
 import html
@@ -296,6 +297,26 @@ def namen_holen(ziel: str) -> int:
     return len(karten)
 
 
+# Zwei Groessen je Karte. Die Rasteransicht zeigt 46 bis 54 Pixel breit, die Lupe 208.
+# Die offizielle Kartenseite liefert Bilder in voller Groesse, im Mittel 189 KB; ein
+# voller Decklistenreiter waere damit ueber 80 MB. Klein reicht fuer das Raster, gross
+# wird nur geholt, wenn jemand auf eine Karte zeigt.
+BREITE_KLEIN = 120
+BREITE_GROSS = 400
+
+
+def bild_ablegen(roh: bytes, klein: str, gross: str) -> None:
+    from PIL import Image
+
+    with Image.open(io.BytesIO(roh)) as bild:
+        bild = bild.convert("RGB")
+        for pfad, breite in ((klein, BREITE_KLEIN), (gross, BREITE_GROSS)):
+            kopie = bild.copy()
+            if kopie.width > breite:
+                kopie.thumbnail((breite, breite * 4), Image.LANCZOS)
+            kopie.save(pfad, "JPEG", quality=80, optimize=True)
+
+
 def bilder_kopieren(ziel: str) -> None:
     """Kopiert jedes Kartenbild, das IRGENDEINE abgelegte Datei braucht.
 
@@ -320,19 +341,33 @@ def bilder_kopieren(ziel: str) -> None:
                 if k:
                     gebraucht.add(k)
     neu, geladen, fehlt = 0, 0, []
+    os.makedirs(os.path.join(ziel, "img", "gross"), exist_ok=True)
     offizielle = None
     for k in sorted(gebraucht):
         # Kennungen mit vorangestelltem X meinen dieselbe Karte, siehe daten.js.
         basiskennung = k[1:] if re.match(r"^X[A-Z]{2,4}\d{2}-\d{3}$", k) else k
         zieldatei = os.path.join(ziel, "img", basiskennung + ".jpg")
-        if os.path.exists(zieldatei):
+        grossdatei = os.path.join(ziel, "img", "gross", basiskennung + ".jpg")
+        if os.path.exists(zieldatei) and os.path.exists(grossdatei):
             continue
+        # Aus einem aelteren Lauf liegt vielleicht noch das ungerechnete Original da.
+        # Dann daraus beide Groessen bauen, statt es erneut zu holen.
+        if os.path.exists(zieldatei) and not os.path.exists(grossdatei):
+            with open(zieldatei, "rb") as datei:
+                vorhanden = datei.read()
+            try:
+                bild_ablegen(vorhanden, zieldatei, grossdatei)
+                neu += 1
+                continue
+            except Exception:
+                pass
         treffer = []
         if basis is not None:
             treffer = (glob.glob(os.path.join(basis, "*", basiskennung + "_small.*"))
                        or glob.glob(os.path.join(basis, "*", basiskennung + ".*")))
         if treffer:
-            shutil.copyfile(treffer[0], zieldatei)
+            with open(treffer[0], "rb") as datei:
+                bild_ablegen(datei.read(), zieldatei, grossdatei)
             neu += 1
             continue
         # Karten aus Sets, die neuer sind als die lokale Installation. Punk Records
@@ -347,8 +382,7 @@ def bilder_kopieren(ziel: str) -> None:
         try:
             with urllib.request.urlopen(url, timeout=120) as antwort:
                 daten = antwort.read()
-            with open(zieldatei, "wb") as datei:
-                datei.write(daten)
+            bild_ablegen(daten, zieldatei, grossdatei)
             geladen += 1
         except Exception:
             fehlt.append(basiskennung)
