@@ -57,12 +57,16 @@ def aus_mitschnitt(pfad):
 
 
 def alt_laden():
-    if not os.path.exists(ZIEL):
-        return {}
+    """Den bisherigen Bestand lesen, im Klartext oder verschluesselt.
+
+    Auf dem Heimserver liegt nur die `.enc` im geklonten Repo, die Klartextdatei ist
+    dort gar nicht vorhanden. Ohne diesen Weg faenge jeder Serverlauf bei null an und
+    das Fortschreiben waere wirkungslos.
+    """
     try:
-        with gzip.open(ZIEL, "rb") as datei:
-            paket = json.loads(datei.read())
-        return {e["login"]: e for e in paket.get("spieler", [])}
+        from verschluesseln import lesen
+        return {e["login"]: e
+                for e in json.loads(gzip.decompress(lesen(ZIEL))).get("spieler", [])}
     except Exception:
         return {}
 
@@ -74,6 +78,12 @@ def main():
     p.add_argument("--ersetzen", action="store_true",
                    help="alten Bestand verwerfen statt fortschreiben")
     a = p.parse_args()
+
+    # Das Passwort auch dem Leser bereitstellen: `lesen()` holt es nur aus der
+    # Umgebung, auf dem Server steht es aber in einer Datei.
+    if not os.environ.get("SEITEN_PASSWORT"):
+        os.environ["SEITEN_PASSWORT"] = seitenpasswort()
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
     stand = a.stand or datetime.date.today().isoformat()
     neu = aus_mitschnitt(a.mitschnitt)
