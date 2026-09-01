@@ -1017,6 +1017,15 @@ function Bestenliste({ daten, namen, oeffnen }) {
 // Installation des Spiels und steht in jeder Downloadadresse.
 const SPEICHER = "opbounty-3623c.firebasestorage.app";
 
+/**
+ * Aus dem Storagepfad den Dateinamen der vorbereiteten Fassung bilden.
+ * Muss zu `dateiname()` in replays_holen.py passen, sonst greift die Seite daneben.
+ */
+function dateiname(pfad) {
+  const kurz = pfad.startsWith("Replays/") ? pfad.slice("Replays/".length) : pfad;
+  return kurz.replace(/\.log$/, "").replace(/[^A-Za-z0-9._-]/g, "_") + ".json.gz";
+}
+
 function replayAdresse(pfad) {
   return (
     "https://firebasestorage.googleapis.com/v0/b/" +
@@ -1027,8 +1036,298 @@ function replayAdresse(pfad) {
   );
 }
 
+/* --------------------------------------------------------------------------
+   Replay
+
+   Das Log erzaehlt die Partie in Klartextzeilen, dazwischen liegen nach jedem Zug
+   Zustandsabzuege beider Spieler:
+
+       [Spieler] Attach 3 Don to Portgas D. Ace [OP16-001] (3 Total)
+       [Spieler] Portgas D. Ace [OP16-001] attacking Rocks D. Xebec [OP17-039]
+       Portgas D. Ace [OP16-001][8000] vs Rocks D. Xebec [OP17-039][5000]
+       Rocks D. Xebec [OP17-039] hit for 1 damage
+       [Spieler] Hand: [...]   Board: [...]   Trash: [...]   Life: 5
+
+   Die Ansicht trennt beides: die Zuege erzaehlen, die Abzuege liefern den Stand am
+   Zugende. Ohne diese Trennung liest sich das Log als Wand aus Kartennummern.
+   -------------------------------------------------------------------------- */
+
+const ZUSTAND = /^\[(.+?)\]\s+(Hand|Board|Trash|Life):\s*(.*)$/;
+const SPRECHER = /^\[(.+?)\]\s*(.*)$/;
+const LEADERZEILE = /^\[(.+?)\]\s+Leader is .+\[([A-Z]{2,4}\d{2}-\d{3})\]/;
+
+function kartenliste(text) {
+  return text.match(/[A-Z]{2,4}\d{2}-\d{3}/g) || [];
+}
+
+/**
+ * Aus den Logzeilen Zuege bauen.
+ *
+ * Der Gewinn gegenueber einer Textliste steckt in den Zustandsabzuegen: sie fuehren
+ * Hand, Board und Trash nicht als Zahl, sondern mit den Kartennummern. Damit laesst
+ * sich das Brett am Ende jedes Zuges wirklich zeigen, statt es zu beschreiben.
+ */
+function zuegeBauen(zeilen) {
+  const zuege = [];
+  const leader = {};
+  let aktuell = { schritte: [], stand: {} };
+
+  for (const z of zeilen) {
+    const text = z.t;
+
+    const ld = LEADERZEILE.exec(text);
+    if (ld) leader[ld[1]] = ld[2];
+
+    const zustand = ZUSTAND.exec(text);
+    if (zustand) {
+      const [, wer, feld, wert] = zustand;
+      const s = (aktuell.stand[wer] = aktuell.stand[wer] || {});
+      if (feld === "Life") s.life = parseInt(wert, 10);
+      else s[feld.toLowerCase()] = kartenliste(wert);
+      continue;
+    }
+
+    const spr = SPRECHER.exec(text);
+    aktuell.schritte.push({
+      wer: spr ? spr[1] : null,
+      text: spr ? spr[2] : text,
+      karten: z.k || [],
+    });
+    if (/End Turn/i.test(text)) {
+      zuege.push(aktuell);
+      aktuell = { schritte: [], stand: {} };
+    }
+  }
+  if (aktuell.schritte.length || Object.keys(aktuell.stand).length) zuege.push(aktuell);
+
+  // Der letzte bekannte Stand gilt weiter, solange kein neuer kommt. Ohne das
+  // flackert das Brett leer, sobald ein Zug keinen Abzug erzeugt hat.
+  const letzter = {};
+  for (const zug of zuege) {
+    for (const wer of Object.keys(letzter)) {
+      zug.stand[wer] = { ...letzter[wer], ...(zug.stand[wer] || {}) };
+    }
+    for (const [wer, s] of Object.entries(zug.stand)) letzter[wer] = s;
+  }
+  return { zuege, leader };
+}
+
+function Reihe({ karten, namen, leer }) {
+  if (!karten || !karten.length) {
+    return (
+      <span className="text-xs" style={{ color: "var(--still)" }}>
+        {leer}
+      </span>
+    );
+  }
+  return (
+    <span className="flex flex-wrap gap-1">
+      {karten.map((k, i) => (
+        <Bild
+          key={k + i}
+          id={k}
+          breite={120}
+          hoehe={168}
+          className="h-[54px] w-[38px] rounded-[3px] object-cover"
+          alt={(namen[k] || {}).n || k}
+        />
+      ))}
+    </span>
+  );
+}
+
+function Brett({ wer, stand, leader, namen, eigen }) {
+  const s = stand || {};
+  return (
+    <div
+      className="rounded-lg border p-3"
+      style={{
+        borderColor: eigen ? "var(--akzent)" : "var(--linie)",
+        background: "var(--flaeche)",
+      }}
+    >
+      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+        {leader ? (
+          <Bild id={leader} breite={120} hoehe={168}
+                className="h-[38px] w-[27px] shrink-0 rounded-[3px] object-cover" />
+        ) : null}
+        <span className="font-semibold" style={{ color: eigen ? "var(--akzent)" : "var(--text)" }}>
+          {wer.split("#")[0]}
+        </span>
+        <span className="zahl text-xs" style={{ color: "var(--still)" }}>
+          {s.life !== undefined ? `${s.life} life` : ""}
+          {s.hand ? ` · ${s.hand.length} hand` : ""}
+          {s.trash ? ` · ${s.trash.length} trash` : ""}
+        </span>
+      </div>
+      <Reihe karten={s.board} namen={namen} leer="empty board" />
+    </div>
+  );
+}
+
+function Kartenband({ karten, namen }) {
+  if (!karten.length) return null;
+  return (
+    <span className="ml-2 inline-flex gap-1 align-middle">
+      {karten.slice(0, 4).map((k, i) => (
+        <Bild
+          key={k + i}
+          id={k}
+          breite={120}
+          hoehe={168}
+          className="inline-block h-[26px] w-[18px] rounded-[2px] object-cover align-middle"
+          alt={(namen[k] || {}).n || k}
+        />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * @param eigenerLeader Kartennummer des Leaders, den der betrachtete Spieler
+ *   gespielt hat. Der Ladder-Name taugt zur Zuordnung nicht: im Log stehen die
+ *   Spielnamen, und die sind andere. FabaniniOvert heisst dort
+ *   OvertimeChampanzini#2775. Ueber den Leader geht es zuverlaessig.
+ */
+function Replay({ pfad, namen, eigenerLeader }) {
+  const [zeilen, setZeilen] = useState(null);
+  const [alles, setAlles] = useState(false);
+
+  useEffect(() => {
+    let abgebrochen = false;
+    setZeilen(null);
+    // Erst hier wird geladen, eine Datei je Partie, rund drei Kilobyte. Nichts
+    // davon haengt am Seitenaufruf.
+    holen("replays/" + dateiname(pfad))
+      .then((d) => !abgebrochen && setZeilen(d.zeilen || []))
+      .catch(() => !abgebrochen && setZeilen(false));
+    return () => {
+      abgebrochen = true;
+    };
+  }, [pfad]);
+
+  const { zuege, leader } = useMemo(
+    () => (zeilen ? zuegeBauen(zeilen) : { zuege: [], leader: {} }),
+    [zeilen]
+  );
+  const [zug, setZug] = useState(0);
+  useEffect(() => setZug(0), [pfad]);
+
+  if (zeilen === null) {
+    return (
+      <p className="py-4 text-sm" style={{ color: "var(--still)" }}>
+        Loading replay ...
+      </p>
+    );
+  }
+  if (zeilen === false) {
+    return (
+      <p className="py-4 text-sm" style={{ color: "var(--still)" }}>
+        No replay stored for this game. The client only uploads part of them.
+      </p>
+    );
+  }
+
+  const namenListe = [...new Set(zuege.flatMap((z) => Object.keys(z.stand)))];
+  const spieler = Object.entries(leader).find(([, k]) => k === eigenerLeader)?.[0];
+  const jetzt = zuege[Math.min(zug, zuege.length - 1)] || { schritte: [], stand: {} };
+  const schritte = alles
+    ? jetzt.schritte
+    : jetzt.schritte.filter(
+        (s) => !/^(Version is|Waiting for|Hand after Mulligan)/i.test(s.text)
+      );
+
+  return (
+    <div className="mt-3">
+      {/* Schrittsteuerung. Der Schieber traegt die Zugnummer, damit man springen
+          kann, statt sich durchzuklicken. */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="rounded-md border px-2.5 py-1.5 text-sm font-semibold disabled:opacity-40"
+          style={{ borderColor: "var(--linie)", color: "var(--leise)" }}
+          disabled={zug <= 0}
+          onClick={() => setZug((z) => Math.max(0, z - 1))}
+        >
+          &larr;
+        </button>
+        <span className="zahl w-24 text-center text-sm">
+          Turn {Math.min(zug, zuege.length - 1) + 1} / {zuege.length}
+        </span>
+        <button
+          type="button"
+          className="rounded-md border px-2.5 py-1.5 text-sm font-semibold disabled:opacity-40"
+          style={{ borderColor: "var(--linie)", color: "var(--leise)" }}
+          disabled={zug >= zuege.length - 1}
+          onClick={() => setZug((z) => Math.min(zuege.length - 1, z + 1))}
+        >
+          &rarr;
+        </button>
+        <input
+          type="range"
+          min="0"
+          max={Math.max(0, zuege.length - 1)}
+          value={Math.min(zug, zuege.length - 1)}
+          onChange={(e) => setZug(+e.target.value)}
+          className="w-32 sm:w-48"
+          style={{ accentColor: "var(--akzent)" }}
+          aria-label="turn"
+        />
+        <button
+          type="button"
+          className="ml-auto rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-[var(--flaeche2)]"
+          style={{ borderColor: "var(--linie)", color: "var(--leise)" }}
+          onClick={() => setAlles((a) => !a)}
+        >
+          {alles ? "Key moments" : "Every line"}
+        </button>
+      </div>
+
+      <div className="grid gap-2">
+        {namenListe.map((n) => (
+          <Brett
+            key={n}
+            wer={n}
+            stand={jetzt.stand[n]}
+            leader={leader[n]}
+            namen={namen}
+            eigen={n === spieler}
+          />
+        ))}
+      </div>
+
+      <div className="mt-2 grid gap-0.5 rounded-lg border px-3 py-2.5"
+           style={{ borderColor: "var(--linie)" }}>
+        {schritte.length ? (
+          schritte.map((s, j) => (
+            <p key={j} className="text-[13px] leading-tight">
+              {s.wer ? (
+                <span
+                  className="mr-1.5 font-semibold"
+                  style={{ color: s.wer === spieler ? "var(--akzent)" : "var(--leise)" }}
+                >
+                  {s.wer.split("#")[0]}
+                </span>
+              ) : null}
+              <span style={{ color: s.wer ? "var(--text)" : "var(--still)" }}>
+                {s.text}
+              </span>
+              <Kartenband karten={s.karten} namen={namen} />
+            </p>
+          ))
+        ) : (
+          <p className="text-[13px]" style={{ color: "var(--still)" }}>
+            Nothing but state updates in this turn.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Partie({ p, namen }) {
   const [offen, setOffen] = useState(false);
+  const [replay, setReplay] = useState(false);
   const karten = (p.deck || []).slice(1);
   return (
     <div className="rounded-lg border" style={{ borderColor: "var(--linie)", background: "var(--flaeche)" }}>
@@ -1085,15 +1384,29 @@ function Partie({ p, namen }) {
             </p>
           )}
           {p.replay ? (
-            <a
-              href={replayAdresse(p.replay)}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="mt-3 inline-block rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-[var(--flaeche2)]"
-              style={{ borderColor: "var(--linie)", color: "var(--akzent)" }}
-            >
-              Open replay log
-            </a>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-[var(--flaeche2)]"
+                style={{ borderColor: "var(--linie)", color: "var(--akzent)" }}
+                onClick={() => setReplay((r) => !r)}
+              >
+                {replay ? "Hide replay" : "Watch replay"}
+              </button>
+              <a
+                href={replayAdresse(p.replay)}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="text-xs underline"
+                style={{ color: "var(--still)" }}
+              >
+                raw log
+              </a>
+            </div>
+          ) : null}
+          {replay && p.replay ? (
+            <Replay pfad={p.replay} namen={namen}
+                    eigenerLeader={p.eigener_leader} />
           ) : null}
         </div>
       ) : null}

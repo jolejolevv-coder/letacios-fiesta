@@ -11,3 +11,5 @@ public/verzeichnis.json.gz
 public/bestenliste.json.gz
 __pycache__/
 public/spieler.json.gz
+public/replays/*.json.gz
+!public/replays/*.json.gz.enc
