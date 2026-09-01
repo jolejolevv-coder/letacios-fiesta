@@ -57,7 +57,17 @@ klick() {   # klick <anteil_x> <anteil_y>
 
 # --- Mitschnitt starten -----------------------------------------------------
 # tcpdump darf ohne Passwort laufen, dafuer steht eine eigene sudoers-Zeile.
-sudo -n tcpdump -i any -n -s 0 -w "$PCAP" "udp port $PORT" >/dev/null 2>&1 &
+#
+# Zwei Fallstricke, beide auf dem Server gemessen:
+#   * `mktemp` legt die Datei als der aufrufende Nutzer an. tcpdump stuft aber per
+#     Vorgabe auf den Systemnutzer `tcpdump` herab (`-Z`) und darf dann nicht mehr
+#     in die fremde Datei schreiben; es stirbt sofort mit "Permission denied".
+#     Deshalb den Namen behalten, die Datei aber vorher loeschen.
+#   * `-Z "$(id -un)"` laesst tcpdump auf den eigenen Nutzer herabstufen statt auf
+#     `tcpdump`. Sonst gehoert das fertige pcap dem Nutzer `tcpdump` und laesst sich
+#     hinterher nicht mehr aufraeumen (die sudoers-Zeile erlaubt nur tcpdump, kein rm).
+rm -f "$PCAP"
+sudo -n tcpdump -i any -n -s 0 -Z "$(id -un)" -w "$PCAP" "udp port $PORT" >/dev/null 2>&1 &
 TCPDUMP_PID=$!
 for _ in $(seq 20); do [ -s "$PCAP" ] && break; sleep 0.2; done
 sleep 1
