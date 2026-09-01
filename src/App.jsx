@@ -1170,23 +1170,6 @@ export default function App() {
     return r;
   }, [leader, mindest, sortListen, karteFilter]);
 
-  if (entsperrt === null) return null;
-  if (entsperrt === false) return <Schloss aufSchliessen={() => setEntsperrt(true)} />;
-
-  if (fehlerText && !satz) {
-    return (
-      <div className="mx-auto max-w-2xl px-6 py-24">
-        <div className="mb-4 flex items-center gap-3">
-          <Sombrero groesse={40} />
-          <h1 className="text-2xl font-extrabold" style={{ fontFamily: "var(--font-anzeige)" }}>
-            Letacios Fiesta
-          </h1>
-        </div>
-        <p style={{ color: "var(--leise)" }}>{fehlerText}</p>
-      </div>
-    );
-  }
-
   /* Adresse mitfuehren, sobald Reiter oder Leader stehen. */
   useEffect(() => {
     if (entsperrt !== true || !gewaehlt) return;
@@ -1206,6 +1189,23 @@ export default function App() {
     window.addEventListener("popstate", zurueck);
     return () => window.removeEventListener("popstate", zurueck);
   }, [satz]);
+
+  if (entsperrt === null) return null;
+  if (entsperrt === false) return <Schloss aufSchliessen={() => setEntsperrt(true)} />;
+
+  if (fehlerText && !satz) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-24">
+        <div className="mb-4 flex items-center gap-3">
+          <Sombrero groesse={40} />
+          <h1 className="text-2xl font-extrabold" style={{ fontFamily: "var(--font-anzeige)" }}>
+            Letacios Fiesta
+          </h1>
+        </div>
+        <p style={{ color: "var(--leise)" }}>{fehlerText}</p>
+      </div>
+    );
+  }
 
   const leaderbezogen = reiter === "decks" || reiter === "matchups";
 
