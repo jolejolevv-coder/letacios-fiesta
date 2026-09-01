@@ -151,10 +151,10 @@ header {
 /* Die Matrix auf schmalen Schirmen. Zeilenkopf und Spalten schrumpfen, sonst passen
    nicht einmal zwei Gegner ins Bild. Ab 640 Pixel gelten wieder die vollen Masse. */
 .matrix { min-width: max-content; }
-.matrix th:first-child, .matrix td:first-child { min-width: 54px; }
+.matrix th:first-child, .matrix td:first-child { min-width: 46px; width: 46px; }
 .matrix td { min-width: 54px; }
 @media (min-width: 640px) {
-  .matrix th:first-child, .matrix td:first-child { min-width: 150px; }
+  .matrix th:first-child, .matrix td:first-child { min-width: 150px; width: auto; }
   .matrix td { min-width: 86px; }
 }
 

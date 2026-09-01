@@ -600,7 +600,8 @@ function Matrix({ satz, top, mindest, namen, sitzModus, setSitzModus }) {
               style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
               scope="col"
             >
-              Row beats column
+              <span className="hidden sm:inline">Row beats column</span>
+              <span className="sm:hidden">vs</span>
             </th>
             {leader.map((e) => (
               <th
