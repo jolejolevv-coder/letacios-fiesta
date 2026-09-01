@@ -843,23 +843,56 @@ function Rangliste({ satz, namen }) {
    -------------------------------------------------------------------------- */
 
 function Bestenliste({ daten, namen, oeffnen }) {
-  const [offen, setOffen] = useState(null);
   const [suche, setSuche] = useState("");
+
+  const [sortiert, setSortiert] = useState({ nach: "rang", ab: false });
+
+  // Bilanz je Spieler aus der Leaderaufstellung. Die Zeile selbst traegt keine
+  // Winrate; sie ergibt sich aus der Summe ueber die gespielten Leader.
+  const angereichert = useMemo(
+    () =>
+      daten.spieler.map((e) => {
+        const siege = (e.leader || []).reduce((a, l) => a + l.siege, 0);
+        const partien = (e.leader || []).reduce((a, l) => a + l.partien, 0);
+        return { ...e, siege, partien, wr: proz(siege, partien) };
+      }),
+    [daten]
+  );
 
   const spieler = useMemo(() => {
     const s = suche.trim().toLowerCase();
-    if (!s) return daten.spieler;
-    return daten.spieler.filter((e) => (e.name || "").toLowerCase().includes(s));
-  }, [daten, suche]);
+    let r = s
+      ? angereichert.filter((e) => (e.name || "").toLowerCase().includes(s))
+      : angereichert;
+    const n = sortiert.nach;
+    r = [...r].sort((a, b) => {
+      const va = a[n] ?? 0;
+      const vb = b[n] ?? 0;
+      return sortiert.ab ? vb - va : va - vb;
+    });
+    return r;
+  }, [angereichert, suche, sortiert]);
 
   const stunden = (sek) => (sek / 3600).toFixed(1) + " h";
+
+  // Gleiche Spaltendefinition wie in den uebrigen Tabellen der Seite: Sortierschluessel
+  // am Kopf, Zahlen rechtsbuendig, Text links.
+  const SPALTEN = [
+    { t: "#", s: "rang" },
+    { t: "Player", links: true },
+    { t: "Bounty", s: "bounty" },
+    { t: "Games", s: "partien" },
+    { t: "Win rate", s: "wr" },
+    { t: "Time", s: "spielzeit" },
+    { t: "Most played", links: true },
+  ];
 
   return (
     <>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3 py-1">
         <span className="flex items-center gap-2">
           <label className="etikett" htmlFor="spielerSuche">
-            player
+            Search Player
           </label>
           <input
             id="spielerSuche"
@@ -872,26 +905,48 @@ function Bestenliste({ daten, namen, oeffnen }) {
             onChange={(e) => setSuche(e.target.value)}
           />
         </span>
-        <span className="zahl text-[13px]" style={{ color: "var(--still)" }}>
-          {spieler.length} of {daten.spieler.length} players
-        </span>
-        <span className="text-[13px]" style={{ color: "var(--still)" }}>
-          as of {daten.stand}
-        </span>
       </div>
 
-      <div className="tabellenhuelle overflow-x-auto">
-        <table className="w-full min-w-[680px] border-collapse text-sm">
+      <div
+        className="tabellenhuelle overflow-x-auto rounded-lg border"
+        style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
+      >
+        <table className="w-full min-w-[720px] border-collapse">
           <thead>
-            <tr style={{ color: "var(--still)" }}>
-              {["#", "Player", "Bounty", "Games", "Time", "Most played"].map((t, i) => (
+            <tr>
+              {SPALTEN.map((sp) => (
                 <th
-                  key={t}
-                  className={"border-b px-3 py-2 font-medium " +
-                    (i === 1 || i === 5 ? "text-left" : "text-right")}
-                  style={{ borderColor: "var(--linie)" }}
+                  key={sp.t}
+                  scope="col"
+                  className={
+                    "sticky top-0 z-10 border-b px-3 py-2 etikett " +
+                    (sp.links ? "text-left" : "text-right") +
+                    (sp.s ? " cursor-pointer select-none" : "")
+                  }
+                  style={{
+                    background: "var(--flaeche)",
+                    borderColor: "var(--linie)",
+                    color: sortiert.nach === sp.s ? "var(--akzent)" : "var(--still)",
+                  }}
+                  aria-sort={
+                    sortiert.nach === sp.s
+                      ? sortiert.ab
+                        ? "descending"
+                        : "ascending"
+                      : "none"
+                  }
+                  onClick={
+                    sp.s
+                      ? () =>
+                          setSortiert((v) =>
+                            v.nach === sp.s
+                              ? { nach: sp.s, ab: !v.ab }
+                              : { nach: sp.s, ab: true }
+                          )
+                      : undefined
+                  }
                 >
-                  {t}
+                  {sp.t}
                 </th>
               ))}
             </tr>
@@ -899,47 +954,49 @@ function Bestenliste({ daten, namen, oeffnen }) {
           <tbody>
             {spieler.map((e) => {
               const top = (e.leader || [])[0];
-              const auf = offen === e.login;
               return (
                 <Fragment key={e.login}>
+                  {/* Die ganze Zeile fuehrt auf die Spielerseite. Ein Aufklappen
+                      daneben gab es frueher; es zeigte dieselbe Aufstellung, die
+                      dort ohnehin steht, und war ein zweites Ziel in derselben
+                      Zeile. */}
                   <tr
                     className="cursor-pointer transition-colors hover:bg-[var(--flaeche2)]"
-                    onClick={() => setOffen(auf ? null : e.login)}
+                    onClick={() => oeffnen(e.user_id)}
                   >
-                    <td className="zahl border-b px-3 py-2 text-right"
+                    <td className="zahl border-b px-3 py-1.5 text-right"
                         style={{ borderColor: "var(--linie)", color: "var(--still)" }}>
                       {e.rang}
                     </td>
-                    <td className="border-b px-3 py-2 font-semibold"
+                    <td className="border-b px-3 py-1.5 font-semibold"
                         style={{ borderColor: "var(--linie)" }}>
                       {/* Der Name fuehrt auf die Spielerseite, die Zeile daneben
                           klappt nur die Aufstellung auf. Zwei Ziele in einer Zeile,
                           deshalb haelt der Name das Klicken auf. */}
-                      <button
-                        type="button"
-                        className="text-left transition-colors hover:underline"
-                        style={{ color: "var(--akzent)" }}
-                        onClick={(ev) => {
-                          ev.stopPropagation();
-                          oeffnen(e.user_id);
-                        }}
-                      >
-                        {e.name}
-                      </button>
+                      <span style={{ color: "var(--akzent)" }}>{e.name}</span>
                     </td>
-                    <td className="zahl border-b px-3 py-2 text-right"
+                    <td className="zahl border-b px-3 py-1.5 text-right font-semibold"
                         style={{ borderColor: "var(--linie)" }}>
                       {fmtZahl(e.bounty)}
                     </td>
-                    <td className="zahl border-b px-3 py-2 text-right"
+                    <td className="zahl border-b px-3 py-1.5 text-right"
                         style={{ borderColor: "var(--linie)", color: "var(--leise)" }}>
                       {fmtZahl(e.partien)}
                     </td>
-                    <td className="zahl border-b px-3 py-2 text-right"
+                    <td
+                      className="zahl border-b px-3 py-1.5 text-right font-semibold"
+                      style={{
+                        borderColor: "var(--linie)",
+                        color: e.partien ? farbe(e.siege, e.partien) : "var(--still)",
+                      }}
+                    >
+                      {e.partien ? e.wr.toFixed(1) + " %" : "-"}
+                    </td>
+                    <td className="zahl border-b px-3 py-1.5 text-right"
                         style={{ borderColor: "var(--linie)", color: "var(--leise)" }}>
                       {stunden(e.spielzeit || 0)}
                     </td>
-                    <td className="border-b px-3 py-2" style={{ borderColor: "var(--linie)" }}>
+                    <td className="border-b px-3 py-1.5" style={{ borderColor: "var(--linie)" }}>
                       {top ? (
                         <span className="flex items-center gap-2">
                           <Bild id={top.leader} breite={120} hoehe={168}
@@ -954,39 +1011,6 @@ function Bestenliste({ daten, namen, oeffnen }) {
                       )}
                     </td>
                   </tr>
-                  {auf ? (
-                    <tr>
-                      <td colSpan={6} className="border-b px-3 pb-4 pt-1"
-                          style={{ borderColor: "var(--linie)", background: "var(--flaeche)" }}>
-                        {(e.leader || []).length ? (
-                          <div className="grid gap-2">
-                            {e.leader.map((l) => (
-                              <div key={l.leader}
-                                   className="grid grid-cols-[34px_minmax(0,1fr)_auto] items-center gap-3">
-                                <Bild id={l.leader} breite={120} hoehe={168}
-                                      className="h-[46px] w-[34px] rounded-[3px] object-cover" />
-                                <span className="min-w-0">
-                                  <LeaderName id={l.leader} namen={namen} klein />
-                                  <span className="zahl block text-xs" style={{ color: "var(--still)" }}>
-                                    {l.siege}&ndash;{l.niederlagen} in {l.partien} games
-                                    {" · "}going first {proz(l.erst_siege, l.erst_siege + l.erst_niederlagen).toFixed(1)} %
-                                    {" · "}going second {proz(l.zweit_siege, l.zweit_siege + l.zweit_niederlagen).toFixed(1)} %
-                                  </span>
-                                </span>
-                                <span className="w-32 shrink-0">
-                                  <Balken w={l.siege} g={l.partien} schmal />
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p style={{ color: "var(--still)" }}>
-                            This player reports no leader breakdown.
-                          </p>
-                        )}
-                      </td>
-                    </tr>
-                  ) : null}
                 </Fragment>
               );
             })}
@@ -1070,31 +1094,35 @@ function kartenliste(text) {
 function zuegeBauen(zeilen) {
   const zuege = [];
   const leader = {};
-  const nummer = {};          // Spielernummer aus den RZ1 Zeilen -> Name
-  const don = {};             // letzter bekannter Don-Stand je Spielernummer
-  let aktuell = { schritte: [], stand: {} };
+  const nummern = {};         // Name -> Spielernummer aus den RZ1 Zeilen
+  const zuName = {};          // Spielernummer -> Name
+  let aktuell = { schritte: [], stand: {}, amZug: null };
 
   for (const z of zeilen) {
-    // RZ1 PLY: Nummer, Name, Leader.
+    // RZ1 PLY: Nummer, Name, Leader. Diese Zuordnung ist verbindlich. Die
+    // Reihenfolge der "Leader is" Zeilen im Klartext ist es NICHT: sie folgt der
+    // Verbindungsreihenfolge, und in rund jedem fuenften Log sind beide vertauscht.
     if (z.p) {
-      nummer[z.p[0]] = z.p[1];
+      zuName[z.p[0]] = z.p[1];
+      nummern[z.p[1]] = z.p[0];
       leader[z.p[1]] = z.p[2];
       continue;
     }
-    // RZ1 CHK: [Spieler, don_aktiv, don_gerastet, life, deck]. Der einzige Ort
-    // mit Don-Zaehlern; der Klartext fuehrt sie nicht.
+    // RZ1 CHK, Reihenfolge:
+    //   0 player, 1 deck, 2 hand, 3 board, 4 life,
+    //   5 donDeck, 6 donActive, 7 trash, 8 stage, 9 donRested
     if (z.c) {
-      // Feld 5 ist die Handzahl, nicht das Deck; die Reihenfolge im CHK ist
-      // deck, hand, board, life, donDeck, donActive, trash, stage, leader, donRested.
-      don[z.c[0]] = { aktiv: z.c[1], gerastet: z.c[2], handzahl: z.c[4] };
-      const wer = nummer[z.c[0]];
-      if (wer) {
-        const s = (aktuell.stand[wer] = aktuell.stand[wer] || {});
-        s.don = don[z.c[0]];
-        // Immer der juengste Stand. Zu Zugbeginn steht hier 0, weil die
-        // Lifekarten noch nicht liegen; der erste Wert waere also falsch.
-        if (z.c[3] > 0 || s.life !== undefined) s.life = z.c[3];
-      }
+      const wer = zuName[z.c[0]];
+      if (!wer) continue;
+      const s = (aktuell.stand[wer] = aktuell.stand[wer] || {});
+      s.don = {
+        deck: z.c[1], handzahl: z.c[2], boardzahl: z.c[3],
+        donDeck: z.c[5], aktiv: z.c[6], trash: z.c[7],
+        stage: z.c[8], gerastet: z.c[9],
+      };
+      // Immer der juengste Stand. Zu Zugbeginn steht dort 0, weil die Lifekarten
+      // noch nicht liegen; der erste Wert waere also falsch.
+      if (z.c[4] > 0 || s.life !== undefined) s.life = z.c[4];
       continue;
     }
 
@@ -1102,7 +1130,7 @@ function zuegeBauen(zeilen) {
     if (!text) continue;
 
     const ld = LEADERZEILE.exec(text);
-    if (ld) leader[ld[1]] = ld[2];
+    if (ld && !leader[ld[1]]) leader[ld[1]] = ld[2];
 
     const zustand = ZUSTAND.exec(text);
     if (zustand) {
@@ -1114,14 +1142,12 @@ function zuegeBauen(zeilen) {
     }
 
     const spr = SPRECHER.exec(text);
-    aktuell.schritte.push({
-      wer: spr ? spr[1] : null,
-      text: spr ? spr[2] : text,
-      karten: z.k || [],
-    });
+    const wer = spr ? spr[1] : null;
+    aktuell.schritte.push({ wer, text: spr ? spr[2] : text, karten: z.k || [] });
     if (/End Turn/i.test(text)) {
+      if (wer) aktuell.amZug = wer;
       zuege.push(aktuell);
-      aktuell = { schritte: [], stand: {} };
+      aktuell = { schritte: [], stand: {}, amZug: null };
     }
   }
   if (aktuell.schritte.length || Object.keys(aktuell.stand).length) zuege.push(aktuell);
@@ -1135,137 +1161,180 @@ function zuegeBauen(zeilen) {
     }
     for (const [wer, s] of Object.entries(zug.stand)) letzter[wer] = s;
   }
-  return { zuege, leader };
+  return { zuege, leader, nummern };
 }
 
-/** Don als Muenzreihe, aktive gefuellt, gerastete blass und gekippt. */
-function Don({ aktiv, gerastet }) {
-  const gesamt = (aktiv || 0) + (gerastet || 0);
-  if (!gesamt) return null;
+/** Ein verdeckter Stapel mit seiner Zahl. Deck, Don-Deck und Trash liegen so. */
+function Stapel({ n, leer = "leer" }) {
+  if (!n) return <span className="stapel leer">{leer}</span>;
+  return <span className="stapel">{n}</span>;
+}
+
+/** Cost Area: aktive Don zuerst, danach die gerasteten gekippt und blass. */
+function DonZone({ aktiv = 0, gerastet = 0 }) {
+  if (!aktiv && !gerastet) return <span className="leer">kein Don</span>;
   return (
-    <span className="flex flex-wrap items-center gap-[3px]">
-      {Array.from({ length: Math.min(gesamt, 12) }, (_, i) => (
-        <i
-          key={i}
-          className="block h-[11px] w-[11px] rounded-full"
-          style={{
-            background: i < (aktiv || 0) ? "var(--akzent)" : "var(--linie)",
-            opacity: i < (aktiv || 0) ? 1 : 0.7,
-          }}
-        />
+    <>
+      {Array.from({ length: aktiv }, (_, i) => (
+        <span key={"a" + i}><i /></span>
       ))}
-      <span className="zahl ml-1 text-[11px]" style={{ color: "var(--still)" }}>
-        {aktiv || 0}
-        {gerastet ? ` +${gerastet}` : ""}
-      </span>
-    </span>
+      {Array.from({ length: gerastet }, (_, i) => (
+        <span key={"r" + i} className="rest"><i /></span>
+      ))}
+    </>
   );
 }
 
-function Reihe({ karten, namen, leer }) {
-  if (!karten || !karten.length) {
-    return (
-      <span className="text-xs" style={{ color: "var(--still)" }}>
-        {leer}
-      </span>
-    );
-  }
+/** Die Lifekarten als leicht ueberlappender verdeckter Stapel. */
+function LifeStapel({ n }) {
+  if (!n) return <div className="lifestapel aus">0 Life</div>;
   return (
-    <span className="flex flex-wrap gap-1">
-      {karten.map((k, i) => (
-        <Bild
-          key={k + i}
-          id={k}
-          breite={120}
-          hoehe={168}
-          className="h-[54px] w-[38px] rounded-[3px] object-cover"
-          alt={(namen[k] || {}).n || k}
-        />
-      ))}
-    </span>
-  );
-}
-
-/**
- * Ein Spielerbrett, wie es der Simulatorviewer zeigt: Leader links, Charaktere in
- * der Mitte, daneben die Zaehler. Der Gegner steht oben und gespiegelt, damit die
- * beiden Seiten sich gegenueberliegen statt untereinander zu stehen.
- */
-function Brett({ wer, stand, leader, namen, eigen, gespiegelt }) {
-  const s = stand || {};
-  const life = s.life;
-  return (
-    <div
-      className="rounded-lg border p-3"
-      style={{
-        borderColor: eigen ? "var(--akzent)" : "var(--linie)",
-        background: "var(--flaeche)",
-      }}
-    >
-      <div
-        className={
-          "grid items-center gap-3 " +
-          (gespiegelt ? "grid-cols-[auto_minmax(0,1fr)]" : "grid-cols-[auto_minmax(0,1fr)]")
-        }
-      >
-        <div className="flex w-[74px] shrink-0 flex-col items-center gap-1">
-          {leader ? (
-            <Bild id={leader} breite={120} hoehe={168}
-                  className="h-[74px] w-[53px] rounded object-cover" />
-          ) : null}
-          <span
-            className="zahl rounded px-1.5 py-0.5 text-[11px] font-bold"
-            style={{
-              background: life <= 1 ? "var(--niederlageweich)" : "var(--flaeche2)",
-              color: life <= 1 ? "var(--niederlage)" : "var(--leise)",
-            }}
-          >
-            {life !== undefined ? `${life} life` : "-"}
-          </span>
-        </div>
-
-        <div className="min-w-0">
-          <div className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="font-semibold"
-                  style={{ color: eigen ? "var(--akzent)" : "var(--text)" }}>
-              {wer.split("#")[0]}
-            </span>
-            <Don aktiv={s.don && s.don.aktiv} gerastet={s.don && s.don.gerastet} />
-            <span className="zahl text-[11px]" style={{ color: "var(--still)" }}>
-              {s.hand ? `${s.hand.length} hand` : ""}
-              {s.trash ? ` · ${s.trash.length} trash` : ""}
-              {!s.hand && s.don && s.don.handzahl !== undefined
-                ? ` · ${s.don.handzahl} hand`
-                : ""}
-            </span>
-          </div>
-          <Reihe karten={s.board} namen={namen} leer="empty board" />
-        </div>
-      </div>
-
-      {eigen && s.hand && s.hand.length ? (
-        <div className="mt-2 border-t pt-2" style={{ borderColor: "var(--linie)" }}>
-          <span className="etikett mb-1 block">Hand</span>
-          <Reihe karten={s.hand} namen={namen} leer="" />
-        </div>
-      ) : null}
+    <div className="lifestapel">
+      {Array.from({ length: n }, (_, i) => <span key={i} className="lk" />)}
     </div>
   );
 }
 
-function Kartenband({ karten, namen }) {
-  if (!karten.length) return null;
+function Zone({ name, feld, className = "", children }) {
   return (
-    <span className="ml-2 inline-flex gap-1 align-middle">
-      {karten.slice(0, 4).map((k, i) => (
-        <Bild
-          key={k + i}
-          id={k}
-          breite={120}
-          hoehe={168}
-          className="inline-block h-[26px] w-[18px] rounded-[2px] object-cover align-middle"
-          alt={(namen[k] || {}).n || k}
-        />
+    <div className={(feld ? "feld " : "") + className}>
+      <div className="zonenname">{name}</div>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Ein Spielerbrett im Zonenraster des Simulatorviewers.
+ *
+ * Die obere Seite wird um 180 Grad gedreht, damit sich beide Spieler
+ * gegenueberliegen wie am Tisch. Gedreht wird nur das Raster ueber
+ * grid-template-areas; die Karten bleiben aufrecht und damit lesbar.
+ */
+function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
+  const s = stand || {};
+  const don = s.don || {};
+  const hand = s.hand || [];
+  const board = s.board || [];
+  const life = s.life || 0;
+
+  return (
+    <div className={"seite" + (amZug ? " amzug" : "")}>
+      <div className="kopf">
+        <span className="text-[13px] font-bold"
+              style={{ color: eigen ? "var(--akzent)" : "var(--text)" }}>
+          {wer.split("#")[0]}
+          {amZug ? " · am Zug" : ""}
+        </span>
+        <span className="pille">Life <b>{life}</b></span>
+        <span className="lifeleiste">
+          {Array.from({ length: life }, (_, i) => <i key={i} />)}
+        </span>
+        <span className="pille">
+          Don <b>{don.aktiv || 0}</b>/{(don.aktiv || 0) + (don.gerastet || 0)}
+        </span>
+        <span className="pille">Deck <b>{don.deck ?? "-"}</b></span>
+        <span className="pille">Trash <b>{s.trash ? s.trash.length : don.trash ?? 0}</b></span>
+        <span className="pille">Hand <b>{hand.length || don.handzahl || 0}</b></span>
+      </div>
+
+      <div className={"mat" + (gedreht ? " gedreht" : "")}>
+        <div className="z-life"><LifeStapel n={life} /></div>
+
+        <Zone name="Character Area" feld className="z-chars">
+          <div className="karten">
+            {board.length ? (
+              board.map((k, i) => (
+                <Bild key={k + i} id={k} breite={120} hoehe={168}
+                      className="bkarte" alt={(namen[k] || {}).n || k} />
+              ))
+            ) : (
+              <span className="brettleer">leeres Board</span>
+            )}
+          </div>
+        </Zone>
+
+        <div className="feld z-mid">
+          <div className="mitte">
+            <div className="zonenpaar">
+              <div className="zonenname">Leader</div>
+              {leader ? (
+                <Bild id={leader} breite={120} hoehe={168}
+                      className="bkarte leader" alt={(namen[leader] || {}).n || leader} />
+              ) : (
+                <Stapel n={0} />
+              )}
+            </div>
+            <div className="zonenpaar">
+              <div className="zonenname">Stage</div>
+              <Stapel n={don.stage || 0} />
+            </div>
+          </div>
+        </div>
+
+        <div className="zonenpaar z-deck">
+          <div className="zonenname">Deck</div>
+          <Stapel n={don.deck || 0} />
+        </div>
+
+        <div className="zonenpaar z-dond">
+          <div className="zonenname">Don-Deck</div>
+          <Stapel n={don.donDeck || 0} />
+        </div>
+
+        <Zone
+          name={`Cost Area · ${don.aktiv || 0} aktiv, ${don.gerastet || 0} rested`}
+          feld
+          className="z-cost"
+        >
+          <div className="donzone">
+            <DonZone aktiv={don.aktiv || 0} gerastet={don.gerastet || 0} />
+          </div>
+        </Zone>
+
+        <div className="zonenpaar z-trash">
+          <div className="zonenname">Trash</div>
+          <Stapel n={s.trash ? s.trash.length : don.trash || 0} />
+        </div>
+      </div>
+
+      <div className="zonenname" style={{ marginTop: 8 }}>Hand</div>
+      <div className="hand">
+        {hand.length ? (
+          hand.map((k, i) => (
+            <Bild key={k + i} id={k} breite={120} hoehe={168}
+                  className="bkarte" alt={(namen[k] || {}).n || k} />
+          ))
+        ) : (
+          <span className="brettleer">
+            {don.handzahl ? `${don.handzahl} verdeckt` : "leere Hand"}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Ereignisart aus der Zeile ableiten, fuer die Farbe am linken Rand. */
+function ereignisart(text) {
+  if (/Leader is|Chose to go|Will select turn order/i.test(text)) return "start";
+  if (/Has Connected|Version is|Waiting for/i.test(text)) return "info";
+  if (/zieht|Drew card|Draw \d/i.test(text)) return "draw";
+  if (/attacking|hit for|Destroyed|Attack Fails|Counter|\bvs\b/i.test(text)) return "kampf";
+  return "effekt";
+}
+
+const ZOOMSTUFEN = [1, 1.3, 1.6, 2];
+const TEMPO = [0.5, 1, 2, 4];
+
+function Kartenband({ karten, namen }) {
+  if (!karten || !karten.length) return null;
+  return (
+    <span className="ml-1.5 inline-flex gap-1 align-middle">
+      {karten.slice(0, 3).map((k, i) => (
+        <Bild key={k + i} id={k} breite={120} hoehe={168}
+              className="inline-block h-[22px] w-[16px] rounded-[2px] object-cover align-middle"
+              alt={(namen[k] || {}).n || k} />
       ))}
     </span>
   );
@@ -1280,11 +1349,16 @@ function Kartenband({ karten, namen }) {
 function Replay({ pfad, namen, eigenerLeader, zurueck }) {
   const [zeilen, setZeilen] = useState(null);
   const [alles, setAlles] = useState(false);
+  const [zug, setZug] = useState(0);
+  const [zoom, setZoom] = useState(1);
+  const [tempo, setTempo] = useState(1);
+  const [laeuft, setLaeuft] = useState(false);
 
   useEffect(() => {
     let abgebrochen = false;
     setZeilen(null);
-    // Erst hier wird geladen, eine Datei je Partie, rund drei Kilobyte. Nichts
+    setZug(0);
+    // Erst hier wird geladen, eine Datei je Partie, rund vier Kilobyte. Nichts
     // davon haengt am Seitenaufruf.
     holen("replays/" + dateiname(pfad))
       .then((d) => !abgebrochen && setZeilen(d.zeilen || []))
@@ -1294,21 +1368,44 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
     };
   }, [pfad]);
 
-  const { zuege, leader } = useMemo(
-    () => (zeilen ? zuegeBauen(zeilen) : { zuege: [], leader: {} }),
+  const { zuege, leader, nummern } = useMemo(
+    () => (zeilen ? zuegeBauen(zeilen) : { zuege: [], leader: {}, nummern: {} }),
     [zeilen]
   );
-  const [zug, setZug] = useState(0);
-  useEffect(() => setZug(0), [pfad]);
+
+  /* Abspielen. Der Takt haengt am Tempo, und am Ende haelt es von selbst an. */
+  useEffect(() => {
+    if (!laeuft || !zuege.length) return;
+    const uhr = setTimeout(() => {
+      setZug((z) => {
+        if (z >= zuege.length - 1) {
+          setLaeuft(false);
+          return z;
+        }
+        return z + 1;
+      });
+    }, 1600 / tempo);
+    return () => clearTimeout(uhr);
+  }, [laeuft, tempo, zug, zuege.length]);
+
+  /* Tastatur: Leertaste spielt, Pfeile blaettern, Bild auf und ab springt weit. */
+  useEffect(() => {
+    function taste(e) {
+      if (e.target.matches("input, textarea, select")) return;
+      if (e.key === " ") { e.preventDefault(); setLaeuft((l) => !l); }
+      else if (e.key === "ArrowRight") setZug((z) => Math.min(zuege.length - 1, z + 1));
+      else if (e.key === "ArrowLeft") setZug((z) => Math.max(0, z - 1));
+      else if (e.key === "PageDown") setZug((z) => Math.min(zuege.length - 1, z + 5));
+      else if (e.key === "PageUp") setZug((z) => Math.max(0, z - 5));
+    }
+    window.addEventListener("keydown", taste);
+    return () => window.removeEventListener("keydown", taste);
+  }, [zuege.length]);
 
   if (zeilen === null) {
-    return (
-      <p className="py-4 text-sm" style={{ color: "var(--still)" }}>
-        Loading replay ...
-      </p>
-    );
+    return <p className="py-4 text-sm" style={{ color: "var(--still)" }}>Loading replay ...</p>;
   }
-  if (zeilen === false) {
+  if (zeilen === false || !zuege.length) {
     return (
       <p className="py-4 text-sm" style={{ color: "var(--still)" }}>
         No replay stored for this game. The client only uploads part of them.
@@ -1316,9 +1413,13 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
     );
   }
 
-  const namenListe = [...new Set(zuege.flatMap((z) => Object.keys(z.stand)))];
+  const nr = Math.min(zug, zuege.length - 1);
+  const jetzt = zuege[nr];
   const spieler = Object.entries(leader).find(([, k]) => k === eigenerLeader)?.[0];
-  const jetzt = zuege[Math.min(zug, zuege.length - 1)] || { schritte: [], stand: {} };
+  // Der betrachtete Spieler steht unten, der Gegner oben und gedreht.
+  const seiten = [...new Set(zuege.flatMap((z) => Object.keys(z.stand)))]
+    .sort((a, b) => (a === spieler ? 1 : b === spieler ? -1 : 0));
+
   const schritte = alles
     ? jetzt.schritte
     : jetzt.schritte.filter(
@@ -1328,103 +1429,128 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           )
       );
 
+  const knopf =
+    "rounded-md border px-2.5 py-1.5 text-sm font-semibold transition-colors hover:bg-[var(--flaeche2)] disabled:opacity-40";
+  const stufe = (an) => ({
+    background: an ? "var(--akzentweich)" : "var(--flaeche2)",
+    borderColor: an ? "var(--akzent)" : "var(--linie)",
+    color: an ? "var(--akzent)" : "var(--leise)",
+  });
+
   return (
-    <div>
-      {zurueck ? (
-        <button
-          type="button"
-          onClick={zurueck}
-          className="mb-4 w-fit rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-[var(--flaeche2)]"
-          style={{ borderColor: "var(--linie)", color: "var(--leise)" }}
-        >
-          &larr; Back
-        </button>
-      ) : null}
-      {/* Schrittsteuerung. Der Schieber traegt die Zugnummer, damit man springen
-          kann, statt sich durchzuklicken. Sie steht oben, damit sie beim Blaettern
-          nicht unter das Brett rutscht. */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          className="rounded-md border px-2.5 py-1.5 text-sm font-semibold disabled:opacity-40"
-          style={{ borderColor: "var(--linie)", color: "var(--leise)" }}
-          disabled={zug <= 0}
-          onClick={() => setZug((z) => Math.max(0, z - 1))}
-        >
-          &larr;
-        </button>
-        <span className="zahl w-24 text-center text-sm">
-          Turn {Math.min(zug, zuege.length - 1) + 1} / {zuege.length}
+    <div className="brett" style={{ "--sk": zoom }}>
+      {/* Steuerleiste, wie im Viewer des Simulators: springen, abspielen, Tempo,
+          Zoom, Zugzaehler. */}
+      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+        {zurueck ? (
+          <button type="button" onClick={zurueck} className={knopf}
+                  style={{ borderColor: "var(--linie)", color: "var(--leise)" }}>
+            &larr; Back
+          </button>
+        ) : null}
+
+        <span className="flex items-center gap-1">
+          <button type="button" className={knopf} style={stufe(false)}
+                  disabled={nr <= 0} onClick={() => setZug(0)}>&#9198;</button>
+          <button type="button" className={knopf} style={stufe(false)}
+                  disabled={nr <= 0} onClick={() => setZug((z) => Math.max(0, z - 1))}>&#9664;</button>
+          <button type="button" className={knopf} style={stufe(laeuft)}
+                  onClick={() => setLaeuft((l) => !l)}>
+            {laeuft ? "\u23F8" : "\u25B6"}
+          </button>
+          <button type="button" className={knopf} style={stufe(false)}
+                  disabled={nr >= zuege.length - 1}
+                  onClick={() => setZug((z) => Math.min(zuege.length - 1, z + 1))}>&#9654;</button>
+          <button type="button" className={knopf} style={stufe(false)}
+                  disabled={nr >= zuege.length - 1}
+                  onClick={() => setZug(zuege.length - 1)}>&#9197;</button>
         </span>
-        <button
-          type="button"
-          className="rounded-md border px-2.5 py-1.5 text-sm font-semibold disabled:opacity-40"
-          style={{ borderColor: "var(--linie)", color: "var(--leise)" }}
-          disabled={zug >= zuege.length - 1}
-          onClick={() => setZug((z) => Math.min(zuege.length - 1, z + 1))}
-        >
-          &rarr;
-        </button>
-        <input
-          type="range"
-          min="0"
-          max={Math.max(0, zuege.length - 1)}
-          value={Math.min(zug, zuege.length - 1)}
-          onChange={(e) => setZug(+e.target.value)}
-          className="w-32 sm:w-48"
-          style={{ accentColor: "var(--akzent)" }}
-          aria-label="turn"
-        />
-        <button
-          type="button"
-          className="ml-auto rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-[var(--flaeche2)]"
-          style={{ borderColor: "var(--linie)", color: "var(--leise)" }}
-          onClick={() => setAlles((a) => !a)}
-        >
-          {alles ? "Key moments" : "Every line"}
+
+        <span className="flex items-center gap-1">
+          {TEMPO.map((t) => (
+            <button key={t} type="button" className={knopf} style={stufe(tempo === t)}
+                    onClick={() => setTempo(t)}>
+              {t === 0.5 ? "\u00BDx" : t + "x"}
+            </button>
+          ))}
+        </span>
+
+        <span className="flex items-center gap-1">
+          {ZOOMSTUFEN.map((z) => (
+            <button key={z} type="button" className={knopf} style={stufe(zoom === z)}
+                    onClick={() => setZoom(z)}>
+              {Math.round(z * 100)}%
+            </button>
+          ))}
+        </span>
+
+        <span className="zahl text-sm" style={{ color: "var(--leise)" }}>
+          Zug {nr + 1} / {zuege.length}
+        </span>
+
+        <button type="button" className={knopf + " ml-auto"} style={stufe(alles)}
+                onClick={() => setAlles((a) => !a)}>
+          {alles ? "Alles" : "Kurzfassung"}
         </button>
       </div>
 
-      {/* Gegner oben, eigener Spieler unten, wie am Tisch. */}
-      <div className="grid gap-2">
-        {[...namenListe].sort((a, b) => (a === spieler ? 1 : b === spieler ? -1 : 0))
-          .map((n, i) => (
+      <p className="mb-3 text-xs" style={{ color: "var(--still)" }}>
+        Leertaste spielt &middot; Pfeile blaettern &middot; Bild auf und ab springt fuenf Zuege
+      </p>
+
+      <div className="grid gap-3 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
+        {/* Ereignisliste links, wie im Viewer. */}
+        <div className="max-h-[70vh] overflow-y-auto rounded-lg border p-3"
+             style={{ borderColor: "var(--linie)", background: "var(--flaeche)" }}>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-sm font-semibold">Zug {nr + 1}</span>
+            <span className="zahl text-xs" style={{ color: "var(--still)" }}>
+              {schritte.length} Ereignisse
+            </span>
+          </div>
+          <div className="grid gap-1.5">
+            {schritte.length ? (
+              schritte.map((s, j) => {
+                const art = ereignisart(s.text);
+                return (
+                  <div key={j} className={"ereignis " + art}>
+                    <div className="art">{art}</div>
+                    <div className="text-[13px] leading-tight">
+                      {s.wer ? (
+                        <span className="mr-1 font-semibold"
+                              style={{ color: s.wer === spieler ? "var(--akzent)" : "var(--leise)" }}>
+                          {s.wer.split("#")[0]}
+                        </span>
+                      ) : null}
+                      {s.text}
+                      <Kartenband karten={s.karten} namen={namen} />
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-[13px]" style={{ color: "var(--still)" }}>
+                In diesem Zug stehen nur Zustandsabzuege.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-2 overflow-x-auto">
+          {seiten.map((n, i) => (
             <Brett
               key={n}
               wer={n}
+              nummer={nummern[n]}
               stand={jetzt.stand[n]}
               leader={leader[n]}
               namen={namen}
               eigen={n === spieler}
-              gespiegelt={i === 0}
+              gedreht={i === 0}
+              amZug={jetzt.amZug === n}
             />
           ))}
-      </div>
-
-      <div className="mt-2 grid max-h-[42vh] gap-0.5 overflow-y-auto rounded-lg border px-3 py-2.5"
-           style={{ borderColor: "var(--linie)" }}>
-        {schritte.length ? (
-          schritte.map((s, j) => (
-            <p key={j} className="text-[13px] leading-tight">
-              {s.wer ? (
-                <span
-                  className="mr-1.5 font-semibold"
-                  style={{ color: s.wer === spieler ? "var(--akzent)" : "var(--leise)" }}
-                >
-                  {s.wer.split("#")[0]}
-                </span>
-              ) : null}
-              <span style={{ color: s.wer ? "var(--text)" : "var(--still)" }}>
-                {s.text}
-              </span>
-              <Kartenband karten={s.karten} namen={namen} />
-            </p>
-          ))
-        ) : (
-          <p className="text-[13px]" style={{ color: "var(--still)" }}>
-            Nothing but state updates in this turn.
-          </p>
-        )}
+        </div>
       </div>
     </div>
   );

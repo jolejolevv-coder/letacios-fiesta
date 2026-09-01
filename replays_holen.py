@@ -97,9 +97,14 @@ def eindampfen(text):
             f = roh.split("|")
             # Abgeschnittene Checkpoints kommen vor. Lieber ueberspringen als mit
             # Nullen auffuellen, sonst sind die Zaehler frei erfunden.
+            #
+            # Reihenfolge im CHK, aus src/replay_format.py:
+            #   2 seq, 3 player, 4 deck, 5 hand, 6 board, 7 life,
+            #   8 donDeck, 9 donActive, 10 trash, 11 stage, 12 leader, 13 donRested
             if len(f) >= 14:
-                zeilen.append({"c": [int(f[3]), int(f[9]), int(f[13]),
-                                     int(f[7]), int(f[5])]})
+                zeilen.append({"c": [int(f[3]), int(f[4]), int(f[5]), int(f[6]),
+                                     int(f[7]), int(f[8]), int(f[9]), int(f[10]),
+                                     int(f[11]), int(f[13])]})
             continue
         # RZ1 PLY nennt die Spielernummer zum Namen und zum Leader. Die CHK Zeilen
         # fuehren nur die Nummer, ohne diese Zuordnung waeren sie nicht zuzuordnen.

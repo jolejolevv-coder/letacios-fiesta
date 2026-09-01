@@ -153,3 +153,178 @@ header {
 @media (min-width: 900px) {
   .tabellenhuelle, .matrixhuelle { -webkit-mask-image: none; mask-image: none; }
 }
+
+/* ---------------------------------------------------------------------------
+   Replaybrett
+
+   Uebernommen aus dem Viewer des Simulators (src/replay.py), damit beide Ansichten
+   dasselbe Bild zeigen. Das Raster ist der Kern: die untere Seite liegt normal, die
+   obere um 180 Grad gedreht, damit sich die beiden Spieler gegenueberliegen wie am
+   Tisch. Gedreht wird ausschliesslich ueber die grid-template-areas, die Karten
+   selbst bleiben aufrecht und lesbar.
+
+   `--sk` skaliert das ganze Brett. Alle Kartenmasse haengen daran, damit die
+   Zoomstufen eine einzige Zahl aendern statt zwanzig Regeln.
+   --------------------------------------------------------------------------- */
+
+.brett { --sk: 1; }
+
+.mat {
+  display: grid;
+  align-items: start;
+  margin-top: 4px;
+  gap: 8px calc(10px * var(--sk));
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "life chars chars"
+    "life mid   deck"
+    "dond cost  trash";
+}
+.mat.gedreht {
+  grid-template-areas:
+    "trash cost  dond"
+    "deck  mid   life"
+    "chars chars life";
+}
+.z-chars { grid-area: chars; }
+.z-mid   { grid-area: mid; }
+.z-deck  { grid-area: deck; }
+.z-dond  { grid-area: dond; }
+.z-cost  { grid-area: cost; }
+.z-trash { grid-area: trash; }
+.z-life  { grid-area: life; align-self: center; }
+
+.seite {
+  border: 1px solid var(--linie);
+  border-radius: 10px;
+  padding: 12px;
+  background: linear-gradient(180deg, var(--flaeche), var(--flaeche2));
+}
+.seite.amzug { border-color: var(--akzent); box-shadow: 0 0 0 1px var(--akzentweich); }
+
+/* Deck, Trash und Don-Deck bekommen bewusst keinen Rahmen: dort liegt eine Karte,
+   kein Bereich. */
+.feld {
+  border: 1px solid var(--linie);
+  border-radius: 10px;
+  background: var(--flaeche2);
+  padding: 7px 10px 9px;
+}
+.mitte { display: flex; gap: calc(14px * var(--sk)); align-items: flex-start; }
+.z-deck, .z-trash, .z-dond { padding-bottom: 12px; }
+.zonenpaar { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.zonenpaar .zonenname { text-align: center; padding-bottom: 3px; }
+
+.zonenname {
+  color: var(--still);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 0 5px;
+}
+
+.karten {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: calc(74px * var(--sk));
+  align-items: flex-start;
+}
+.brett .hand { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+.brettleer { color: var(--still); font-size: 12px; padding: 22px 4px; }
+
+.bkarte { width: calc(52px * var(--sk)); border-radius: 5px; overflow: hidden; display: block; }
+.bkarte.leader { width: calc(62px * var(--sk)); }
+.brett .hand .bkarte { width: calc(44px * var(--sk)); }
+
+/* Verdeckter Stapel. Das Spiel zeigt hier eine Kartenrueckseite; die haben wir
+   nicht, also ein ruhiges Feld mit der Zahl darauf. */
+.stapel {
+  width: calc(46px * var(--sk));
+  height: calc(64px * var(--sk));
+  border: 1px solid var(--linie);
+  border-radius: 5px;
+  background: linear-gradient(160deg, var(--flaeche2), var(--grund));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--leise);
+}
+.stapel.leer { color: var(--still); font-size: 11px; font-weight: 500; }
+
+/* Cost Area: quadratische Kacheln, damit ein gerasteter Don beim Drehen nicht
+   ueber seine Nachbarn laeuft. */
+.donzone {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: calc(46px * var(--sk));
+}
+.donzone span {
+  width: calc(46px * var(--sk));
+  height: calc(46px * var(--sk));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.donzone i {
+  width: calc(30px * var(--sk));
+  height: calc(30px * var(--sk));
+  border-radius: 4px;
+  display: block;
+  background: var(--akzent);
+}
+.donzone span.rest i { transform: rotate(90deg); opacity: 0.45; background: var(--leise); }
+.donzone .leer { color: var(--still); font-size: 12px; width: auto; }
+
+/* Lifekarten als verdeckter Stapel, leicht ueberlappend. */
+.lifestapel { display: flex; flex-direction: column; align-items: center; }
+.lifestapel .lk {
+  width: calc(40px * var(--sk));
+  height: calc(56px * var(--sk));
+  border-radius: 4px;
+  border: 1px solid var(--linie);
+  background: linear-gradient(160deg, var(--niederlageweich), var(--grund));
+  margin-top: calc(-42px * var(--sk));
+}
+.lifestapel .lk:first-child { margin-top: 0; }
+.lifestapel.aus { color: var(--niederlage); font-weight: 700; font-size: 12px; padding: 6px 0; }
+
+/* Kopfzeile eines Spielers */
+.kopf { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+.pille {
+  background: var(--grund);
+  border: 1px solid var(--linie);
+  border-radius: 20px;
+  padding: 2px 10px;
+  color: var(--still);
+  font-size: 12px;
+}
+.pille b { color: var(--text); }
+.lifeleiste { display: flex; gap: 3px; }
+.lifeleiste i {
+  width: 9px;
+  height: 14px;
+  background: var(--niederlage);
+  border-radius: 2px;
+  display: block;
+}
+
+/* Ereignisliste links */
+.ereignis { border-left: 2px solid var(--linie); padding: 3px 0 3px 8px; }
+.ereignis .art {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--still);
+}
+.ereignis.draw   { border-left-color: var(--still); }
+.ereignis.effekt { border-left-color: var(--akzent); }
+.ereignis.kampf  { border-left-color: var(--niederlage); }
+.ereignis.info   { border-left-color: var(--linie); }
+.ereignis.start  { border-left-color: var(--sieg); }
