@@ -969,6 +969,10 @@ export default function App() {
   const [matrixMindest, setMatrixMindest] = useState(50);
   const [sitzModus, setSitzModus] = useState(false);
 
+  // Auf dem Telefon liegen die drei Decklistenfilter hinter einem Knopf. Ausgeklappt
+  // kosten sie drei Zeilen, und die erste Liste rutscht dafuer aus dem Bild.
+  const [filterOffen, setFilterOffen] = useState(false);
+
   const [quelleOffen, setQuelleOffen] = useState(false);
   const [leisteOffen, setLeisteOffen] = useState(false);
 
@@ -1162,6 +1166,10 @@ export default function App() {
     });
     return r;
   }, [leader, mindest, sortListen, karteFilter]);
+
+  // Weicht einer der drei Decklistenfilter vom Standard ab? Der Knopf traegt dann
+  // einen Punkt, damit eingeklappt sichtbar bleibt, dass gefiltert wird.
+  const filterAbweichend = mindest !== 50 || sortListen !== "wr" || karteFilter.trim() !== "";
 
   /* Adresse mitfuehren, sobald Reiter oder Leader stehen. */
   useEffect(() => {
@@ -1532,7 +1540,50 @@ export default function App() {
 
               {reiter === "decks" ? (
                 <>
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-3 py-1">
+                  {/* Nur auf dem Telefon: eine Zeile statt drei. Der Punkt zeigt, dass ein
+                      Filter vom Standard abweicht, sonst waere eingeklappt nicht zu sehen,
+                      dass gefiltert wird. */}
+                  <div className="flex items-center justify-between gap-3 py-1 sm:hidden">
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors"
+                      style={
+                        filterOffen
+                          ? { background: "var(--akzentweich)", borderColor: "var(--akzent)", color: "var(--akzent)" }
+                          : { background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--leise)" }
+                      }
+                      aria-expanded={filterOffen}
+                      onClick={() => setFilterOffen((o) => !o)}
+                    >
+                      Filters
+                      {filterAbweichend ? (
+                        <span
+                          className="h-1.5 w-1.5 rounded-full"
+                          style={{ background: "var(--akzent)" }}
+                          aria-label="active"
+                        />
+                      ) : null}
+                      <svg
+                        width="10"
+                        height="7"
+                        viewBox="0 0 10 7"
+                        aria-hidden="true"
+                        style={{ transform: filterOffen ? "rotate(180deg)" : "none" }}
+                      >
+                        <path d="M1 1.5 5 5.5 9 1.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                      </svg>
+                    </button>
+                    <span className="zahl text-[13px]" style={{ color: "var(--still)" }}>
+                      {listen.length} of {leader.listen.length} lists
+                    </span>
+                  </div>
+
+                  <div
+                    className={
+                      (filterOffen ? "flex" : "hidden") +
+                      " flex-wrap items-center gap-x-5 gap-y-3 pb-2 sm:flex sm:py-1"
+                    }
+                  >
                     <span className="flex items-center gap-2">
                       <label className="etikett" htmlFor="mindest">
                         min
@@ -1583,7 +1634,7 @@ export default function App() {
                         onChange={(e) => setKarteFilter(e.target.value)}
                       />
                     </span>
-                    <span className="zahl text-[13px]" style={{ color: "var(--still)" }}>
+                    <span className="zahl hidden text-[13px] sm:inline" style={{ color: "var(--still)" }}>
                       {listen.length} of {leader.listen.length} lists
                     </span>
                   </div>
