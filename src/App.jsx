@@ -1165,9 +1165,13 @@ function zuegeBauen(zeilen) {
 }
 
 /** Ein verdeckter Stapel mit seiner Zahl. Deck, Don-Deck und Trash liegen so. */
-function Stapel({ n, leer = "leer" }) {
+function Stapel({ n, art = "karte", leer = "leer" }) {
   if (!n) return <span className="stapel leer">{leer}</span>;
-  return <span className="stapel">{n}</span>;
+  return (
+    <span className={"stapel " + art}>
+      <span className="zahl">{n}</span>
+    </span>
+  );
 }
 
 /** Cost Area: aktive Don zuerst, danach die gerasteten gekippt und blass. */
@@ -1279,7 +1283,7 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
 
         <div className="zonenpaar z-dond">
           <div className="zonenname">Don-Deck</div>
-          <Stapel n={don.donDeck || 0} />
+          <Stapel n={don.donDeck || 0} art="don" />
         </div>
 
         <Zone
@@ -1353,6 +1357,9 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
   const [zoom, setZoom] = useState(1);
   const [tempo, setTempo] = useState(1);
   const [laeuft, setLaeuft] = useState(false);
+  // Das Log steht standardmaessig zu: es traegt alles, aber das Brett ist das,
+  // weswegen man hier ist.
+  const [logOffen, setLogOffen] = useState(false);
 
   useEffect(() => {
     let abgebrochen = false;
@@ -1488,20 +1495,34 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           Zug {nr + 1} / {zuege.length}
         </span>
 
-        <button type="button" className={knopf + " ml-auto"} style={stufe(alles)}
-                onClick={() => setAlles((a) => !a)}>
-          {alles ? "Alles" : "Kurzfassung"}
-        </button>
+        <span className="ml-auto flex items-center gap-1">
+          <button type="button" className={knopf} style={stufe(logOffen)}
+                  onClick={() => setLogOffen((o) => !o)}>
+            {logOffen ? "Ereignisse ausblenden" : "Ereignisse"}
+          </button>
+          {logOffen ? (
+            <button type="button" className={knopf} style={stufe(alles)}
+                    onClick={() => setAlles((a) => !a)}>
+              {alles ? "Alles" : "Kurzfassung"}
+            </button>
+          ) : null}
+        </span>
       </div>
 
-      <p className="mb-3 text-xs" style={{ color: "var(--still)" }}>
-        Leertaste spielt &middot; Pfeile blaettern &middot; Bild auf und ab springt fuenf Zuege
-      </p>
-
-      <div className="grid gap-3 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
-        {/* Ereignisliste links, wie im Viewer. */}
-        <div className="max-h-[70vh] overflow-y-auto rounded-lg border p-3"
-             style={{ borderColor: "var(--linie)", background: "var(--flaeche)" }}>
+      <div
+        className={
+          "grid gap-3 lg:items-start " +
+          (logOffen ? "lg:grid-cols-[300px_minmax(0,1fr)]" : "lg:grid-cols-1")
+        }
+      >
+        {/* Ereignisliste links, wie im Viewer, aber nur auf Wunsch. */}
+        <div
+          className={
+            "max-h-[70vh] overflow-y-auto rounded-lg border p-3 " +
+            (logOffen ? "" : "hidden")
+          }
+          style={{ borderColor: "var(--linie)", background: "var(--flaeche)" }}
+        >
           <div className="mb-2 flex items-center justify-between">
             <span className="text-sm font-semibold">Zug {nr + 1}</span>
             <span className="zahl text-xs" style={{ color: "var(--still)" }}>
@@ -1800,6 +1821,9 @@ function Schloss({ aufSchliessen }) {
   const [passwort, setPasswort] = useState("");
   const [fehler, setFehler] = useState("");
   const [laeuft, setLaeuft] = useState(false);
+  // Das Log steht standardmaessig zu: es traegt alles, aber das Brett ist das,
+  // weswegen man hier ist.
+  const [logOffen, setLogOffen] = useState(false);
 
   async function absenden(e) {
     e.preventDefault();

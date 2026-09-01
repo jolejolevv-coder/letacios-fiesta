@@ -237,23 +237,37 @@ header {
 .bkarte.leader { width: calc(62px * var(--sk)); }
 .brett .hand .bkarte { width: calc(44px * var(--sk)); }
 
-/* Verdeckter Stapel. Das Spiel zeigt hier eine Kartenrueckseite; die haben wir
-   nicht, also ein ruhiges Feld mit der Zahl darauf. */
+/* Verdeckter Stapel mit der echten Kartenrueckseite und der Zahl darauf. Die
+   beiden Bilder stammen aus dem Simulator und liegen verkleinert im Repo. */
 .stapel {
   width: calc(46px * var(--sk));
   height: calc(64px * var(--sk));
   border: 1px solid var(--linie);
   border-radius: 5px;
-  background: linear-gradient(160deg, var(--flaeche2), var(--grund));
+  background: var(--grund) center / cover no-repeat;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  font-variant-numeric: tabular-nums;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--leise);
+  padding-bottom: 3px;
 }
-.stapel.leer { color: var(--still); font-size: 11px; font-weight: 500; }
+.stapel .zahl {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: 4px;
+  padding: 0 5px;
+}
+.stapel.karte { background-image: url("/rueckseiten/karte.jpg"); }
+.stapel.don { background-image: url("/rueckseiten/don.jpg"); }
+.stapel.leer {
+  background-image: none;
+  align-items: center;
+  padding-bottom: 0;
+  color: var(--still);
+  font-size: 11px;
+}
 
 /* Cost Area: quadratische Kacheln, damit ein gerasteter Don beim Drehen nicht
    ueber seine Nachbarn laeuft. */
@@ -273,13 +287,13 @@ header {
   flex: 0 0 auto;
 }
 .donzone i {
-  width: calc(30px * var(--sk));
-  height: calc(30px * var(--sk));
-  border-radius: 4px;
+  width: calc(31px * var(--sk));
+  height: calc(43px * var(--sk));
+  border-radius: 3px;
   display: block;
-  background: var(--akzent);
+  background: url("/rueckseiten/don.jpg") center / cover no-repeat;
 }
-.donzone span.rest i { transform: rotate(90deg); opacity: 0.45; background: var(--leise); }
+.donzone span.rest i { transform: rotate(90deg); opacity: 0.55; }
 .donzone .leer { color: var(--still); font-size: 12px; width: auto; }
 
 /* Lifekarten als verdeckter Stapel, leicht ueberlappend. */
@@ -289,7 +303,7 @@ header {
   height: calc(56px * var(--sk));
   border-radius: 4px;
   border: 1px solid var(--linie);
-  background: linear-gradient(160deg, var(--niederlageweich), var(--grund));
+  background: url("/rueckseiten/karte.jpg") center / cover no-repeat;
   margin-top: calc(-42px * var(--sk));
 }
 .lifestapel .lk:first-child { margin-top: 0; }
