@@ -360,8 +360,8 @@ header {
   color: var(--still);
 }
 .ereignis.draw   { border-left-color: var(--still); }
-.ereignis.effekt { border-left-color: var(--akzent); }
-.ereignis.kampf  { border-left-color: var(--niederlage); }
+.ereignis.effect { border-left-color: var(--akzent); }
+.ereignis.combat { border-left-color: var(--niederlage); }
 .ereignis.info   { border-left-color: var(--linie); }
 .ereignis.start  { border-left-color: var(--sieg); }
 

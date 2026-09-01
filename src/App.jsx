@@ -1258,7 +1258,7 @@ function AngelegtesDon({ n }) {
 }
 
 /** Ein verdeckter Stapel mit seiner Zahl. Deck, Don-Deck und Trash liegen so. */
-function Stapel({ n, art = "karte", leer = "leer" }) {
+function Stapel({ n, art = "karte", leer = "empty" }) {
   if (!n) return <span className="stapel leer">{leer}</span>;
   return (
     <span className={"stapel " + art}>
@@ -1269,7 +1269,7 @@ function Stapel({ n, art = "karte", leer = "leer" }) {
 
 /** Cost Area: aktive Don zuerst, danach die gerasteten gekippt und blass. */
 function DonZone({ aktiv = 0, gerastet = 0 }) {
-  if (!aktiv && !gerastet) return <span className="leer">kein Don</span>;
+  if (!aktiv && !gerastet) return <span className="leer">no don</span>;
   return (
     <>
       {Array.from({ length: aktiv }, (_, i) => (
@@ -1323,7 +1323,7 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
         <span className="text-[13px] font-bold"
               style={{ color: eigen ? "var(--akzent)" : "var(--text)" }}>
           {wer.split("#")[0]}
-          {amZug ? " · am Zug" : ""}
+          {amZug ? " · to move" : ""}
         </span>
         <span className="pille">Life <b>{life}</b></span>
         <span className="lifeleiste">
@@ -1334,7 +1334,7 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
           {/* Angelegtes Don haengt unter seiner Karte. Auf dem Telefon steht die
               Summe zusaetzlich hier, weil die Reihen dort winzig sind. */}
           {angelegtGesamt ? (
-            <span className="sm:hidden"> &middot; {angelegtGesamt} am Brett</span>
+            <span className="sm:hidden"> &middot; {angelegtGesamt} attached</span>
           ) : null}
         </span>
         <span className="pille">Deck <b>{don.deck ?? "-"}</b></span>
@@ -1358,7 +1358,7 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
                 </span>
               ))
             ) : (
-              <span className="brettleer">leeres Board</span>
+              <span className="brettleer">empty board</span>
             )}
           </div>
         </Zone>
@@ -1401,7 +1401,7 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
         </div>
 
         <Zone
-          name={`Cost Area · ${don.aktiv || 0} aktiv, ${don.gerastet || 0} rested`}
+          name={`Cost Area · ${don.aktiv || 0} active, ${don.gerastet || 0} rested`}
           feld
           className="z-cost"
         >
@@ -1425,7 +1425,7 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
                   className="bkarte" alt={(namen[k] || {}).n || k} />
           ))
         ) : (
-          <span className="brettleer">leere Hand</span>
+          <span className="brettleer">empty hand</span>
         )}
       </div>
       </div>
@@ -1438,15 +1438,15 @@ function ereignisart(text) {
   if (/Leader is|Chose to go|Will select turn order/i.test(text)) return "start";
   if (/Has Connected|Version is|Waiting for/i.test(text)) return "info";
   if (/zieht|Drew card|Draw \d/i.test(text)) return "draw";
-  if (/attacking|hit for|Destroyed|Attack Fails|Counter|\bvs\b/i.test(text)) return "kampf";
-  return "effekt";
+  if (/attacking|hit for|Destroyed|Attack Fails|Counter|\bvs\b/i.test(text)) return "combat";
+  return "effect";
 }
 
 // Die kleinste Stufe heisst "Mobil" statt "70 %". Sie ist keine Zoomstufe unter
 // anderen, sondern die Groesse, auf die das Telefonlayout ausgelegt ist; eine
 // Prozentzahl daneben legt nahe, sie sei nur eine Verkleinerung.
 const ZOOMSTUFEN = [0.7, 1, 1.3, 1.6, 2];
-const zoomName = (z) => (z === 0.7 ? "Mobil" : Math.round(z * 100) + "%");
+const zoomName = (z) => (z === 0.7 ? "Mobile" : Math.round(z * 100) + "%");
 const TEMPO = [0.5, 1, 2, 4];
 
 function Kartenband({ karten, namen }) {
@@ -1625,13 +1625,13 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
         <span className="zahl text-xs sm:text-sm" style={{ color: "var(--leise)" }}>
           {nr + 1} / {schritte.length}
           <span className="hidden sm:inline" style={{ color: "var(--still)" }}>
-            {" "}&middot; Zug {jetzt.zug} / {zuege}
+            {" "}&middot; turn {jetzt.zug} / {zuege}
           </span>
         </span>
 
         <button type="button" className={knopf + " ml-auto"} style={stufe(logOffen)}
                 onClick={() => setLogOffen((o) => !o)}>
-          {logOffen ? "Ereignisse ausblenden" : "Ereignisse"}
+          {logOffen ? "Hide events" : "Events"}
         </button>
       </div>
 
@@ -1681,7 +1681,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
                   }}
                 >
                   <div className="art">
-                    {art} &middot; Zug {s.zug}
+                    {art} &middot; turn {s.zug}
                   </div>
                   <div className="text-[13px] leading-tight">
                     {s.wer ? (
