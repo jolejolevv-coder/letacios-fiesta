@@ -1540,8 +1540,11 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
   const seiten = [...new Set(schritte.flatMap((s) => Object.keys(s.stand)))]
     .sort((a, b) => (a === spieler ? 1 : b === spieler ? -1 : 0));
 
+  // Auf dem Telefon kleiner: die Leiste stand sonst vierzeilig ueber dem Brett und
+  // schob es aus dem Bild.
   const knopf =
-    "rounded-md border px-2.5 py-1.5 text-sm font-semibold transition-colors hover:bg-[var(--flaeche2)] disabled:opacity-40";
+    "rounded-md border px-1.5 py-1 text-xs font-semibold transition-colors " +
+    "hover:bg-[var(--flaeche2)] disabled:opacity-40 sm:px-2.5 sm:py-1.5 sm:text-sm";
   const stufe = (an) => ({
     background: an ? "var(--akzentweich)" : "var(--flaeche2)",
     borderColor: an ? "var(--akzent)" : "var(--linie)",
@@ -1550,7 +1553,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
 
   return (
     <div className="brett" style={{ "--sk": zoom }}>
-      <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 sm:mb-4 sm:gap-x-6 sm:gap-y-2">
         {zurueck ? (
           <button type="button" onClick={zurueck} className={knopf}
                   style={{ borderColor: "var(--linie)", color: "var(--leise)" }}>
@@ -1558,7 +1561,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           </button>
         ) : null}
 
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1">
           <button type="button" className={knopf} style={stufe(false)}
                   disabled={nr <= 0} onClick={() => setI(0)}>&#9198;</button>
           <button type="button" className={knopf} style={stufe(false)}
@@ -1575,7 +1578,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
                   onClick={() => setI(schritte.length - 1)}>&#9197;</button>
         </span>
 
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1">
           {TEMPO.map((t) => (
             <button key={t} type="button" className={knopf} style={stufe(tempo === t)}
                     onClick={() => setTempo(t)}>
@@ -1584,7 +1587,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           ))}
         </span>
 
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1">
           {ZOOMSTUFEN.map((z) => (
             <button key={z} type="button" className={knopf} style={stufe(zoom === z)}
                     onClick={() => setZoom(z)}>
@@ -1593,7 +1596,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           ))}
         </span>
 
-        <span className="zahl text-sm" style={{ color: "var(--leise)" }}>
+        <span className="zahl text-xs sm:text-sm" style={{ color: "var(--leise)" }}>
           Schritt {nr + 1} / {schritte.length}
           <span style={{ color: "var(--still)" }}> &middot; Zug {jetzt.zug} / {zuege}</span>
         </span>

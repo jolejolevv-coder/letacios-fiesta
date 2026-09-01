@@ -393,3 +393,10 @@ header {
   display: block;
   background: url("/rueckseiten/don.jpg") center / cover no-repeat;
 }
+
+@media (max-width: 639px) {
+  /* Die Statuspillen belegten zwei Zeilen. Enger gesetzt passen sie in eine. */
+  .kopf { gap: 4px; }
+  .pille { padding: 1px 7px; font-size: 11px; }
+  .lifeleiste i { width: 7px; height: 12px; }
+}
