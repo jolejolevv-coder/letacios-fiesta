@@ -842,7 +842,7 @@ function Rangliste({ satz, namen }) {
    vor, und die ist der eigentliche Gewinn: der Client selbst zeigt sie nicht.
    -------------------------------------------------------------------------- */
 
-function Bestenliste({ daten, namen }) {
+function Bestenliste({ daten, namen, oeffnen }) {
   const [offen, setOffen] = useState(null);
   const [suche, setSuche] = useState("");
 
@@ -912,7 +912,20 @@ function Bestenliste({ daten, namen }) {
                     </td>
                     <td className="border-b px-3 py-2 font-semibold"
                         style={{ borderColor: "var(--linie)" }}>
-                      {e.name}
+                      {/* Der Name fuehrt auf die Spielerseite, die Zeile daneben
+                          klappt nur die Aufstellung auf. Zwei Ziele in einer Zeile,
+                          deshalb haelt der Name das Klicken auf. */}
+                      <button
+                        type="button"
+                        className="text-left transition-colors hover:underline"
+                        style={{ color: "var(--akzent)" }}
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          oeffnen(e.user_id);
+                        }}
+                      >
+                        {e.name}
+                      </button>
                     </td>
                     <td className="zahl border-b px-3 py-2 text-right"
                         style={{ borderColor: "var(--linie)" }}>
@@ -990,6 +1003,189 @@ function Bestenliste({ daten, namen }) {
 }
 
 /* --------------------------------------------------------------------------
+   Spielerseite
+
+   Hinter dem Klick auf einen Namen in der Bestenliste. Zeigt die Leaderaufstellung
+   und die letzten Partien mit Deckliste und Replay.
+
+   Neun Partien sind das Maximum: der Server schreibt einen Schnappschuss der letzten
+   neun ins Profil, mehr gibt es nicht. Wer viel spielt, bei dem faellt heraus, was
+   der letzte Lauf nicht gesehen hat.
+   -------------------------------------------------------------------------- */
+
+// Der Eimer, in dem die Replays liegen. Kein Geheimnis, er steckt in jeder
+// Installation des Spiels und steht in jeder Downloadadresse.
+const SPEICHER = "opbounty-3623c.firebasestorage.app";
+
+function replayAdresse(pfad) {
+  return (
+    "https://firebasestorage.googleapis.com/v0/b/" +
+    SPEICHER +
+    "/o/" +
+    encodeURIComponent(pfad) +
+    "?alt=media"
+  );
+}
+
+function Partie({ p, namen }) {
+  const [offen, setOffen] = useState(false);
+  const karten = (p.deck || []).slice(1);
+  return (
+    <div className="rounded-lg border" style={{ borderColor: "var(--linie)", background: "var(--flaeche)" }}>
+      <button
+        type="button"
+        className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
+        onClick={() => setOffen((o) => !o)}
+      >
+        <span
+          className="zahl w-7 shrink-0 rounded px-1 py-0.5 text-center text-xs font-bold"
+          style={{
+            background: p.gewonnen ? "var(--siegweich)" : "var(--niederlageweich)",
+            color: p.gewonnen ? "var(--sieg)" : "var(--niederlage)",
+          }}
+        >
+          {p.gewonnen ? "W" : "L"}
+        </span>
+        <Bild id={p.eigener_leader} breite={120} hoehe={168}
+              className="h-[38px] w-[27px] shrink-0 rounded-[3px] object-cover" />
+        <span className="min-w-0 flex-1">
+          <LeaderName id={p.eigener_leader} namen={namen} klein />
+          <span className="block text-xs" style={{ color: "var(--still)" }}>
+            vs {(namen[p.gegner_leader] || {}).n || p.gegner_leader} &middot; {p.gegner}
+          </span>
+        </span>
+        <span className="zahl hidden shrink-0 text-xs sm:block" style={{ color: "var(--still)" }}>
+          {String(p.zeit).slice(0, 16).replace("T", " ")}
+        </span>
+        <span className="zahl w-12 shrink-0 text-right text-xs" style={{ color: "var(--still)" }}>
+          {fmtDauer(p.dauer)}
+        </span>
+      </button>
+
+      {offen ? (
+        <div className="border-t px-3 pb-3 pt-3" style={{ borderColor: "var(--linie)" }}>
+          {karten.length ? (
+            <div className="flex flex-wrap gap-1.5">
+              {karten.map((k, i) => (
+                <span key={k + i} className="relative block w-[46px] sm:w-[54px]">
+                  <Bild id={kennung(k)} breite={120} hoehe={168}
+                        className="h-[65px] w-[46px] rounded-[3px] object-cover sm:h-[76px] sm:w-[54px]" />
+                  <span
+                    className="zahl absolute -bottom-1 -right-1 min-w-[18px] rounded-full px-1 text-center text-[10px] font-bold"
+                    style={{ background: "var(--akzent)", color: "#fff" }}
+                  >
+                    {anzahl(k)}
+                  </span>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm" style={{ color: "var(--still)" }}>
+              No decklist recorded for this game.
+            </p>
+          )}
+          {p.replay ? (
+            <a
+              href={replayAdresse(p.replay)}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="mt-3 inline-block rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-[var(--flaeche2)]"
+              style={{ borderColor: "var(--linie)", color: "var(--akzent)" }}
+            >
+              Open replay log
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function Spieler({ eintrag, daten, namen, zurueck }) {
+  if (!eintrag) {
+    return (
+      <p className="py-10 text-center" style={{ color: "var(--still)" }}>
+        This player is not in the current top 100.
+      </p>
+    );
+  }
+  const partien = (daten && daten.partien) || [];
+  return (
+    <>
+      <button
+        type="button"
+        onClick={zurueck}
+        className="mb-4 w-fit rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-[var(--flaeche2)]"
+        style={{ borderColor: "var(--linie)", color: "var(--leise)" }}
+      >
+        &larr; Leaderboard
+      </button>
+
+      <section className="pb-1">
+        <h1 className="breit text-[22px] font-extrabold leading-[1.05] sm:text-[34px]"
+            style={{ fontFamily: "var(--font-anzeige)", letterSpacing: "-0.015em" }}>
+          {eintrag.name}
+        </h1>
+        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3 sm:mt-5 sm:gap-x-9">
+          <Kennzahl etikett="Rank" kind={<Zaehler wert={eintrag.rang} />} />
+          <Kennzahl etikett="Bounty" kind={<span className="zahl">{fmtZahl(eintrag.bounty)}</span>} />
+          {daten ? (
+            <>
+              <Kennzahl
+                etikett="Win rate"
+                kind={<Zaehler wert={daten.winrate || 0} nachkomma={1} suffix=" %" />}
+              />
+              <Kennzahl etikett="Record"
+                        kind={<span className="zahl">{daten.siege}&ndash;{daten.niederlagen}</span>} />
+            </>
+          ) : null}
+          <Kennzahl etikett="Games" kind={<Zaehler wert={eintrag.partien} />} nurGross />
+        </div>
+      </section>
+
+      <h2 className="mt-5 text-base font-semibold">Leaders played</h2>
+      <div className="grid gap-2">
+        {(eintrag.leader || []).map((l) => (
+          <div key={l.leader} className="grid grid-cols-[34px_minmax(0,1fr)_auto] items-center gap-3">
+            <Bild id={l.leader} breite={120} hoehe={168}
+                  className="h-[46px] w-[34px] rounded-[3px] object-cover" />
+            <span className="min-w-0">
+              <LeaderName id={l.leader} namen={namen} klein />
+              <span className="zahl block text-xs" style={{ color: "var(--still)" }}>
+                {l.siege}&ndash;{l.niederlagen} in {l.partien} games
+                {" · "}first {proz(l.erst_siege, l.erst_siege + l.erst_niederlagen).toFixed(1)} %
+                {" · "}second {proz(l.zweit_siege, l.zweit_siege + l.zweit_niederlagen).toFixed(1)} %
+              </span>
+            </span>
+            <span className="w-32 shrink-0">
+              <Balken w={l.siege} g={l.partien} schmal />
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <h2 className="mt-5 text-base font-semibold">
+        Recent games
+        <span className="ml-2 text-xs font-normal" style={{ color: "var(--still)" }}>
+          the profile keeps the last nine, nothing older exists
+        </span>
+      </h2>
+      {partien.length ? (
+        <div className="grid gap-2">
+          {partien.map((p, i) => (
+            <Partie key={(p.replay || "") + i} p={p} namen={namen} />
+          ))}
+        </div>
+      ) : (
+        <p className="py-6" style={{ color: "var(--still)" }}>
+          No recent games recorded for this player.
+        </p>
+      )}
+    </>
+  );
+}
+
+/* --------------------------------------------------------------------------
    Adressen
 
    Der Reiter steht im Pfad, der gewaehlte Leader als Abfrage dahinter. Damit ist jede
@@ -1005,6 +1201,7 @@ const PFADE = {
   matrix: "/matrix",
   rang: "/rankings",
   beste: "/leaderboard",
+  spieler: "/player",
 };
 
 function reiterAusPfad(pfad) {
@@ -1012,9 +1209,17 @@ function reiterAusPfad(pfad) {
   return treffer ? treffer[0] : "decks";
 }
 
-function adresseSetzen(reiter, leader, ersetzen) {
-  const ziel =
-    PFADE[reiter] + (leader ? "?leader=" + encodeURIComponent(kennung(leader)) : "");
+function adresseSetzen(reiter, leader, ersetzen, spielerId) {
+  // Die Spielerseite haengt an einer user_id, alle anderen Reiter am Leader.
+  const abfrage =
+    reiter === "spieler"
+      ? spielerId
+        ? "?id=" + encodeURIComponent(spielerId)
+        : ""
+      : leader
+        ? "?leader=" + encodeURIComponent(kennung(leader))
+        : "";
+  const ziel = PFADE[reiter] + abfrage;
   if (window.location.pathname + window.location.search === ziel) return;
   window.history[ersetzen ? "replaceState" : "pushState"]({}, "", ziel);
 }
@@ -1124,6 +1329,10 @@ export default function App() {
   const [namen, setNamen] = useState({});
   // null heisst "noch nicht geholt", false heisst "nicht da". Beides ist erlaubt.
   const [beste, setBeste] = useState(null);
+  const [spielerAlle, setSpielerAlle] = useState(null);
+  const [spielerId, setSpielerId] = useState(
+    () => new URLSearchParams(window.location.search).get("id") || null
+  );
   const [matrixTop, setMatrixTop] = useState(12);
   const [matrixMindest, setMatrixMindest] = useState(50);
   const [sitzModus, setSitzModus] = useState(false);
@@ -1193,7 +1402,8 @@ export default function App() {
   /* Bestenliste. Eigene Datei, eigener Rhythmus, und sie darf fehlen: faellt sie
      aus, bleibt der Reiter leer und der Rest der Seite laeuft weiter. */
   useEffect(() => {
-    if (entsperrt !== true || reiter !== "beste" || beste !== null) return;
+    if (entsperrt !== true || beste !== null) return;
+    if (reiter !== "beste" && reiter !== "spieler") return;
     let abgebrochen = false;
     holen("bestenliste.json.gz")
       .then((d) => !abgebrochen && setBeste(d))
@@ -1202,6 +1412,25 @@ export default function App() {
       abgebrochen = true;
     };
   }, [entsperrt, reiter, beste]);
+
+  /* Die Partien je Spieler. Eigene Datei, nur fuer die Spielerseite gebraucht,
+     und sie darf ebenso fehlen wie die Bestenliste. */
+  useEffect(() => {
+    if (entsperrt !== true || reiter !== "spieler" || spielerAlle !== null) return;
+    let abgebrochen = false;
+    holen("spieler.json.gz")
+      .then((d) => !abgebrochen && setSpielerAlle(d))
+      .catch(() => !abgebrochen && setSpielerAlle(false));
+    return () => {
+      abgebrochen = true;
+    };
+  }, [entsperrt, reiter, spielerAlle]);
+
+  /* Adresse der Spielerseite mitfuehren. */
+  useEffect(() => {
+    if (entsperrt !== true || reiter !== "spieler") return;
+    adresseSetzen("spieler", null, false, spielerId);
+  }, [reiter, spielerId, entsperrt]);
 
   /* Verzeichnis holen */
   useEffect(() => {
@@ -1353,6 +1582,7 @@ export default function App() {
   useEffect(() => {
     const zurueck = () => {
       setReiter(reiterAusPfad(window.location.pathname));
+      setSpielerId(new URLSearchParams(window.location.search).get("id") || null);
       const wunsch = new URLSearchParams(window.location.search).get("leader");
       if (wunsch && satz) {
         const treffer = satz.leader.find((e) => kennung(e.id) === wunsch);
@@ -1934,6 +2164,31 @@ export default function App() {
                 <>
                   <Rangliste satz={satz} namen={namen} />
                 </>
+              ) : reiter === "spieler" ? (
+                <>
+                  {beste === null || spielerAlle === null ? (
+                    <p className="py-10 text-center" style={{ color: "var(--still)" }}>
+                      Loading ...
+                    </p>
+                  ) : (
+                    <Spieler
+                      eintrag={
+                        beste && beste.spieler
+                          ? beste.spieler.find(
+                              (e) => String(e.user_id) === String(spielerId)
+                            )
+                          : null
+                      }
+                      daten={
+                        spielerAlle && spielerAlle.spieler
+                          ? spielerAlle.spieler[String(spielerId)]
+                          : null
+                      }
+                      namen={namen}
+                      zurueck={() => setReiter("beste")}
+                    />
+                  )}
+                </>
               ) : (
                 <>
                   {beste === null ? (
@@ -1945,7 +2200,15 @@ export default function App() {
                       No ladder snapshot available yet.
                     </p>
                   ) : (
-                    <Bestenliste daten={beste} namen={namen} />
+                    <Bestenliste
+                      daten={beste}
+                      namen={namen}
+                      oeffnen={(id) => {
+                        setSpielerId(String(id));
+                        setReiter("spieler");
+                        window.scrollTo(0, 0);
+                      }}
+                    />
                   )}
                 </>
               )}

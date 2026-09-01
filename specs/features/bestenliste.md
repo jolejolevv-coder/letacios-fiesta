@@ -162,10 +162,33 @@ pruefen, ob der Storage sie ohne Anmeldung herausgibt.
 
 **Phase 5, Anzeige und taeglicher Lauf.** Reiter, Secret, Schritt in die Action.
 
-## Open questions
+## Replays: beantwortet am 01.09.2026
 
-- Gibt der Storage die Replaydateien ohne Anmeldung heraus? Entscheidet, ob Phase 4 nur
-  verlinkt oder die Logs mit ausliefern muss.
+**Der Storage gibt die Logs ohne Anmeldung heraus.** Geprueft an einer echten Partie,
+sie laedt als vollstaendiges RZ1-Log. Die Seite verlinkt sie also, sie muss nichts
+mitliefern. Die Adresse lautet
+
+    https://firebasestorage.googleapis.com/v0/b/opbounty-3623c.firebasestorage.app/o/<Pfad>?alt=media
+
+Der Pfad wird aus `Public_matches` gebildet. Zwei Fallen stecken darin, beide haben
+zugeschlagen und beide sind aus dem Spielcode geklaert:
+
+**Die Bounty steht als ganze Zahl im Dateinamen, abgeschnitten statt gerundet.** Der
+Client rechnet `int(_bounty_for_match_player(...))`. Aus 3681.3 wird 3681. Mit der
+Nachkommastelle antwortet der Storage mit 404.
+
+**Die Wochenangabe ist nicht die ISO-Woche.** Das Spiel rechnet sie selbst:
+
+    week = int((Tag_im_Jahr + 10 - (Wochentag + 1) % 7) / 7)
+
+mit Godots Wochentagszaehlung, in der die Null der Sonntag ist. Fuer den 01.09.2026
+ergibt das 35, die echte ISO-Woche waere 36. Wer `isocalendar()` nimmt, bekommt ein
+sauberes 404 und sucht den Fehler danach an der falschen Stelle.
+
+Ein 404 heisst hier uebrigens "Pfad falsch", nicht "keine Rechte"; ein 403 waere das
+Rechteproblem gewesen. Der Unterschied hat die Suche abgekuerzt.
+
+## Open questions
 - Das Firestore-Profil meldet fuer FabaniniOvert unter Western 101 zu 48, also 149
   Partien; die Leaderaufstellung aus der Bestenliste summiert sich auf 124. Die
   Bezugsraeume sind verschieden. Welcher welcher ist, ist offen, und bis dahin werden
