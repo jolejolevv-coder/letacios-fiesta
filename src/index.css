@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Letacios Fiesta.
+
+   Die Seite ist bewusst nur dunkel. Kartenbilder sind bunt und kontrastreich; auf
+   einem hellen Grund konkurrieren sie mit der Flaeche statt auf ihr zu liegen. Ein
+   zweiter heller Satz waere Pflege ohne Gegenwert.
+
+   Die Gestalt folgt Apple. Drei Dinge machen sie aus, nicht nur die Farben:
+
+   1. Der Systemschriftstapel. Auf einem Mac oder iPhone ist das die echte SF Pro,
+      keine Nachbildung. Auf allem anderen faellt es sauber auf Segoe und Roboto
+      zurueck. Deshalb laedt die Seite auch keine Schrift von aussen.
+   2. Weiche Kanten, 14 Pixel Radius, halbtransparente Trennlinien statt eigener
+      Linienfarbe.
+   3. Beschriftungen in normaler Schreibweise und kleinem Grau, keine gesperrten
+      Versalien. Das ist der groesste einzelne Unterschied zum Terminallook.
+   --------------------------------------------------------------------------- */
+
+@theme {
+  --font-anzeige: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --font-zahl: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --radius: 14px;
+}
+
+:root {
+  color-scheme: dark;
+
+  --font-anzeige: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --font-zahl: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+
+  --grund: #000000;
+  --flaeche: #1c1c1e;
+  --flaeche2: #2c2c2e;
+  --linie: rgba(255, 255, 255, 0.12);
+  --liniestark: rgba(255, 255, 255, 0.28);
+  --text: #f5f5f7;
+  --leise: #aeaeb2;
+  --still: #8e8e93;
+  --akzent: #0a84ff;
+  --akzentweich: rgba(10, 132, 255, 0.18);
+  --sieg: #30d158;
+  --niederlage: #ff453a;
+  --siegweich: rgba(48, 209, 88, 0.16);
+  --niederlageweich: rgba(255, 69, 58, 0.14);
+  --schatten: 0 1px 2px rgba(0, 0, 0, 0.6), 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+html, body, #wurzel { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--grund);
+  color: var(--text);
+  font-family: var(--font-text);
+  font-size: 15px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+}
+
+#wurzel { position: relative; z-index: 1; }
+
+/* Tabellenziffern, damit Spalten stehen. */
+.zahl {
+  font-family: var(--font-zahl);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Beschriftungen klein und grau, normal geschrieben. */
+.etikett {
+  font-family: var(--font-text);
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--still);
+}
+
+/* Bleibt als Haken fuer die grossen Kennzahlen, die Breitenachse braucht es hier
+   nicht mehr. */
+.breit { letter-spacing: -0.02em; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--linie); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--liniestark); }
+
+:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+
+/* Weiche Kanten. Tailwind setzt die Radien als einzelne Klassen. */
+.rounded-lg { border-radius: 14px; }
+.rounded-md { border-radius: 10px; }
+.rounded { border-radius: 10px; }
+
+/* Kopfzeile mit Vibrancy statt blosser Unschaerfe. */
+header {
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+/* Ladeband unter der Kopfzeile */
+@keyframes lauf {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+/* Waagerecht scrollbare Leisten ohne sichtbaren Balken, etwa die Reiterzeile
+   auf dem Telefon. */
+.hide-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.hide-scroll::-webkit-scrollbar { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

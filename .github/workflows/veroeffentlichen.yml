@@ -1,0 +1,68 @@
+# Baut die Seite und veroeffentlicht sie auf GitHub Pages.
+#
+# Arbeitsteilung:
+#   Homeserver   holt taeglich die Statistiken und schiebt sie unter public/ ins Repo
+#   diese Action baut daraus die Seite und veroeffentlicht sie
+#
+# Die Kartenbilder liegen NICHT im Repo, sondern im Zwischenspeicher dieser Action.
+# Der erste Lauf holt rund 2200 Bilder von der offiziellen Kartenseite, danach nur noch
+# neue. Der taegliche Push haelt den Zwischenspeicher warm.
+
+name: Veroeffentlichen
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  bauen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Zwischenspeicher fuer Kartenbilder
+        uses: actions/cache@v4
+        with:
+          path: public/img
+          key: bilder-${{ github.run_id }}
+          restore-keys: bilder-
+
+      - name: Fehlende Kartenbilder ergaenzen
+        run: python3 aktualisieren.py --ziel public --nur-bilder
+
+      - run: npm ci
+      - run: npm run build
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  veroeffentlichen:
+    needs: bauen
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - id: pages
+        uses: actions/deploy-pages@v4

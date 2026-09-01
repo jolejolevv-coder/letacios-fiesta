@@ -1,0 +1,7 @@
+node_modules/
+dist/
+
+# Kartenbilder bleiben draussen. Das Repo ist oeffentlich, und rund 2200 Bandai
+# Kartenbilder darin waeren eine Weiterverbreitung, die die Seite nicht braucht.
+# Die Action holt sie in ihren Zwischenspeicher und baut sie nur in die Ausgabe.
+public/img/
