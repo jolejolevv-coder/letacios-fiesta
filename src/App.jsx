@@ -49,7 +49,7 @@ function farbverlauf(kuerzel) {
    Bausteine
    -------------------------------------------------------------------------- */
 
-function Bild({ id, className, alt = "" }) {
+function Bild({ id, className, alt = "", breite, hoehe }) {
   const [kaputt, setKaputt] = useState(false);
   if (kaputt) {
     return (
@@ -73,6 +73,8 @@ function Bild({ id, className, alt = "" }) {
     <img
       src={bildpfad(id)}
       alt={alt}
+      width={breite}
+      height={hoehe}
       loading="lazy"
       decoding="async"
       className={className}
@@ -349,7 +351,7 @@ function Deckliste({ liste }) {
 
   return (
     <article
-      className="grid gap-5 rounded-lg border p-4 transition-colors lg:grid-cols-[176px_minmax(0,1fr)]"
+      className="liste grid gap-5 rounded-lg border p-4 lg:grid-cols-[176px_minmax(0,1fr)]"
       style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
     >
       <div className="grid content-start gap-2">
@@ -397,6 +399,8 @@ function Deckliste({ liste }) {
               <Bild
                 id={id}
                 alt={id}
+                breite={54}
+                hoehe={76}
                 className="block h-[65px] w-[46px] rounded-[3px] object-cover sm:h-[76px] sm:w-[54px]"
               />
               {n > 1 ? (
@@ -407,13 +411,13 @@ function Deckliste({ liste }) {
                   {n}
                 </b>
               ) : null}
-              <img
-                src={bildpfad(id)}
-                alt=""
-                loading="lazy"
+              {/* Die Lupe ist ein leeres Feld mit Hintergrundbild statt eines zweiten
+                  img. Das Bild holt der Browser erst, wenn die Regel beim Zeigen
+                  greift, und es spart bei sechzig Listen ueber tausend Elemente. */}
+              <span
                 aria-hidden="true"
-                className="pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-30 w-[208px] -translate-x-1/2 scale-95 rounded-md opacity-0 transition duration-150 group-hover:scale-100 group-hover:opacity-100"
-                style={{ boxShadow: "var(--schatten)" }}
+                className="lupe pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-30 h-[290px] w-[208px] -translate-x-1/2 scale-95 rounded-md opacity-0 transition duration-150 group-hover:scale-100 group-hover:opacity-100"
+                style={{ "--bild": "url(" + bildpfad(id) + ")", boxShadow: "var(--schatten)" }}
               />
             </span>
           );
@@ -922,6 +926,9 @@ export default function App() {
   const [mindestGeg, setMindestGeg] = useState(100);
   const [sortListen, setSortListen] = useState("wr");
   const [karteFilter, setKarteFilter] = useState("");
+  // Nur zwoelf Listen bauen. Sechzig auf einmal sind ueber tausend Kartenfelder und
+  // machten den Wechsel auf den Decklistenreiter traege.
+  const [sichtbar, setSichtbar] = useState(24);
   const [namen, setNamen] = useState({});
   const [matrixTop, setMatrixTop] = useState(12);
   const [matrixMindest, setMatrixMindest] = useState(50);
@@ -1093,6 +1100,10 @@ export default function App() {
     });
     return r;
   }, [satz, suche, sortLeader]);
+
+  useEffect(() => {
+    setSichtbar(24);
+  }, [gewaehlt, mindest, sortListen, karteFilter, satz]);
 
   const listen = useMemo(() => {
     if (!leader) return [];
@@ -1512,7 +1523,7 @@ export default function App() {
                     </span>
                   </div>
                   <div className="grid gap-3">
-                    {listen.slice(0, 60).map((l, i) => (
+                    {listen.slice(0, sichtbar).map((l, i) => (
                       <Deckliste key={l.d.join("|") + i} liste={l} />
                     ))}
                     {!listen.length ? (
@@ -1520,10 +1531,19 @@ export default function App() {
                         No list matches these filters.
                       </p>
                     ) : null}
-                    {listen.length > 60 ? (
-                      <p className="pt-1 text-center text-[13px]" style={{ color: "var(--still)" }}>
-                        Showing 60 of {listen.length}. Raise the minimum to narrow it down.
-                      </p>
+                    {listen.length > sichtbar ? (
+                      <button
+                        type="button"
+                        onClick={() => setSichtbar((n) => n + 36)}
+                        className="mx-auto mt-1 rounded-md border px-4 py-2 text-sm font-semibold"
+                        style={{
+                          background: "var(--flaeche2)",
+                          borderColor: "var(--linie)",
+                          color: "var(--leise)",
+                        }}
+                      >
+                        Show more, {listen.length - sichtbar} left
+                      </button>
                     ) : null}
                   </div>
                 </>

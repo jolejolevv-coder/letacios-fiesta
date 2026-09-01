@@ -118,3 +118,32 @@ header {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Die Lupe ueber einer Karte. Das Bild steckt als Variable am Element und wird erst
+   geholt, wenn diese Regel beim Zeigen greift. Ein zweites img je Karte waere bei
+   sechzig Listen ueber tausend Elemente mehr. */
+.lupe {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.group:hover > .lupe,
+.group:focus-within > .lupe {
+  background-image: var(--bild);
+}
+
+/* Der teuerste Teil der Seite ist der Decklistenreiter: jede Liste traegt zwanzig bis
+   fuenfundzwanzig Kartenfelder, und es stehen Dutzende untereinander. `content-visibility`
+   laesst den Browser alles ueberspringen, was gerade nicht im Bild ist, Layout und
+   Zeichnen inklusive. `contain-intrinsic-size` gibt ihm dabei eine Hoehe zum Rechnen,
+   damit der Rollbalken nicht springt. */
+.liste {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 250px;
+}
+
+/* Dasselbe fuer die langen Tabellen und die Matrix. */
+.tabellenhuelle {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 600px;
+}
