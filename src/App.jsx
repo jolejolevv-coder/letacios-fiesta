@@ -1331,10 +1331,10 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
         </span>
         <span className="pille">
           Don <b>{don.aktiv || 0}</b>/{(don.aktiv || 0) + (don.gerastet || 0)}
-          {/* Auf dem Telefon ist die Cost Area ausgeblendet, deshalb steht das
-              angelegte Don hier als Zahl statt als Reihe unter den Karten. */}
+          {/* Angelegtes Don haengt unter seiner Karte. Auf dem Telefon steht die
+              Summe zusaetzlich hier, weil die Reihen dort winzig sind. */}
           {angelegtGesamt ? (
-            <span className="sm:hidden"> &middot; {angelegtGesamt} angelegt</span>
+            <span className="sm:hidden"> &middot; {angelegtGesamt} am Brett</span>
           ) : null}
         </span>
         <span className="pille">Deck <b>{don.deck ?? "-"}</b></span>
@@ -1442,9 +1442,11 @@ function ereignisart(text) {
   return "effekt";
 }
 
-// 70 Prozent ist die Telefonstufe: bei voller Groesse passt ein Brett dort nicht
-// nebeneinander und muss gescrollt werden.
+// Die kleinste Stufe heisst "Mobil" statt "70 %". Sie ist keine Zoomstufe unter
+// anderen, sondern die Groesse, auf die das Telefonlayout ausgelegt ist; eine
+// Prozentzahl daneben legt nahe, sie sei nur eine Verkleinerung.
 const ZOOMSTUFEN = [0.7, 1, 1.3, 1.6, 2];
+const zoomName = (z) => (z === 0.7 ? "Mobil" : Math.round(z * 100) + "%");
 const TEMPO = [0.5, 1, 2, 4];
 
 function Kartenband({ karten, namen }) {
@@ -1605,7 +1607,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           {ZOOMSTUFEN.map((z) => (
             <button key={z} type="button" className={knopf} style={stufe(zoom === z)}
                     onClick={() => setZoom(z)}>
-              {Math.round(z * 100)}%
+              {zoomName(z)}
             </button>
           ))}
         </span>
@@ -1617,7 +1619,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
         </button>
         <button type="button" className={knopf + nurKlein} style={stufe(zoom !== 1)}
                 onClick={() => setZoom((z) => weiter(ZOOMSTUFEN, z))}>
-          {Math.round(zoom * 100)}%
+          {zoomName(zoom)}
         </button>
 
         <span className="zahl text-xs sm:text-sm" style={{ color: "var(--leise)" }}>
@@ -1696,7 +1698,8 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           </div>
         </div>
 
-        <div className="grid gap-2 overflow-x-auto">
+        <div className="grid gap-2 overflow-x-auto"
+             style={{ overscrollBehaviorX: "contain" }}>
           {seiten.map((n, k) => (
             <Brett
               key={n}

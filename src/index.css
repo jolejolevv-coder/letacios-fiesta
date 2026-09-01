@@ -118,8 +118,19 @@ header {
 }
 
 /* Waagerecht scrollbare Leisten ohne sichtbaren Balken, etwa die Reiterzeile
-   auf dem Telefon. */
-.hide-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+   auf dem Telefon.
+
+   `overflow-y: hidden` ist hier kein Beiwerk: wer nur `overflow-x: auto` setzt,
+   bekommt laut CSS-Regel auf der anderen Achse ebenfalls `auto`. Die Reiterzeile
+   liess sich dadurch auf dem Telefon um ein bis zwei Pixel hoch und runter
+   ziehen und wirkte wackelig. `overscroll-behavior` haelt zusaetzlich das
+   Gummiband am Ende der Leiste davon ab, die ganze Seite mitzunehmen. */
+.hide-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+}
 .hide-scroll::-webkit-scrollbar { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -143,6 +154,7 @@ header {
 .tabellenhuelle {
   content-visibility: auto;
   contain-intrinsic-size: auto 600px;
+  overscroll-behavior-x: contain;
 }
 
 /* Die Matrix auf schmalen Schirmen. Zeilenkopf und Spalten schrumpfen, sonst passen
@@ -416,18 +428,36 @@ header {
   .mat,
   .mat.gedreht {
     grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas: "mid chars";
+    grid-template-areas:
+      "mid  chars"
+      "cost cost";
     gap: 6px;
   }
-  /* Was die Kopfzeile schon als Zahl fuehrt, braucht kein eigenes Feld. */
-  .z-deck, .z-dond, .z-trash, .z-cost, .z-life { display: none; }
+  /* Was die Kopfzeile schon als Zahl fuehrt, braucht kein eigenes Feld. Das Don
+     bleibt aber sichtbar: wie viel offen liegt und wie viel gerestet ist, liest
+     man am Bild schneller als an einer Zahl. */
+  .z-deck, .z-dond, .z-trash, .z-life { display: none; }
 
-  .seite { padding: 8px; }
+  /* Die Cost Area wird zum schmalen Band ohne Kasten und ohne Beschriftung. */
+  .z-cost { border: 0; background: none; padding: 0; }
+  .z-cost .zonenname { display: none; }
+  .donzone { min-height: 0; gap: 1px; }
+  .donzone span {
+    width: calc(19px * var(--sk));
+    height: calc(25px * var(--sk));
+  }
+  .donzone i {
+    width: calc(18px * var(--sk));
+    height: calc(25px * var(--sk));
+  }
+  .donzone span.rest i { transform: rotate(90deg) scale(0.9); }
+
+  .seite { padding: 7px; }
   .feld { padding: 4px 6px 5px; }
   .zonenname { font-size: 9px; padding: 0 0 2px; }
   .mitte { gap: 6px; }
 
-  .karten { min-height: calc(58px * var(--sk)); gap: 4px; }
+  .karten { min-height: calc(52px * var(--sk)); gap: 4px; }
   .brett .hand { gap: 3px; margin-top: 4px; }
   .brettleer { padding: 8px 4px; font-size: 11px; }
 
