@@ -12,8 +12,9 @@
 # und die eingedampften Replays. Beides sind Daten fremder Spieler; ein oeffentliches
 # Repo soll sie nicht tragen, auch nicht verschluesselt.
 #
-# Die Bestenliste ist die Ausnahme: sie kann nur der Spielclient anfragen, kommt also
-# von Hand herein und liegt verschluesselt im Repo.
+# Die Bestenliste holt seit dem 02.09.2026 der eigene Laeufer ueber das Spielprotokoll,
+# hier im Lauf. Kein Spielclient, kein Heimserver. Sie liegt verschluesselt im Repo,
+# weil sie zugleich der Ausgangsbestand des naechsten Laufs ist.
 # Faellt der Zwischenspeicher aus, holt der naechste Lauf alles neu. Das heilt sich also
 # selbst, es dauert nur laenger.
 #
@@ -30,7 +31,9 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # Schreiben, weil der Lauf die frische Bestenliste zurueck ins Repo legt.
+  # Pushes mit dem GITHUB_TOKEN loesen keinen neuen Lauf aus, also keine Schleife.
+  contents: write
   pages: write
   id-token: write
 
@@ -81,8 +84,43 @@ jobs:
           key: replays-${{ github.run_id }}
           restore-keys: replays-
 
-      # Die Bestenliste liegt nur verschluesselt im Repo, deshalb braucht auch dieser
-      # Schritt das Seitenpasswort: er liest die user_ids daraus.
+      # Die Bestenliste holt der eigene Laeufer ueber das Spielprotokoll. Er meldet
+      # dabei zuerst seinen eigenen Knoten an; ohne das beantwortet der Server die
+      # Anfrage nicht (siehe specs/features/bestenliste.md).
+      #
+      # Muss VOR den Spielerdaten laufen: die lesen die user_ids aus dieser Datei.
+      # Schlaegt er fehl, bleibt der alte Stand im Repo stehen und der Lauf geht
+      # weiter, statt die ganze Seite zu kosten.
+      - name: Bestenliste holen
+        env:
+          OPBOUNTY_WERKZEUGE: ${{ github.workspace }}/werkzeuge
+          OPBOUNTY_USER: ${{ secrets.OPBOUNTY_USER }}
+          OPBOUNTY_PASS: ${{ secrets.OPBOUNTY_PASS }}
+          OPBOUNTY_ID: ${{ secrets.OPBOUNTY_ID }}
+          SEITEN_PASSWORT: ${{ secrets.SEITEN_PASSWORT }}
+        run: python3 bestenliste_einbauen.py
+        continue-on-error: true
+
+      # Nur die verschluesselte Fassung geht ins Repo. Sie ist der Ausgangsbestand des
+      # naechsten Laufs: Spieler, die aus den Top 100 fallen, bleiben so mit ihrem
+      # alten Stand erhalten, statt aus der Liste zu verschwinden.
+      - name: Frische Bestenliste zurueck ins Repo
+        run: |
+          git add -f public/bestenliste.json.gz.enc
+          if git diff --cached --quiet; then
+            echo "  unveraendert, nichts zu committen"
+          else
+            git -c user.name="ladder" \
+                -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+                commit -q -m "Bestenliste vom $(date +%F)"
+            git push -q origin HEAD:main
+            echo "  neuer Stand gepusht"
+          fi
+        continue-on-error: true
+
+      # Die Spielerdaten lesen die user_ids aus der eben geholten Bestenliste. Die
+      # liegt nur verschluesselt vor, deshalb braucht auch dieser Schritt das
+      # Seitenpasswort.
       - name: Spielerdaten holen
         env:
           OPBOUNTY_API_KEY: ${{ secrets.OPBOUNTY_API_KEY }}
