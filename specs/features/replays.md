@@ -63,3 +63,4 @@ Kandidaten dahinter sind nachweislich fremde Partien.
 
 Die Siegerbestimmung folgt jetzt `_winner_player_index` aus dem Spielcode, inklusive
 "dc" und "selfdc" als Niederlage und "kein Sieger" als eigenem Fall.
+
