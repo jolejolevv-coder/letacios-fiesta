@@ -2025,12 +2025,7 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen }) {
         ))}
       </div>
 
-      <h2 className="mt-5 text-base font-semibold">
-        Recent games
-        <span className="ml-2 text-xs font-normal" style={{ color: "var(--still)" }}>
-          the profile keeps the last nine, nothing older exists
-        </span>
-      </h2>
+      <h2 className="mt-5 text-base font-semibold">Recent games</h2>
       {partien.length ? (
         <div className="grid gap-2">
           {partien.map((p, i) => (
