@@ -5,11 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Letacios Fiesta</title>
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+
+    <!-- Die Seite ist durchgehend dunkel. Beides gehoert in den Kopf und nicht nur in
+         die CSS: die wird erst nachgeladen, und bis dahin malt der Browser ein weisses
+         Blatt. Am Handy ist dieses Aufblitzen deutlich zu sehen. -->
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#000000" />
+    <style>
+      html, body { background: #000; margin: 0; }
+    </style>
+
+    <!-- Vom Startbildschirm aus soll sie wie eine App aufgehen, ohne Browserleiste. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Fiesta" />
     <meta name="description" content="One Piece TCG ladder statistics from OPBounty: decklists, matchups and the first/second split, filterable by day." />
     <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2040%22%3E%3Crect%20width%3D%2264%22%20height%3D%2240%22%20fill%3D%22%2314100e%22%2F%3E%3Cpath%20d%3D%22M2%2027%20Q32%2037%2062%2027%20Q32%2041%202%2027%20Z%22%20fill%3D%22%23000%22%20opacity%3D%22.3%22%2F%3E%3Cellipse%20cx%3D%2232%22%20cy%3D%2226.5%22%20rx%3D%2230%22%20ry%3D%229%22%20fill%3D%22%23e8a33d%22%2F%3E%3Cpath%20d%3D%22M21%2026.5%20C21%2010%2026%204.5%2032%204.5%20C38%204.5%2043%2010%2043%2026.5%20Z%22%20fill%3D%22%23e8a33d%22%2F%3E%3Cpath%20d%3D%22M21.4%2020.5%20Q32%2024.4%2042.6%2020.5%20L42.6%2024.4%20Q32%2028.3%2021.4%2024.4%20Z%22%20fill%3D%22%2314100e%22%20opacity%3D%22.45%22%2F%3E%3C%2Fsvg%3E" />
   </head>
   <body>
     <div id="wurzel"></div>
+    <noscript>
+      Diese Seite braucht JavaScript: die Daten liegen verschluesselt und werden erst
+      im Browser entschluesselt.
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

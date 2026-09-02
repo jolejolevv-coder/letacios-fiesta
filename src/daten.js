@@ -105,13 +105,23 @@ export async function anmelden(passwort) {
   return true;
 }
 
+// Dateien, deren Inhalt sich unter demselben Namen nie mehr aendert: ein Replay,
+// ein Tagesausschnitt, ein fertiger Satz. Sie tragen Datum oder Partie im Namen.
+// Alles andere wird taeglich neu geschrieben und behaelt seinen Namen.
+const UNVERAENDERLICH = /^(replays|tage|saetze)\//;
+
 /** Holt eine .json.gz Datei und entpackt sie. Ergebnisse bleiben im Speicher. */
 export async function holen(datei) {
   if (zwischenspeicher.has(datei)) return zwischenspeicher.get(datei);
   const versprechen = (async () => {
     const verschluesselt = sitzungsSchluessel !== null;
+    // GitHub Pages liefert `max-age=600` fuer alles. Mit "no-cache" fragt der Browser
+    // trotzdem bei jedem Abruf beim Server nach. Fuer die taeglich neu geschriebenen
+    // Dateien ist das richtig, sonst saehe man bis zu zehn Minuten alte Zahlen. Fuer
+    // die unveraenderlichen ist es verschenkt: ein Tagesausschnitt wiegt bis zu 400 KB
+    // und wurde bisher bei jedem Wechsel des Zeitraums neu geholt.
     const antwort = await fetch(basis() + datei + (verschluesselt ? ".enc" : ""), {
-      cache: "no-cache",
+      cache: UNVERAENDERLICH.test(datei) ? "default" : "no-cache",
     });
     if (!antwort.ok) throw new Error(datei + ": HTTP " + antwort.status);
     let puffer = await antwort.arrayBuffer();
