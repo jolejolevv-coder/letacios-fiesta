@@ -28,6 +28,13 @@ on:
     - cron: "20 6 * * *"
   push:
     branches: [main]
+    # Ein Doku-Commit soll keinen kompletten Neubau ausloesen: der holt alle Daten,
+    # baut und veroeffentlicht, und aendert an der Seite nichts.
+    paths-ignore:
+      - "**/*.md"
+      - "specs/**"
+      - "docs/**"
+      - ".gitignore"
   workflow_dispatch:
 
 permissions:
