@@ -134,8 +134,17 @@ zustand() {
     fi
     return
   fi
-  # kleines Fenster: Login (Hoehe ~421) oder Menue (~623)
-  if [ "${HEIGHT:-0}" -ge 500 ]; then ZUSTAND=menu; else ZUSTAND=login; fi
+  # Kleines Fenster: nur die EXAKTEN Groessen als Login bzw. Menue anerkennen. Zwischen-
+  # und Ladezustaende (z.B. ein 500x500-Splash direkt nach dem Start) werden bewusst als
+  # "loading" behandelt und abgewartet, NICHT geklickt. Ein Klick auf der falschen Groesse
+  # landet sonst irgendwo, im schlimmsten Fall auf "Play Standard" und reiht ein Match ein.
+  if [ "${WIDTH:-0}" -le 320 ] && [ "${HEIGHT:-0}" -ge 560 ] && [ "${HEIGHT:-0}" -le 700 ]; then
+    ZUSTAND=menu
+  elif [ "${WIDTH:-0}" -le 320 ] && [ "${HEIGHT:-0}" -ge 360 ] && [ "${HEIGHT:-0}" -le 480 ]; then
+    ZUSTAND=login
+  else
+    ZUSTAND=loading
+  fi
 }
 
 # Warten, bis das Menue seine endgueltige Anordnung zeigt. Direkt nach dem Schliessen
@@ -156,37 +165,67 @@ menue_gesetzt() {
   return 1
 }
 
+# Anmelden. Vorbedingung: das kleine Login-Fenster steht (225x421).
+#
+# Zwei feste Regeln, beide aus Schaden gelernt:
+#   * Nur MAXIMIERT anmelden. Klein rendert die Maske versetzt und Eingaben verpuffen.
+#   * Abgeschickt wird per ENTER, nie per Mausklick. Direkt unter "Anmelden" liegen
+#     "Login with Discord" und "Link Patreon Account"; ein danebengehender Klick oeffnet
+#     einen OAuth-Fluss im Browser. Enter kann das nicht.
+# In sich geschlossen, damit die Hauptschleife nicht in den maximierten Login (der sich
+# als "unknown" liest) zurueckfaellt.
+anmelden() {
+  local i
+  wmctrl -i -r "$WID" -b add,maximized_vert,maximized_horz 2>/dev/null
+  for i in $(seq 8); do
+    eval "$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null)"
+    [ "${WIDTH:-0}" -ge 1600 ] && break
+    sleep 1
+  done
+  [ "${WIDTH:-0}" -ge 1600 ] || { sagen "Login liess sich nicht maximieren"; return 1; }
+  sleep 2                                   # Maske voll rendern lassen
+  xdotool windowactivate --sync "$WID" 2>/dev/null
+  xdotool key --window "$WID" Return        # sendet das Formular ab
+  sagen "Anmeldung abgeschickt, warte auf das Menue"
+  for i in $(seq 15); do
+    eval "$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null)"
+    [ "${WIDTH:-0}" -lt 1600 ] && return 0  # wieder klein = angemeldet, im Menue
+    sleep 2
+  done
+  return 1                                   # blieb gross: Anmeldung nicht durch
+}
+
 navigieren() {
   [ -z "$(fenster_id)" ] && { spiel_starten || return 1; }
   local versuch unbekannt=0 z
-  for versuch in $(seq 14); do
+  for versuch in $(seq 16); do
     zustand; z="$ZUSTAND"
     sagen "Zustand: $z (${WIDTH:-?}x${HEIGHT:-?})"
     case "$z" in
       leaderboard)
         return 0 ;;
       login)
-        # Maximieren, damit die Maske gross und deckungsgleich rendert; klein rendert
-        # sie versetzt und Klicks gehen daneben.
-        wmctrl -i -r "$WID" -b add,maximized_vert,maximized_horz 2>/dev/null
-        sleep 2
-        eval "$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null)"
-        [ "${WIDTH:-0}" -lt 1600 ] && { sleep 2; continue; }
-        xdotool windowactivate --sync "$WID" 2>/dev/null
-        # "Anmelden" sitzt im maximierten Fenster bei etwa (0.031, 0.291).
-        klick_abs "$(( X + WIDTH * 31 / 1000 ))" "$(( Y + HEIGHT * 291 / 1000 ))"
-        sleep 6 ;;
+        anmelden || { unbekannt=$(( unbekannt + 1 ))
+          [ "$unbekannt" -ge 3 ] && { echo "Anmeldung mehrfach gescheitert, gebe auf." >&2; return 1; }
+          sleep 2; } ;;
       menu)
         xdotool windowactivate --sync "$WID" 2>/dev/null
-        menue_gesetzt || sagen "Menue-Layout nicht sicher erkannt, klicke trotzdem"
-        # "Bestenlisten" ist der obere linke Knopf, bei etwa (0.244, 0.81).
+        menue_gesetzt || { sagen "Menue-Layout unklar, warte statt blind zu klicken"; sleep 2; continue; }
+        # "Bestenlisten" ist der obere linke Knopf, bei etwa (0.244, 0.81). Nur bei
+        # sauberer Menuegroesse (durch zustand geprueft) sitzt der Klick sicher; "Play
+        # Standard" liegt 66px tiefer und wuerde ein Match einreihen.
         klick_abs "$(( X + WIDTH * 244 / 1000 ))" "$(( Y + HEIGHT * 810 / 1000 ))"
         sleep 4 ;;
       absent)
         spiel_starten || return 1 ;;
+      loading)
+        # Splash oder Uebergang. Abwarten, niemals hier klicken.
+        unbekannt=$(( unbekannt + 1 ))
+        [ "$unbekannt" -ge 8 ] && { echo "Bleibt im Ladezustand, gebe auf." >&2; return 1; }
+        sleep 3 ;;
       unknown|*)
-        # Kann ein kurzer Ladezustand beim Oeffnen der Liste sein. Ein paarmal
-        # abwarten, erst dann aufgeben.
+        # Grosser Bildschirm, aber nicht die Bestenliste (z.B. eine laufende Partie).
+        # Nicht klicken, ein paarmal abwarten, dann aufgeben.
         unbekannt=$(( unbekannt + 1 ))
         [ "$unbekannt" -ge 4 ] && { echo "Unbekannter Bildschirm, gebe auf." >&2; return 1; }
         sleep 3 ;;
