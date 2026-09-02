@@ -80,10 +80,36 @@ def woche(zeitstempel):
     return f"{tag.year}-W{w:02d}"
 
 
+# Was im Spiel als Niederlage zaehlt. Aus `_is_loss_status` im Spielcode: neben
+# "loss" auch die beiden Trennungsarten.
+NIEDERLAGE = ("loss", "dc", "selfdc")
+
+
+def sieger_seite(zeile):
+    """1 oder 2, oder None wenn es keinen eindeutigen Sieger gibt.
+
+    Nachgebaut aus `_winner_player_index` im Spielcode. Wichtig ist der Fall, dass
+    BEIDE Seiten kein "win" tragen, etwa "selfdc" gegen "selfdc": dann gibt es keinen
+    Sieger, das Spiel bildet gar keinen Pfad und laedt auch nichts hoch. Wer hier
+    stumpf "nicht gewonnen heisst verloren" rechnet, baut einen Pfad auf eine Datei,
+    die es nie geben wird.
+    """
+    s1 = str(zeile[P_STATUS1]).lower()
+    s2 = str(zeile[P_STATUS2]).lower()
+    if s1 == "win" and s2 in NIEDERLAGE:
+        return 1
+    if s2 == "win" and s1 in NIEDERLAGE:
+        return 2
+    return None
+
+
 def replaypfad(zeile):
     """Den Storagepfad einer Partie bilden, oder None wenn Angaben fehlen."""
     try:
-        gewonnen = str(zeile[P_STATUS1]).lower() == "win"
+        seite = sieger_seite(zeile)
+        if seite is None:
+            return None
+        gewonnen = seite == 1
         sieger = leader_kennung((zeile[P_DECK1] or [None])[0] if gewonnen
                                else (zeile[P_DECK2] or [None])[0])
         verlierer = leader_kennung((zeile[P_DECK2] or [None])[0] if gewonnen
