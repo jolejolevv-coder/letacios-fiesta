@@ -115,23 +115,27 @@ spiel_starten() {
 #   menu         klein und hoch (Hauptmenue mit WANTED-Poster)
 #   login        klein und niedrig (Anmeldemaske)
 #   unknown      gross ohne Bestenliste (z.B. laufende Partie) oder unklar
+# Setzt die globalen WID,X,Y,WIDTH,HEIGHT und ZUSTAND. NICHT ueber $(...) aufrufen:
+# das liefe in einer Subshell und die Zuweisungen verpufften. Also `zustand; z=$ZUSTAND`.
 zustand() {
+  local r g b
   WID="$(fenster_id)"
-  [ -z "$WID" ] && { echo absent; return; }
+  X=""; Y=""; WIDTH=""; HEIGHT=""
+  if [ -z "$WID" ]; then ZUSTAND=absent; return; fi
   eval "$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null)"
   import -window root "$SCHIRM" 2>/dev/null
   if [ "${WIDTH:-0}" -ge 1600 ]; then
     # "Next Page" ist im Standardlayout blau. Gemessen: srgb(31,64,104).
     read -r r g b <<<"$(rgb "$SCHIRM" 1808 918)"
     if [ "${b:-0}" -ge 90 ] && [ "${b:-0}" -gt $(( ${r:-0} + 30 )) ]; then
-      echo leaderboard
+      ZUSTAND=leaderboard
     else
-      echo unknown
+      ZUSTAND=unknown
     fi
     return
   fi
   # kleines Fenster: Login (Hoehe ~421) oder Menue (~623)
-  if [ "${HEIGHT:-0}" -ge 500 ]; then echo menu; else echo login; fi
+  if [ "${HEIGHT:-0}" -ge 500 ]; then ZUSTAND=menu; else ZUSTAND=login; fi
 }
 
 # Warten, bis das Menue seine endgueltige Anordnung zeigt. Direkt nach dem Schliessen
@@ -156,7 +160,7 @@ navigieren() {
   [ -z "$(fenster_id)" ] && { spiel_starten || return 1; }
   local versuch unbekannt=0 z
   for versuch in $(seq 14); do
-    z="$(zustand)"
+    zustand; z="$ZUSTAND"
     sagen "Zustand: $z (${WIDTH:-?}x${HEIGHT:-?})"
     case "$z" in
       leaderboard)
