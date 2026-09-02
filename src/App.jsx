@@ -2005,21 +2005,21 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen }) {
       </section>
 
       <h2 className="mt-5 text-base font-semibold">Leaders played</h2>
+      {/* Getrennt wird ueber Abstand, nicht ueber Trennzeichen, und ohne Balken.
+          Bricht die Zeile am Handy um, bleibt jede der drei Angaben fuer sich lesbar. */}
       <div className="grid gap-2">
         {(eintrag.leader || []).map((l) => (
-          <div key={l.leader} className="grid grid-cols-[34px_minmax(0,1fr)_auto] items-center gap-3">
+          <div key={l.leader} className="grid grid-cols-[34px_minmax(0,1fr)] items-center gap-3">
             <Bild id={l.leader} breite={120} hoehe={168}
                   className="h-[46px] w-[34px] rounded-[3px] object-cover" />
             <span className="min-w-0">
               <LeaderName id={l.leader} namen={namen} klein />
-              <span className="zahl block text-xs" style={{ color: "var(--still)" }}>
-                {l.siege}&ndash;{l.niederlagen} in {l.partien} games
-                {" · "}first {proz(l.erst_siege, l.erst_siege + l.erst_niederlagen).toFixed(1)} %
-                {" · "}second {proz(l.zweit_siege, l.zweit_siege + l.zweit_niederlagen).toFixed(1)} %
+              <span className="zahl flex flex-wrap gap-x-5 text-xs"
+                    style={{ color: "var(--still)" }}>
+                <span>{l.siege}&ndash;{l.niederlagen} in {l.partien} games</span>
+                <span>first {proz(l.erst_siege, l.erst_siege + l.erst_niederlagen).toFixed(1)} %</span>
+                <span>second {proz(l.zweit_siege, l.zweit_siege + l.zweit_niederlagen).toFixed(1)} %</span>
               </span>
-            </span>
-            <span className="w-32 shrink-0">
-              <Balken w={l.siege} g={l.partien} schmal />
             </span>
           </div>
         ))}
