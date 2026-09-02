@@ -1,0 +1,13 @@
+[Unit]
+Description=OPBounty Bestenliste taeglich abgreifen
+
+[Timer]
+# 08:00 Ortszeit. Die Action laeuft 06:20 UTC und zusaetzlich bei jedem Push; der
+# Push von hier loest den Deploy also ohnehin direkt aus. Persistent=true holt einen
+# verpassten Lauf nach, falls der Server zur Uhrzeit aus war.
+OnCalendar=*-*-* 08:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

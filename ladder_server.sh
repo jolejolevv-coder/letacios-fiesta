@@ -18,8 +18,33 @@ set -uo pipefail
 
 HIER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASIS="$(dirname "$HIER")"
-export DISPLAY="${DISPLAY:-:0}"
 export OPBOUNTY_WERKZEUGE="${OPBOUNTY_WERKZEUGE:-$BASIS/werkzeuge}"
+
+# DISPLAY und XAUTHORITY aus der laufenden Grafiksitzung ziehen. Der systemd-Timer
+# startet ohne diese Umgebung, und der XAUTHORITY-Pfad ist bei jeder Anmeldung neu
+# (`/run/user/1000/xauth_...`). Fest verdrahtet braeche er nach jedem Reboot. Deshalb
+# aus dem Prozessumfeld eines langlebigen Sitzungsprozesses lesen.
+sitzungsumfeld() {
+  local pid
+  for muster in "plasmashell" "plasma_session" "OPBounty"; do
+    pid="$(pgrep -u "$(id -u)" -x "$muster" 2>/dev/null | head -1)"
+    [ -z "$pid" ] && pid="$(pgrep -u "$(id -u)" -f "$muster" 2>/dev/null | head -1)"
+    [ -n "$pid" ] && [ -r "/proc/$pid/environ" ] || continue
+    local d x
+    d="$(tr "\0" "\n" < "/proc/$pid/environ" | sed -n "s/^DISPLAY=//p" | head -1)"
+    x="$(tr "\0" "\n" < "/proc/$pid/environ" | sed -n "s/^XAUTHORITY=//p" | head -1)"
+    if [ -n "$d" ]; then
+      export DISPLAY="$d"
+      [ -n "$x" ] && export XAUTHORITY="$x"
+      return 0
+    fi
+  done
+  return 1
+}
+if [ -z "${DISPLAY:-}" ] || ! xdotool getdisplaygeometry >/dev/null 2>&1; then
+  sitzungsumfeld || true
+fi
+export DISPLAY="${DISPLAY:-:0}"
 
 PORT=4694
 FENSTER='^OPBounty$'

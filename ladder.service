@@ -1,0 +1,15 @@
+[Unit]
+Description=OPBounty Bestenliste abgreifen und ins Repo pushen
+Documentation=file:%h/opbounty-ladder/seite/ladder_server.sh
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+# Erst das Repo auf den letzten Stand bringen, dann abgreifen. Der pull holt auch
+# aenderungen am Skript selbst, sodass eine Korrektur vom Mac am naechsten Tag greift.
+WorkingDirectory=%h/opbounty-ladder/seite
+ExecStartPre=/usr/bin/git pull --quiet --ff-only
+ExecStart=/usr/bin/bash %h/opbounty-ladder/seite/ladder_server.sh
+# DISPLAY/XAUTHORITY holt sich das Skript selbst aus der Plasma-Sitzung.
+TimeoutStartSec=300
+Nice=10
