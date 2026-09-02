@@ -64,21 +64,139 @@ sagen() { printf '  %s\n' "$*"; }
 ende() { rm -f "$PCAP"; }
 trap ende EXIT
 
-# --- Fenster finden ---------------------------------------------------------
-WID="$(xdotool search --name "$FENSTER" 2>/dev/null | head -1)"
-if [ -z "$WID" ]; then
-  echo "Kein Fenster '$FENSTER'. Das Spiel muss laufen und angemeldet sein." >&2
-  exit 1
-fi
-eval "$(xdotool getwindowgeometry --shell "$WID")"   # X Y WIDTH HEIGHT
-sagen "Fenster $WID, ${WIDTH}x${HEIGHT} an ${X},${Y}"
+# --- Zur Bestenliste navigieren --------------------------------------------
+# Das Spiel wird vom Loginscreen aus bis zur offenen Bestenliste durchgeklickt, egal
+# in welchem der bekannten Zustaende es steht. Jeder Bildschirm wird am Screenshot
+# erkannt, danach genau ein Schritt gemacht und neu geprueft. Bei einem unbekannten
+# Bild (z.B. eine laufende Partie) wird abgebrochen statt blind geklickt.
+#
+# Startbefehl aus dem laufenden Prozess abgelesen; --main-pack zeigt auf das Paket im
+# Nutzerprofil, nicht das neben der Binaerdatei.
+SPIEL_BIN="$HOME/Downloads/Builds_Linux/OPTCGSim_Data/StreamingAssets/OPBounty/linux/OPBounty.x86_64"
+SPIEL_PCK="$HOME/.local/share/godot/app_userdata/OPBounty/OPBounty.pck"
+SCHIRM=/tmp/ladder-schirm.png
 
-klick() {   # klick <anteil_x> <anteil_y>
+klick() {   # klick <anteil_x> <anteil_y>   (nutzt X,Y,WIDTH,HEIGHT der Bestenliste)
   local px py
   px=$(awk -v a="$X" -v b="$WIDTH" -v f="$1" 'BEGIN{printf "%d", a + b*f}')
   py=$(awk -v a="$Y" -v b="$HEIGHT" -v f="$2" 'BEGIN{printf "%d", a + b*f}')
   xdotool mousemove "$px" "$py" click 1
 }
+
+klick_abs() {   # klick_abs <x> <y>   absolute Bildpunkte, mit kurzem Halten
+  xdotool mousemove "$1" "$2"; sleep 0.3
+  xdotool mousedown 1; sleep 0.12; xdotool mouseup 1
+}
+
+fenster_id() { xdotool search --name "$FENSTER" 2>/dev/null | head -1; }
+
+rgb() {   # rgb <bild> <x> <y>  ->  "R G B" (0..255)
+  magick "$1" -format \
+    "%[fx:int(p{$2,$3}.r*255)] %[fx:int(p{$2,$3}.g*255)] %[fx:int(p{$2,$3}.b*255)]" \
+    info: 2>/dev/null
+}
+
+spiel_starten() {
+  if [ ! -x "$SPIEL_BIN" ]; then
+    echo "Spiel nicht gefunden: $SPIEL_BIN" >&2
+    return 1
+  fi
+  sagen "starte das Spiel"
+  setsid nohup "$SPIEL_BIN" --main-pack "$SPIEL_PCK" >/tmp/opbounty.log 2>&1 </dev/null &
+  local _
+  for _ in $(seq 45); do [ -n "$(fenster_id)" ] && break; sleep 1; done
+  sleep 6   # Loginmaske laden lassen
+  [ -n "$(fenster_id)" ]
+}
+
+# Zustand erkennen. Setzt WID,X,Y,WIDTH,HEIGHT und gibt einen Namen aus.
+#   absent       kein Fenster
+#   leaderboard  gross, blauer "Next Page"-Knopf unten rechts
+#   menu         klein und hoch (Hauptmenue mit WANTED-Poster)
+#   login        klein und niedrig (Anmeldemaske)
+#   unknown      gross ohne Bestenliste (z.B. laufende Partie) oder unklar
+zustand() {
+  WID="$(fenster_id)"
+  [ -z "$WID" ] && { echo absent; return; }
+  eval "$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null)"
+  import -window root "$SCHIRM" 2>/dev/null
+  if [ "${WIDTH:-0}" -ge 1600 ]; then
+    # "Next Page" ist im Standardlayout blau. Gemessen: srgb(31,64,104).
+    read -r r g b <<<"$(rgb "$SCHIRM" 1808 918)"
+    if [ "${b:-0}" -ge 90 ] && [ "${b:-0}" -gt $(( ${r:-0} + 30 )) ]; then
+      echo leaderboard
+    else
+      echo unknown
+    fi
+    return
+  fi
+  # kleines Fenster: Login (Hoehe ~421) oder Menue (~623)
+  if [ "${HEIGHT:-0}" -ge 500 ]; then echo menu; else echo login; fi
+}
+
+# Warten, bis das Menue seine endgueltige Anordnung zeigt. Direkt nach dem Schliessen
+# der Bestenliste ist das Poster kurz eingeklappt und die Knoepfe sitzen woanders. Das
+# creme WANTED-Poster (gemessen srgb(245,228,204)) an seiner festen Stelle ist das
+# Signal, dass das Layout steht.
+menue_gesetzt() {
+  local i px py r g b
+  px=$(( X + WIDTH * 489 / 1000 )); py=$(( Y + HEIGHT * 437 / 1000 ))
+  for i in $(seq 10); do
+    import -window root "$SCHIRM" 2>/dev/null
+    read -r r g b <<<"$(rgb "$SCHIRM" "$px" "$py")"
+    if [ "${r:-0}" -ge 210 ] && [ "${g:-0}" -ge 185 ] && [ "${b:-0}" -ge 150 ]; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+navigieren() {
+  [ -z "$(fenster_id)" ] && { spiel_starten || return 1; }
+  local versuch unbekannt=0 z
+  for versuch in $(seq 14); do
+    z="$(zustand)"
+    sagen "Zustand: $z (${WIDTH:-?}x${HEIGHT:-?})"
+    case "$z" in
+      leaderboard)
+        return 0 ;;
+      login)
+        # Maximieren, damit die Maske gross und deckungsgleich rendert; klein rendert
+        # sie versetzt und Klicks gehen daneben.
+        wmctrl -i -r "$WID" -b add,maximized_vert,maximized_horz 2>/dev/null
+        sleep 2
+        eval "$(xdotool getwindowgeometry --shell "$WID" 2>/dev/null)"
+        [ "${WIDTH:-0}" -lt 1600 ] && { sleep 2; continue; }
+        xdotool windowactivate --sync "$WID" 2>/dev/null
+        # "Anmelden" sitzt im maximierten Fenster bei etwa (0.031, 0.291).
+        klick_abs "$(( X + WIDTH * 31 / 1000 ))" "$(( Y + HEIGHT * 291 / 1000 ))"
+        sleep 6 ;;
+      menu)
+        xdotool windowactivate --sync "$WID" 2>/dev/null
+        menue_gesetzt || sagen "Menue-Layout nicht sicher erkannt, klicke trotzdem"
+        # "Bestenlisten" ist der obere linke Knopf, bei etwa (0.244, 0.81).
+        klick_abs "$(( X + WIDTH * 244 / 1000 ))" "$(( Y + HEIGHT * 810 / 1000 ))"
+        sleep 4 ;;
+      absent)
+        spiel_starten || return 1 ;;
+      unknown|*)
+        # Kann ein kurzer Ladezustand beim Oeffnen der Liste sein. Ein paarmal
+        # abwarten, erst dann aufgeben.
+        unbekannt=$(( unbekannt + 1 ))
+        [ "$unbekannt" -ge 4 ] && { echo "Unbekannter Bildschirm, gebe auf." >&2; return 1; }
+        sleep 3 ;;
+    esac
+  done
+  return 1
+}
+
+if ! navigieren; then
+  echo "Konnte die Bestenliste nicht oeffnen. Der alte Stand bleibt erhalten." >&2
+  exit 1
+fi
+eval "$(xdotool getwindowgeometry --shell "$WID")"   # X Y WIDTH HEIGHT der Liste
+sagen "Bestenliste offen, Fenster ${WIDTH}x${HEIGHT} an ${X},${Y}"
 
 # --- Mitschnitt starten -----------------------------------------------------
 # tcpdump darf ohne Passwort laufen, dafuer steht eine eigene sudoers-Zeile.
