@@ -1,7 +1,8 @@
 [Unit]
 Description=OPBounty Bestenliste abgreifen und ins Repo pushen
 Documentation=file:%h/opbounty-ladder/seite/ladder_server.sh
-After=graphical-session.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=oneshot
@@ -10,6 +11,7 @@ Type=oneshot
 WorkingDirectory=%h/opbounty-ladder/seite
 ExecStartPre=/usr/bin/git pull --quiet --ff-only
 ExecStart=/usr/bin/bash %h/opbounty-ladder/seite/ladder_server.sh
-# DISPLAY/XAUTHORITY holt sich das Skript selbst aus der Plasma-Sitzung.
+# Braucht weder X-Server noch laufendes Spiel: der Laeufer spricht das
+# Spielprotokoll selbst.
 TimeoutStartSec=300
 Nice=10

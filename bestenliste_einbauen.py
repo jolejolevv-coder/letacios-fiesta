@@ -71,9 +71,40 @@ def alt_laden():
         return {}
 
 
+def vom_laeufer(seiten=5):
+    """Die Liste selbst holen, ohne Spielclient und ohne Mitschnitt.
+
+    Seit dem 02.09.2026 funktioniert der eigene Laeufer: er meldet vor der Anmeldung
+    seinen eigenen Knoten an (`pfad_anmelden`), und damit beantwortet der Server die
+    Bestenlistenanfrage. Das ist der bevorzugte Weg; der Mitschnittweg bleibt als
+    Rueckfall bestehen.
+    """
+    if not os.path.isdir(WERKZEUGE):
+        raise SystemExit(f"Werkzeuge nicht gefunden: {WERKZEUGE}")
+    sys.path.insert(0, WERKZEUGE)
+    from bestenliste_holen import holen
+    from bestenliste_lesen import zeile_bauen, SPALTEN
+
+    eintraege, gesehen = [], set()
+    for seite in holen(seiten=seiten, laut=False):
+        for feld in seite:
+            if not isinstance(feld, list) or len(feld) < len(SPALTEN):
+                continue
+            e = zeile_bauen(feld)
+            if not e.get("login") or e["login"] in gesehen:
+                continue
+            gesehen.add(e["login"])
+            if e.get("bounty") is not None:
+                e["bounty"] = round(e["bounty"], 1)
+            eintraege.append(e)
+    eintraege.sort(key=lambda e: e.get("rang") or 10 ** 9)
+    return eintraege
+
+
 def main():
     p = argparse.ArgumentParser(description="Bestenliste in die Seite legen")
-    p.add_argument("mitschnitt")
+    p.add_argument("mitschnitt", nargs="?",
+                   help="pcap; ohne Angabe holt der Laeufer die Liste selbst")
     p.add_argument("--stand", help="Datum der Aufnahme, sonst heute")
     p.add_argument("--ersetzen", action="store_true",
                    help="alten Bestand verwerfen statt fortschreiben")
@@ -86,9 +117,14 @@ def main():
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
     stand = a.stand or datetime.date.today().isoformat()
-    neu = aus_mitschnitt(a.mitschnitt)
+    if a.mitschnitt:
+        neu = aus_mitschnitt(a.mitschnitt)
+        quelle = "Mitschnitt"
+    else:
+        neu = vom_laeufer()
+        quelle = "Laeufer"
     if not neu:
-        raise SystemExit("keine Bestenliste im Mitschnitt gefunden")
+        raise SystemExit(f"keine Bestenliste ueber den {quelle} bekommen")
 
     bestand = {} if a.ersetzen else alt_laden()
     for e in neu:
@@ -104,7 +140,7 @@ def main():
     with gzip.open(ZIEL, "wb", compresslevel=9) as datei:
         datei.write(roh)
 
-    print(f"  {len(neu)} Spieler aus dem Mitschnitt, {len(spieler)} im Bestand, "
+    print(f"  {len(neu)} Spieler vom {quelle}, {len(spieler)} im Bestand, "
           f"{frisch} davon von heute")
     print(f"  {len(roh) // 1024} KB roh, "
           f"{os.path.getsize(ZIEL) // 1024} KB gepackt -> {ZIEL}")
