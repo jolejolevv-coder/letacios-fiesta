@@ -68,22 +68,28 @@ Spielzeit und die Leaderaufstellung mit Sitzsplit; letztere zeigt der Spielclien
 nicht.
 
 Diese Daten kommen **nicht** vom CDN. Die Rangfolge rechnet der Spielserver und schickt
-sie ueber das Spielprotokoll, sie liegt in keiner Datenbank. Ein eigener Laeufer wurde
-gebaut und scheitert an einer Stelle, die in `specs/features/bestenliste.md` mit allen
-ausgeschlossenen Ursachen dokumentiert ist. Der Weg ist deshalb ein Mitschnitt:
+sie ueber das Spielprotokoll, sie liegt in keiner Datenbank. Seit dem 02.09.2026 holt sie
+ein **eigener Laeufer**, der das Spielprotokoll selbst spricht:
 
 ```bash
-sudo tcpdump -i any -n -s 0 -w ~/Downloads/bestenliste.pcap 'udp port 4694'
-# Spiel oeffnen, Bestenliste, fuenfmal "Next Page", dann Strg+C
-python3 bestenliste_einbauen.py ~/Downloads/bestenliste.pcap
+python3 bestenliste_einbauen.py            # holt fuenf Seiten ueber den Laeufer
+python3 bestenliste_einbauen.py auf.pcap   # Rueckfall: aus einem Mitschnitt lesen
 ```
 
+Der Laeufer meldet dabei **zuerst seinen eigenen Knoten** beim Server an
+(`werkzeuge/enet_paket.pfad_anmelden`). Genau daran hing es monatelang: ohne diesen
+Aufruf nimmt der Server die Anfrage an und bestaetigt sie sogar, kann die Antwort danach
+aber niemandem zustellen. Die ganze Fehlersuche steht in
+`specs/features/bestenliste.md`.
+
 Das Skript schreibt `public/bestenliste.json.gz` und **schreibt den Bestand fort**: wer in
-einer neuen Aufnahme fehlt, bleibt mit seinem alten Stand und seinem Datum stehen. Die
+einem neuen Lauf fehlt, bleibt mit seinem alten Stand und seinem Datum stehen. Die
 Discord-Kennungen, die der Server ungefragt mitschickt, werden dabei verworfen.
 
-Der Mitschnitt enthaelt das Spielpasswort im Klartext, wenn er die Anmeldung erfasst.
-Also nicht aufbewahren und nirgends synchronisieren.
+Der Laeufer laeuft im taeglichen Lauf auf GitHub mit; ein Spielclient, ein Mitschnitt oder
+ein Heimserver werden nicht mehr gebraucht. Die Pruefsumme in `pfad_anmelden` haengt an der
+Spielversion. Aendert das Spiel sich, bleibt die Antwort aus, der Schritt meldet das und
+der alte Stand bleibt stehen.
 
 ## Veroeffentlichen
 

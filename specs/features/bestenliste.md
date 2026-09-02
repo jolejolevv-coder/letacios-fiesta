@@ -125,8 +125,19 @@ kann sie neu bestimmt werden muessen; das bricht laut, naemlich als ausbleibende
 Antwort.
 
 **Folge fuer den Betrieb:** der Mitschnittweg mit Spielclient, xdotool und tcpdump ist
-nicht mehr noetig und wurde aus `ladder_server.sh` entfernt. Der taegliche Lauf
-braucht weder X-Server noch laufendes Spiel.
+nicht mehr noetig. Seit dem 02.09.2026 laeuft der Laeufer **im taeglichen Lauf auf
+GitHub**, im selben Durchgang und vor den Spielerdaten, die seine user_ids brauchen.
+Der Heimserver ist damit ganz raus, sein Timer ist abgeschaltet und die Zugangsdaten
+sind dort geloescht.
+
+Die fuenf Protokollwerkzeuge liegen dafuer als Kopie in `werkzeuge/`; Aenderungen
+gehoeren ins Simulatorprojekt und werden herkopiert, nicht umgekehrt. Die Action
+committet den frischen Stand zurueck ins Repo, weil er der Ausgangsbestand des
+naechsten Laufs ist. Ein Push mit dem `GITHUB_TOKEN` loest keinen neuen Lauf aus, es
+entsteht also keine Schleife; das ist gemessen, nicht angenommen.
+
+Belegt am 02.09.2026: ausgehendes UDP auf Port 4694 geht von GitHub-Runnern durch, der
+Schritt holte dort 100 Spieler.
 
 ## Was am eigenen Laeufer gescheitert war (historisch, vor dem 02.09.2026)
 
