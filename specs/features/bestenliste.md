@@ -92,7 +92,43 @@ Methodennummern verschieben, weil sie aus der Reihenfolge der Methoden im Skript
 entstehen. Beides bricht laut, nicht leise: falsche Nummer heisst keine Antwort. Der
 Laeufer meldet das und liefert die alte Datei weiter, statt eine leere zu schreiben.
 
-## Was am eigenen Laeufer gescheitert ist, und was daran belegt ist
+## GELOEST am 02.09.2026: der Laeufer funktioniert
+
+**Ursache: der Laeufer hat nie seinen eigenen Knoten beim Server angemeldet.**
+
+Er hat nur die Pfadanmeldungen des Servers bestaetigt, aber selbst nie eine
+geschickt. Der Server nahm die Bestenlistenanfrage daraufhin auf ENet-Ebene an und
+bestaetigte sie sogar mit einem ACK, konnte die Antwort danach aber niemandem
+zustellen: er kannte den Knoten nicht, auf dem `send_leaderboard` beim Client liegt.
+
+Deshalb war die alte Analyse in die Irre gelaufen. Sie hat die Anfrage byteweise
+gegen den echten Client verglichen und Gleichheit festgestellt, was stimmte. Der
+Unterschied lag nicht in der Anfrage, sondern in einem Aufruf **davor**, den der
+Laeufer gar nicht sendete. Ein Byte-Vergleich der Anfrage konnte das nie zeigen.
+
+Gefunden durch zwei Messungen, die vorher nicht gemacht worden waren:
+
+1. **Bestaetigt der Server die Anfrage?** Ja, ACK auf die Folgenummer. Damit war
+   ausgeschlossen, dass es an Kanal, Sequenz oder Paketform liegt, und klar, dass
+   die Anfrage ankommt und die Anwendung sie verwirft.
+2. **Welche Pfadanmeldungen schickt der echte Client?** Ein
+   `SIMPLIFY_PATH root_main/Main = id 1` mit Pruefsumme, Client zu Server, vor allem
+   anderen. Der Laeufer: keine einzige.
+
+Die Loesung ist `enet_paket.pfad_anmelden()`, byteweise identisch mit dem echten
+Client, gesendet als erster Aufruf vor der Anmeldung. Danach beantwortet der Server
+alle fuenf Seiten. Belegt: 100 Spieler, Raenge 1 bis 100, kein Discord-Feld.
+
+Die Pruefsumme deckt die Methodenliste des Knotens ab und haengt damit an der
+Spielversion, nicht am Konto oder an der Sitzung. Aendert sich die Spielversion,
+kann sie neu bestimmt werden muessen; das bricht laut, naemlich als ausbleibende
+Antwort.
+
+**Folge fuer den Betrieb:** der Mitschnittweg mit Spielclient, xdotool und tcpdump ist
+nicht mehr noetig und wurde aus `ladder_server.sh` entfernt. Der taegliche Lauf
+braucht weder X-Server noch laufendes Spiel.
+
+## Was am eigenen Laeufer gescheitert war (historisch, vor dem 02.09.2026)
 
 Stand 01.09.2026. Der Laeufer ist gebaut und kommt weit, aber nicht ans Ziel.
 
@@ -126,8 +162,9 @@ Der Reihe nach ausgeschlossen, jeder Punkt gemessen, nicht vermutet:
 Wer hier weitermacht, faengt bitte nicht bei dieser Liste an. Der naechste sinnvolle Schritt
 waere, den echten Client zu instrumentieren, nicht weitere Pakete zu raten.
 
-**Der Mitschnittweg funktioniert dagegen vollstaendig** und hat am 01.09.2026 zweimal eine
-taggenaue Top 100 geliefert. Er ist bis auf Weiteres der Weg.
+**Der Mitschnittweg funktionierte dagegen vollstaendig** und hat am 01.09.2026 zweimal eine
+taggenaue Top 100 geliefert. Er war bis zum 02.09.2026 der Weg und ist seitdem durch den
+Laeufer ersetzt, siehe oben.
 
 ## Acceptance criteria
 
