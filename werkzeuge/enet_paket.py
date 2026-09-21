@@ -42,7 +42,29 @@ DROSSEL_BESCHLEUNIGUNG = 2
 DROSSEL_VERZOEGERUNG = 2
 
 # Der Bestenlistenaufruf.
-KNOTEN_ANFRAGE, METHODE_ANFRAGE = 1, 0x46
+# --- Methodennummern und wie sie entstehen -------------------------------------------
+#
+# Godot vergibt die RPC-Nummer ueber die SORTIERTE Liste der @rpc Methoden des Knotens:
+# die Nummer ist der Index in dieser Liste. Kommt eine Methode dazu, verschiebt sich
+# alles dahinter, und der Server beantwortet die alte Nummer nicht mehr. Genau das ist
+# zwischen dem 08. und 09.09.2026 passiert, als der Client von 2.5.5 auf 2.6.1 ging.
+#
+# Die Liste steht als Klartext im pck des Clients. `werkzeuge/methoden_aus_pck.py`
+# liest sie aus und rechnet die Nummern aus; der Lauf prueft sich selbst, indem er die
+# alte Nummer 0x46 fuer request_filtered_leaderboard reproduziert.
+#
+# 2.6.1 hat fuenf Methoden hinzugefuegt: admin_fetch_user_username,
+# admin_fetch_user_username_response, admin_reset_user_password,
+# admin_reset_user_password_response und player_removed_from_queue. Vier davon sortieren
+# vor login_request, alle fuenf vor den uebrigen, daher +4 beziehungsweise +5:
+#
+#   login_request                 0x27 -> 0x2b
+#   request_arena_stats           0x40 -> 0x45
+#   request_filtered_leaderboard  0x46 -> 0x4b
+#   request_upgrades              0x60 -> 0x65
+#   update_auto_config            0x85 -> 0x8a
+
+KNOTEN_ANFRAGE, METHODE_ANFRAGE = 1, 0x4b        # request_filtered_leaderboard
 SEITENGROESSE = 20               # LEADERBOARD_ENTRIES_PER_REQUEST
 
 NIL, INT, STRING, ARRAY = 0, 2, 4, 28
@@ -114,12 +136,21 @@ def bestenliste_anfrage(seite: int, leader: str = "", land: str = "",
 
 
 # Der Anmeldeaufruf.
-KNOTEN_ANMELDUNG, METHODE_ANMELDUNG = 1, 0x27
+KNOTEN_ANMELDUNG, METHODE_ANMELDUNG = 1, 0x2b    # login_request
 
-# Der Server prueft die Version. Aus dem Mitschnitt vom 01.09.2026. Aendert das Spiel
-# sie, lehnt der Server die Anmeldung ab; das bricht laut und wird gemeldet, nicht
-# umgangen.
-VERSION = "2.5.5"
+# Der Server prueft die Version. Der Client aktualisiert sich selbst, die Zeichenkette
+# wandert also ohne Zutun weiter. Nachsehen kann man sie im laufenden Client:
+#
+#   strings ~/Library/Application\ Support/Godot/app_userdata/OPBounty/OPBounty.pck \
+#     | grep -oE '"2\.[0-9]+\.[0-9]+"'
+#
+# 01.09.2026 aus dem Mitschnitt: 2.5.5
+# 21.09.2026 aus dem aktualisierten pck: 2.6.1. Das Update kam zwischen dem 08. und dem
+# 09.09.2026; seither blieb die Bestenlistenanfrage unbeantwortet.
+#
+# Ueber OPBOUNTY_VERSION laesst sich eine andere Zeichenkette setzen, ohne den Code zu
+# aendern. Das ist zum Probieren gedacht, nicht fuer den Betrieb.
+VERSION = os.environ.get("OPBOUNTY_VERSION", "2.6.1")
 
 
 def anmeldung(benutzer: str, nummer: int, passwort: str, version: str) -> bytes:
@@ -188,8 +219,8 @@ def bestenliste_anfrage_lang(seite: int, leader: str = "",
 #   Methode 96  (nummer, Feld mit acht Eintraegen)   eigene Werte melden
 #   Methode 133 (nummer, "country", "Germany")       Land melden
 # Ohne diese Anmeldung beim Bestenlistensystem bleibt die Abfrage unbeantwortet.
-METHODE_WERTE_MELDEN = 0x60
-METHODE_FELD_MELDEN = 0x85
+METHODE_WERTE_MELDEN = 0x65   # request_upgrades
+METHODE_FELD_MELDEN = 0x8a    # update_auto_config
 
 
 def werte_melden(nummer: int, eintraege: list = (),
@@ -209,7 +240,7 @@ def feld_melden(nummer: int, name: str, wert: str,
 # Methode 64 schickt der Client im selben Augenblick wie die Bestenlistenanfrage,
 # mit Benutzername und Kontonummer. 27 Byte, das passt auf eine Zeichenkette von
 # neun Zeichen und eine Zahl mit zwei Byte Wert.
-METHODE_BEGLEITER = 0x40
+METHODE_BEGLEITER = 0x45      # request_arena_stats
 
 
 def begleiter(benutzer: str, nummer: int,
@@ -251,7 +282,14 @@ def pfad_anmeldung_lesen(daten: bytes):
 # Die Pruefsumme, die der Spielclient fuer `root_main/Main` anmeldet. Sie deckt die
 # Methodenliste des Knotens ab und ist damit an die Spielversion gebunden, nicht an
 # das Konto oder die Sitzung; aus dem Mitschnitt vom 02.09.2026, Version 2.5.5.
-PRUEFSUMME_MAIN = "c102025c5f763c7f3ab733d81e9d6825"
+PRUEFSUMME_MAIN = os.environ.get("OPBOUNTY_PRUEFSUMME",
+                                 "8de5e6c99ea8a8c55a484c9b3492ce26")
+# 02.09.2026, Version 2.5.5: c102025c5f763c7f3ab733d81e9d6825
+# 21.09.2026, Version 2.6.1: 8de5e6c99ea8a8c55a484c9b3492ce26
+#
+# Der Server schickt die Pruefsumme selbst mit, wenn er seinerseits `root_main/Main`
+# anmeldet. Der Laeufer liest sie seit dem 21.09.2026 aus dieser Nachricht und benutzt
+# den Wert hier nur noch als Rueckfall; siehe bestenliste_holen.holen().
 
 
 def pfad_anmelden(nummer: int, pfad: str = KNOTENPFAD,

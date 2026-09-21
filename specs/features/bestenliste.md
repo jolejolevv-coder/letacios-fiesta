@@ -92,6 +92,63 @@ Methodennummern verschieben, weil sie aus der Reihenfolge der Methoden im Skript
 entstehen. Beides bricht laut, nicht leise: falsche Nummer heisst keine Antwort. Der
 Laeufer meldet das und liefert die alte Datei weiter, statt eine leere zu schreiben.
 
+## OFFEN seit dem 09.09.2026: 2.6.1 bricht die Beschaffung
+
+Der Client aktualisiert sich selbst und ist zwischen dem 08. und dem 09.09.2026 von
+2.5.5 auf **2.6.1** gegangen. Genau dort endet die Datenreihe: der letzte Commit heisst
+"Bestenliste vom 2026-09-08". Der Lauf blieb trotzdem gruen, weil der Holschritt
+`continue-on-error` traegt; das meldet seit dem 21.09. ein eigener Wachjob.
+
+Drei der vier versionsgebundenen Werte sind nachgezogen und belegt:
+
+**Versionszeichenkette**, 2.5.5 auf 2.6.1. Nachzusehen im laufenden Client:
+
+    strings ~/Library/Application\ Support/Godot/app_userdata/OPBounty/OPBounty.pck \
+      | grep -oE '"2\.[0-9]+\.[0-9]+"'
+
+**Pfadpruefsumme**, `c102025c5f763c7f3ab733d81e9d6825` auf
+`8de5e6c99ea8a8c55a484c9b3492ce26`. Die muss man nicht raten: der Server meldet
+`root_main/Main` seinerseits an und schickt die Pruefsumme dabei mit. Sichtbar mit
+
+    python3 werkzeuge/bestenliste_holen.py --seiten 1 --uebersicht
+
+unter "lesbare Zeichenketten".
+
+**Methodennummern.** Godot vergibt sie ueber den Index in der sortierten Liste der
+@rpc Methoden des Knotens. 2.6.1 hat fuenf Methoden hinzugefuegt, vier davon sortieren
+vor `login_request`, alle fuenf vor den uebrigen:
+
+    login_request                 0x27 -> 0x2b
+    request_arena_stats           0x40 -> 0x45
+    request_filtered_leaderboard  0x46 -> 0x4b
+    request_upgrades              0x60 -> 0x65
+    update_auto_config            0x85 -> 0x8a
+
+Das ist nicht geraten. Seit 2.6.1 steht der GDScript Quelltext im Klartext im pck,
+`werkzeuge/methoden_aus_pck.py` liest die Liste aus und rechnet die Nummern. Der Lauf
+prueft sich selbst, indem er zusaetzlich den alten Stand rekonstruiert: dabei kommt
+fuer `request_filtered_leaderboard` genau die 0x46 aus dem Mitschnitt vom 01.09.2026
+heraus. Stimmt diese Probe, stimmen Liste und Sortierung.
+
+**Es reicht trotzdem nicht.** Mit allen drei Werten bleibt die Anfrage unbeantwortet.
+Geprueft wurden vier Varianten, je in eigener Sitzung: kurze Form mit und ohne den
+Vorlauf beim Bestenlistensystem, lange Form mit Pfad `root_main/Main` und mit
+`root_main`. Keine liefert eine Seite, es kommen nur Sechsbytepakete zurueck.
+
+Eine Beobachtung fuer den naechsten Anlauf: nach vier unbekannten Aufrufen in derselben
+Sitzung antwortet der Server ueberhaupt nicht mehr. Wer Nummern durchprobiert, misst ab
+dem fuenften Kandidaten nur noch sich selbst und braucht je Kandidat eine eigene Sitzung.
+
+**Naechster Schritt ist ein Mitschnitt des echten Clients**, so wie am 02.09., weil nur
+er zeigt, was 2.6.1 zusaetzlich oder anders sendet. Er braucht root und damit den
+Nutzer:
+
+    sudo tcpdump -i any -s 0 -w ~/Downloads/opbounty-2.6.1.pcap \
+      'udp and host 34.235.236.170'
+
+Dann im Client die Bestenliste oeffnen, eine Seite blaettern, tcpdump beenden.
+Auswertung mit `werkzeuge/pcap_enet.py`.
+
 ## GELOEST am 02.09.2026: der Laeufer funktioniert
 
 **Ursache: der Laeufer hat nie seinen eigenen Knoten beim Server angemeldet.**
