@@ -13,6 +13,12 @@ geholt werden, es steht im pck:
     python3 werkzeuge/version_nachziehen.py               # nur vergleichen
     python3 werkzeuge/version_nachziehen.py --schreiben    # Konstanten setzen
 
+Gefragt wird dabei auch der Spielserver: er nennt seine Version gleich nach dem
+Verbinden von sich aus, ohne Anmeldung. Drei Werte werden verglichen, Server, pck und
+Code. Will der Server eine Version, die das pck noch nicht hat, wird NICHTS geschrieben
+und stattdessen gesagt, dass der Client einmal laufen muss; er aktualisiert sich dabei
+selbst. Rueckgabe 2 in diesem Fall, 1 bei blossen Abweichungen, 0 wenn alles passt.
+
 Ohne `--schreiben` endet der Befehl mit 1, sobald etwas abweicht; so laesst er sich
 als Pruefung verwenden. Mit `--schreiben` werden beide Kopien der Werkzeuge gesetzt,
 die hier und die im Simulatorprojekt.
@@ -34,6 +40,7 @@ import sys
 HIER = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HIER)
 
+from bestenliste_holen import server_version  # noqa: E402
 from methoden_aus_pck import (PCK, rpc_methoden, skriptblock,  # noqa: E402
                               zeilen_aus_pck)
 
@@ -132,17 +139,71 @@ def pruefen(soll: dict, schreiben: bool) -> int:
     return abweichungen
 
 
+def nur_server() -> int:
+    """Nur fragen, ob der Server eine andere Version will als der Code kennt.
+
+    Das braucht kein Spielpaket und laeuft deshalb auch in der Action. Reparieren kann
+    es dort niemand, die Nummern stehen nur im pck auf dem Rechner mit dem Client; es
+    ist eine Warnlampe, keine Werkstatt.
+    """
+    sys.path.insert(0, HIER)
+    import enet_paket
+
+    draussen = server_version()
+    if draussen is None:
+        print("  Spielserver nicht erreichbar, keine Aussage moeglich")
+        return 0
+    print(f"  Server meldet {draussen}, im Code steht {enet_paket.VERSION}")
+    if draussen == enet_paket.VERSION:
+        print("  gleich, nichts zu tun")
+        return 0
+    print(f"\n  OPBounty ist auf {draussen} gegangen. Die Methodennummern und die "
+          f"Pruefsumme verschieben sich damit,")
+    print("  und die Beschaffung der Bestenliste laeuft ins Leere, bis sie nachgezogen "
+          "sind.")
+    print("  Auf dem Rechner mit dem Spielclient: einmal OPBounty starten, dann")
+    print("      python3 werkzeuge/version_nachziehen.py --schreiben")
+    return 1
+
+
 def main() -> int:
     p = argparse.ArgumentParser(
         description="Versionsabhaengige Werte aus dem Spielpaket nachziehen")
     p.add_argument("--pck", default=PCK)
     p.add_argument("--schreiben", action="store_true",
                    help="die Konstanten setzen statt nur zu vergleichen")
+    p.add_argument("--ohne-server", action="store_true", dest="ohne_server",
+                   help="den Spielserver nicht nach seiner Version fragen")
+    p.add_argument("--nur-server", action="store_true", dest="nur_server",
+                   help="nur den Server fragen und mit dem Code vergleichen; ohne "
+                        "Spielpaket, dafuer auch auf einem fremden Rechner")
     a = p.parse_args()
+
+    if a.nur_server:
+        return nur_server()
 
     soll, anzahl = aus_pck(a.pck)
     print(f"  pck {a.pck}")
-    print(f"  Version {soll['Version']}, {anzahl} @rpc Methoden\n")
+    print(f"  Version {soll['Version']}, {anzahl} @rpc Methoden")
+
+    # Der Server nennt seine Version von sich aus, ohne Anmeldung. Damit faellt ein
+    # Update auf, bevor die naechste Beschaffung stumm ins Leere laeuft.
+    draussen = None if a.ohne_server else server_version()
+    if draussen is None and not a.ohne_server:
+        print("  Server nicht erreichbar, es gilt allein das Spielpaket")
+    elif draussen:
+        print(f"  Server meldet {draussen}")
+        if draussen != soll["Version"]:
+            # Das pck aktualisiert sich erst, wenn der Client einmal laeuft. Vorher
+            # waeren alle Nummern von gestern, und --schreiben wuerde Mist festschreiben.
+            print(f"\n  Der Server will {draussen}, das Spielpaket steht auf "
+                  f"{soll['Version']}.")
+            print("  Starte OPBounty einmal, es aktualisiert sich dabei selbst, und "
+                  "ruf den Befehl danach erneut.")
+            print("  Es wird nichts geschrieben, sonst stuenden hier die Nummern von "
+                  "gestern.")
+            return 2
+    print()
     abweichungen = pruefen(soll, a.schreiben)
     print()
     if not abweichungen:

@@ -216,6 +216,39 @@ class Verbindung:
             self.sock.close()
 
 
+def server_version(laut: bool = False, versuche: int = 2):
+    """Die Version, die der Spielserver von sich aus nennt, oder None.
+
+    Direkt nach dem Verbinden ruft der Server auf dem Knoten `root_main` seine Methode
+    0 auf und uebergibt seine Versionszeichenkette. Das passiert vor jeder Anmeldung,
+    es werden also keine Zugangsdaten gebraucht und es wird nichts veraendert.
+
+    Genau daran laesst sich erkennen, dass ein Clientupdate draussen ist, bevor die
+    naechste Beschaffung stumm ins Leere laeuft.
+    """
+    import re
+
+    for versuch in range(versuche):
+        v = Verbindung(SERVER, laut, False)
+        try:
+            v.verbinden()
+            v.lesen(2.0)
+            for daten in v.nachrichten:
+                # Lange Aufrufform, erstes Argument eine Zeichenkette: 20 | Versatz,
+                # vier Byte | Methode | Anzahl | Typ 4 | Laenge | Text.
+                if len(daten) < 20 or daten[0] != 0x20:
+                    continue
+                treffer = re.search(rb"\d+\.\d+\.\d+", daten)
+                if treffer:
+                    return treffer.group(0).decode("ascii")
+        except Exception as fehler:
+            if laut:
+                print(f"  Versuch {versuch + 1} fehlgeschlagen: {fehler}")
+        finally:
+            v.trennen()
+    return None
+
+
 def uebersicht(v, wieviele=14):
     """Was kam zurueck? Haeufigste Aufrufe und lesbare Bruchstuecke."""
     import collections

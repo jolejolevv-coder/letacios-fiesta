@@ -54,6 +54,7 @@ jobs:
     # Damit die Wache am Ende sagen kann, WARUM die Liste fehlt.
     outputs:
       bestenliste: ${{ steps.bestenliste.outcome }}
+      spielversion: ${{ steps.spielversion.outcome }}
     steps:
       - uses: actions/checkout@v4
 
@@ -101,6 +102,16 @@ jobs:
       # Muss VOR den Spielerdaten laufen: die lesen die user_ids aus dieser Datei.
       # Schlaegt er fehl, bleibt der alte Stand im Repo stehen und der Lauf geht
       # weiter, statt die ganze Seite zu kosten.
+      # Der Spielserver nennt seine Version gleich nach dem Verbinden, ohne Anmeldung.
+      # Stimmt sie nicht mehr mit der im Code, haben sich die Methodennummern und die
+      # Pruefsumme verschoben und die Beschaffung laeuft ins Leere. Reparieren laesst
+      # sich das nur dort, wo der Spielclient liegt: die Nummern stehen im pck. Hier
+      # ist es eine Warnlampe, deshalb bricht es den Lauf nicht ab.
+      - name: Spielversion gegen den Code pruefen
+        id: spielversion
+        run: python3 werkzeuge/version_nachziehen.py --nur-server
+        continue-on-error: true
+
       - name: Bestenliste holen
         id: bestenliste
         env:
@@ -198,6 +209,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HOLEN: ${{ needs.bauen.outputs.bestenliste }}
+          VERSION: ${{ needs.bauen.outputs.spielversion }}
         run: |
           set -euo pipefail
           DATEI="public/bestenliste.json.gz.enc"
@@ -223,7 +235,20 @@ jobs:
             echo "| Letzter Stand | ${STAND} |"
             echo "| Alter | ${TAGE} Tage |"
             echo "| Holschritt | ${HOLEN} |"
+            echo "| Spielversion | ${VERSION} |"
           } >> "${GITHUB_STEP_SUMMARY}"
+
+          if [ "${VERSION}" = "failure" ]; then
+            echo ""
+            echo "Der Spielserver will eine andere Version als der Code kennt."
+            echo "Auf dem Rechner mit dem Client: OPBounty einmal starten, dann"
+            echo "  python3 werkzeuge/version_nachziehen.py --schreiben"
+            {
+              echo ""
+              echo "**Neue Spielversion.** Die Methodennummern muessen nachgezogen werden,"
+              echo "siehe den Schritt \"Spielversion gegen den Code pruefen\"."
+            } >> "${GITHUB_STEP_SUMMARY}"
+          fi
 
           if [ "${TAGE}" -gt "${MAX_TAGE}" ]; then
             echo ""
