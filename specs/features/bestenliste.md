@@ -137,21 +137,22 @@ hat am 21.09.2026 wieder eine taggenaue Top 100 geliefert.
 drittes Argument in `login_request`. Die pcap gehoert nach dem Einlesen geloescht und
 niemals ins Repo.
 
-**Vorschlag fuer eine dauerhafte Loesung, noch nicht umgesetzt und nicht freigegeben:**
-Die Liste liegt auch in Firestore, in `Users` nach `Bounty` absteigend, mit
-`nickname`, `Title` und `n`; Land und Leaderaufstellung stehen in `PublicUsers`.
-`tools/bestenliste_probe.py` im Simulatorprojekt holt das heute schon in einer
-Abfrage, und die Action hat die Zugangsdaten bereits als secrets. Der Vorteil waere,
-dass diese Quelle von Spielversionen unabhaengig ist, also nicht bei jedem Update
-wieder bricht.
+**Firestore ist KEIN Ersatz. Am 21.09.2026 nachgemessen, nicht vermutet.**
+Der Gedanke lag nahe, weil die Action ohnehin Firestore liest und diese Quelle von
+Spielversionen unabhaengig waere. Er traegt aber nicht:
 
-**Der Haken, und deshalb ist es nur ein Vorschlag:** die Rangfolge steht in `Users`,
-und dieses Projekt liest nach eigener Regel ausschliesslich `PublicUsers`, weil in
-`Users` iplist, discord_id und Rollen echter Leute stehen. Eine Feldprojektion holt
-zwar nur Bounty, nickname, Title und n, aber die Regel ist bewusst absolut gehalten.
-Wer diesen Weg gehen will, muss zuerst diese Regel bewusst aendern, nicht umgehen.
-Dazu kommt: Rangfolge und Spalten muessten nachgebaut werden statt fertig vom Server
-zu kommen.
+- `Users` hat ein Feld `Bounty`, und absteigend sortiert liefert es Platz 1 mit 2856,6
+  und danach 99 Spieler mit exakt 500. Das ist ein Startwert, keine Rangliste. Der
+  Spieler auf Platz 1 dieser Abfrage kommt in der echten Top 100 gar nicht vor.
+- Die echte Liste vom selben Tag laeuft von 5361,9 auf Rang 1 bis 3130,8 auf Rang 100,
+  mit 99 verschiedenen Werten bei 100 Spielern.
+- `PublicUsers/<id>` traegt gar kein Bountyfeld: dort stehen Cosmetics, Flag, Matches,
+  Position, User_id, Webcam, Western und bei manchen Arena und Eastern.
+
+Die Ladderbounty steht also nur in der RPC-Antwort `send_leaderboard`. Damit bleibt
+das Spielprotokoll die einzige Quelle, und der Mitschnittweg der einzige Weg, solange
+der Laeufer stumm bleibt. Nebenbei: die Abfrage auf `Users` verstoesst ohnehin gegen
+die Projektregel, nur `PublicUsers` zu lesen.
 
 ## GELOEST am 02.09.2026: der Laeufer funktioniert
 
