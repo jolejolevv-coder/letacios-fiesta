@@ -257,6 +257,21 @@ def fenster(anzahl: int) -> list:
     return sorted({k.split("/")[0] for k in index_schluessel()})[-anzahl:]
 
 
+def satz_reihenfolge(saetze: dict) -> list:
+    """Die selbst gerechneten Saetze neben die Wochensaetze des Spiels stellen.
+
+    Sonst haengen sie hinter den Saisonsaetzen am Ende der Auswahl, obwohl sie
+    denselben Zuschnitt haben wie "Last Week 2B Bounty" direkt darueber.
+    """
+    reihenfolge = list(saetze)
+    for schluessel in [k for k in reihenfolge if k.startswith("Roh_")]:
+        reihenfolge.remove(schluessel)
+        letzte = max((i for i, k in enumerate(reihenfolge) if k.startswith("Stats_LWS")),
+                     default=len(reihenfolge) - 1)
+        reihenfolge.insert(letzte + 1, schluessel)
+    return reihenfolge
+
+
 def roh_satz(ziel: str, schluessel_alle: list, tage: list, modus: str,
              bereich: str, schluessel: str, name: str) -> dict | None:
     """Einen benannten Satz aus der Rohebene bauen, ueber das ganze Fenster.
@@ -526,9 +541,10 @@ def main() -> None:
 
     verzeichnis = {
         "erstellt": max((s["stand"] for s in saetze.values()), default=""),
-        "saetze": [{"schluessel": k, "name": v["name"], "partien": v["partien"],
-                    "stand": v["stand"], "datei": "saetze/" + k + ".json.gz"}
-                   for k, v in saetze.items()],
+        "saetze": [{"schluessel": k, "name": saetze[k]["name"],
+                    "partien": saetze[k]["partien"], "stand": saetze[k]["stand"],
+                    "datei": "saetze/" + k + ".json.gz"}
+                   for k in satz_reihenfolge(saetze)],
         "tage": sorted(tage, key=lambda e: (e["tag"], e["modus"], e["bounty"])),
         "modi": MODI,
         "bounty": list(BOUNTY),
