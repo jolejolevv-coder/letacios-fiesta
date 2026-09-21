@@ -148,10 +148,27 @@ Verbindung, waehrend alle Fehlschlaege dicht aufeinander folgten. Das deutet ehe
 eine Sperre je Zeitfenster oder je Sitzung als auf falsche Pakete, denn die Pakete waren
 in beiden Faellen dieselben.
 
-Das ist EIN Datenpunkt, keine Erklaerung. Wer hier weitermacht, sollte zuerst den Abstand
-messen, statt wieder an den Paketen zu drehen: einen Versuch pro Stunde ueber einen Tag,
-und dabei festhalten, ob der Erfolg mit der Pause davor zusammenhaengt. Faellt das
-Muster, ist der Laeufer kein Reparaturfall, sondern ein Taktfall.
+Das ist EIN Datenpunkt, keine Erklaerung. Deshalb wird jetzt gemessen statt geraten.
+
+**Die Messung laeuft seit dem 21.09.2026.** `werkzeuge/takt_messen.py` macht einen
+Abruf und haengt eine Zeile an `~/.opbounty_takt.log`: Zeitpunkt, Pause seit dem
+letzten Versuch, Seiten, Spieler, Notiz. Keine Zugangsdaten, und die Datei liegt
+ausserhalb des Repos. Getaktet wird ueber den launchd Agenten
+`~/Library/LaunchAgents/de.jole.opbounty-takt.plist`, einmal pro Stunde.
+
+    python3 werkzeuge/takt_messen.py            # ein Versuch von Hand
+    python3 werkzeuge/takt_messen.py --zeigen   # auswerten
+    launchctl unload ~/Library/LaunchAgents/de.jole.opbounty-takt.plist   # abschalten
+
+Auszuwerten ist eine einzige Frage: ist die Pause vor einem Treffer systematisch
+laenger als die vor einem Fehlschlag? Faellt das Muster, ist der Laeufer kein
+Reparaturfall, sondern ein Taktfall, und die Loesung heisst seltener fragen statt
+andere Pakete schicken. Faellt es nicht, ist der eine Treffer Zufall gewesen und es
+bleibt beim Mitschnittweg.
+
+Zu bedenken bei der Auswertung: der taegliche Lauf der Action fragt ebenfalls, von
+einer anderen Adresse aus. Wenn die Sperre an der Adresse haengt und nicht am Konto,
+stoeren sich die beiden nicht.
 
 **Firestore ist KEIN Ersatz. Am 21.09.2026 nachgemessen, nicht vermutet.**
 Der Gedanke lag nahe, weil die Action ohnehin Firestore liest und diese Quelle von
