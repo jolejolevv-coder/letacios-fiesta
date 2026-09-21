@@ -51,6 +51,9 @@ concurrency:
 jobs:
   bauen:
     runs-on: ubuntu-latest
+    # Damit die Wache am Ende sagen kann, WARUM die Liste fehlt.
+    outputs:
+      bestenliste: ${{ steps.bestenliste.outcome }}
     steps:
       - uses: actions/checkout@v4
 
@@ -99,6 +102,7 @@ jobs:
       # Schlaegt er fehl, bleibt der alte Stand im Repo stehen und der Lauf geht
       # weiter, statt die ganze Seite zu kosten.
       - name: Bestenliste holen
+        id: bestenliste
         env:
           OPBOUNTY_WERKZEUGE: ${{ github.workspace }}/werkzeuge
           OPBOUNTY_USER: ${{ secrets.OPBOUNTY_USER }}
@@ -174,3 +178,65 @@ jobs:
     steps:
       - id: pages
         uses: actions/deploy-pages@v4
+
+  # Die Wache meldet, was sonst niemand meldet.
+  #
+  # "Bestenliste holen" traegt continue-on-error, und das ist richtig: faellt der
+  # Laeufer aus, soll trotzdem die ganze Seite erscheinen. Der Preis war, dass der
+  # Lauf gruen blieb, waehrend die Bestenliste stehenblieb. Vom 09.09. bis zum
+  # 21.09.2026 ist das dreizehn Tage lang niemandem aufgefallen.
+  #
+  # Dieser Job laeuft NACH dem Veroeffentlichen und haengt nichts davon ab. Er kann
+  # die Seite also nicht verhindern, sondern nur den Lauf rot faerben, und genau das
+  # soll er. Rot heisst Mail.
+  wache:
+    needs: [bauen, veroeffentlichen]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ist die Bestenliste noch frisch?
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HOLEN: ${{ needs.bauen.outputs.bestenliste }}
+        run: |
+          set -euo pipefail
+          DATEI="public/bestenliste.json.gz.enc"
+          MAX_TAGE=2
+
+          # Gefragt ist nicht, ob der Schritt lief, sondern ob die Datei frisch ist.
+          # Das faengt beide Faelle: der Laeufer bricht ab, oder er liefert still
+          # denselben Stand wie gestern.
+          STAND=$(gh api "repos/${GITHUB_REPOSITORY}/commits?path=${DATEI}&per_page=1" \
+                  --jq '.[0].commit.committer.date')
+          if [ -z "${STAND}" ]; then
+            echo "Kein Commit fuer ${DATEI} gefunden."
+            exit 1
+          fi
+          TAGE=$(( ( $(date -u +%s) - $(date -u -d "${STAND}" +%s) ) / 86400 ))
+          echo "Letzter Stand: ${STAND} (vor ${TAGE} Tagen), Holschritt: ${HOLEN}"
+
+          {
+            echo "## Bestenliste"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Letzter Stand | ${STAND} |"
+            echo "| Alter | ${TAGE} Tage |"
+            echo "| Holschritt | ${HOLEN} |"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          if [ "${TAGE}" -gt "${MAX_TAGE}" ]; then
+            echo ""
+            echo "Die Bestenliste ist ${TAGE} Tage alt, erlaubt sind ${MAX_TAGE}."
+            echo "Die Seite ist trotzdem veroeffentlicht, sie zeigt nur alte Zahlen."
+            echo "Zum Nachsehen: python3 werkzeuge/bestenliste_holen.py --seiten 1"
+            {
+              echo ""
+              echo "**Veraltet.** Die Seite ist veroeffentlicht, zeigt aber alte Zahlen."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 1
+          fi
+
+          if [ "${HOLEN}" != "success" ]; then
+            echo "::warning::Der Holschritt endete mit '${HOLEN}', die Datei ist aber noch frisch."
+          fi
