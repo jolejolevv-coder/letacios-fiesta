@@ -198,16 +198,35 @@ export async function holen(datei) {
  * neben die Seite. Faellt die Datei aus, bleibt die Nummer stehen; die Seite laeuft
  * weiter, sie ist nur karger.
  */
-let kartenTabelle = null;
+let kartenLauf = null;
+
+/* Ein fehlgeschlagener Abruf darf nicht haengen bleiben. Frueher wurde im Fehlerfall
+   eine leere Tabelle gemerkt, und weil die wahr ist, hat jeder spaetere Aufruf sie
+   zurueckgegeben: die Leader standen dann bis zum Neuladen der Seite als Kartennummern
+   da. Genau das passiert, wenn GitHub Pages unter dem Bilderschwall einmal mit 503
+   antwortet. Gemerkt wird jetzt der laufende Abruf, nicht sein Ergebnis, damit
+   gleichzeitige Aufrufer sich einen teilen; scheitert er, wird er vergessen und der
+   naechste Aufruf versucht es erneut. */
+const WARTEN_MS = 400;
+
+async function kartenHolen() {
+  try {
+    return await holen("karten.json.gz");
+  } catch {
+    // Einmal nachfassen: 503 von Pages ist fast immer voruebergehend.
+    await new Promise((fertig) => setTimeout(fertig, WARTEN_MS));
+    return await holen("karten.json.gz");
+  }
+}
 
 export async function kartenLaden() {
-  if (kartenTabelle) return kartenTabelle;
-  try {
-    kartenTabelle = await holen("karten.json.gz");
-  } catch {
-    kartenTabelle = {};
+  if (!kartenLauf) {
+    kartenLauf = kartenHolen().catch(() => {
+      kartenLauf = null;   // nicht merken, damit es wieder versucht werden kann
+      return {};
+    });
   }
-  return kartenTabelle;
+  return kartenLauf;
 }
 
 const ZAEHLER = ["w", "l", "fw", "fl", "sw", "sl"];
