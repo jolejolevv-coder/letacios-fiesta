@@ -143,9 +143,15 @@ Die Liste liegt auch in Firestore, in `Users` nach `Bounty` absteigend, mit
 `tools/bestenliste_probe.py` im Simulatorprojekt holt das heute schon in einer
 Abfrage, und die Action hat die Zugangsdaten bereits als secrets. Der Vorteil waere,
 dass diese Quelle von Spielversionen unabhaengig ist, also nicht bei jedem Update
-wieder bricht. Der Preis: die Rangfolge und die Spalten muessten nachgebaut werden
-statt fertig vom Server zu kommen, und Felder, die nur die RPC-Antwort kennt, muessten
-einzeln geprueft werden.
+wieder bricht.
+
+**Der Haken, und deshalb ist es nur ein Vorschlag:** die Rangfolge steht in `Users`,
+und dieses Projekt liest nach eigener Regel ausschliesslich `PublicUsers`, weil in
+`Users` iplist, discord_id und Rollen echter Leute stehen. Eine Feldprojektion holt
+zwar nur Bounty, nickname, Title und n, aber die Regel ist bewusst absolut gehalten.
+Wer diesen Weg gehen will, muss zuerst diese Regel bewusst aendern, nicht umgehen.
+Dazu kommt: Rangfolge und Spalten muessten nachgebaut werden statt fertig vom Server
+zu kommen.
 
 ## GELOEST am 02.09.2026: der Laeufer funktioniert
 
