@@ -137,6 +137,22 @@ hat am 21.09.2026 wieder eine taggenaue Top 100 geliefert.
 drittes Argument in `login_request`. Die pcap gehoert nach dem Einlesen geloescht und
 niemals ins Repo.
 
+**Nachtrag vom 21.09.2026, abends: der Laeufer hat EINMAL funktioniert.**
+Nach den Korrekturen (Methode 109, Versatz statt Knotennummer) lieferte
+`bestenliste_holen.py --seiten 2` zwei Seiten mit 40 Spielern, korrekte Namen und
+Bountys. Drei Durchlaeufe unmittelbar danach gaben wieder null Seiten, und der Lauf der
+Action am selben Abend ebenfalls.
+
+Ein Treffer auf viele Versuche. Auffaellig ist, wann er kam: nach mehreren Stunden ohne
+Verbindung, waehrend alle Fehlschlaege dicht aufeinander folgten. Das deutet eher auf
+eine Sperre je Zeitfenster oder je Sitzung als auf falsche Pakete, denn die Pakete waren
+in beiden Faellen dieselben.
+
+Das ist EIN Datenpunkt, keine Erklaerung. Wer hier weitermacht, sollte zuerst den Abstand
+messen, statt wieder an den Paketen zu drehen: einen Versuch pro Stunde ueber einen Tag,
+und dabei festhalten, ob der Erfolg mit der Pause davor zusammenhaengt. Faellt das
+Muster, ist der Laeufer kein Reparaturfall, sondern ein Taktfall.
+
 **Firestore ist KEIN Ersatz. Am 21.09.2026 nachgemessen, nicht vermutet.**
 Der Gedanke lag nahe, weil die Action ohnehin Firestore liest und diese Quelle von
 Spielversionen unabhaengig waere. Er traegt aber nicht:
