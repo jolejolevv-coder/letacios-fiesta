@@ -9,9 +9,16 @@ mit, dieses Skript wertet aus. Warum es keinen eigenen Läufer gibt, steht in
     # Spiel öffnen, Bestenliste, fünfmal blättern, Strg+C
     python3 bestenliste_einbauen.py ~/Downloads/bestenliste.pcap
 
-Der Bestand wird fortgeschrieben, nicht ersetzt: Spieler, die in einer neuen Aufnahme
-fehlen, bleiben mit ihrem alten Stand und ihrem Datum stehen. So wächst die Liste über
-die Aufnahmen hinweg, statt bei jeder Lücke Löcher zu bekommen.
+Die Liste wird ersetzt, nicht fortgeschrieben. Der Rang gilt nur innerhalb einer
+Aufnahme: mischt man zwei Tage, gibt es jeden Rang zweimal und die Seite zeigt eine
+Liste, die weder nach Rang noch nach Bounty sortiert ist. Genau das ist am 21.09.2026
+passiert, als 89 Einträge vom 01. und 02.09. zwischen den 100 frischen lagen und 77
+Ränge doppelt vergeben waren.
+
+Das Fortschreiben gibt es weiter unter `--fortschreiben`. Es war für die Zeit gedacht,
+in der eine Aufnahme einzelne Seiten verfehlen konnte. Der Preis: Spieler, die aus den
+Top 100 fallen, verschwinden jetzt aus der Datei und damit auch ihre Spielerseite, bis
+sie wieder auftauchen.
 
 Ausgabe ist `public/bestenliste.json.gz`. Sie wird beim Bauen mit verschlüsselt, weil
 `verschluesseln.py` alle `*.json.gz` im Zielverzeichnis erfasst.
@@ -106,8 +113,9 @@ def main():
     p.add_argument("mitschnitt", nargs="?",
                    help="pcap; ohne Angabe holt der Laeufer die Liste selbst")
     p.add_argument("--stand", help="Datum der Aufnahme, sonst heute")
-    p.add_argument("--ersetzen", action="store_true",
-                   help="alten Bestand verwerfen statt fortschreiben")
+    p.add_argument("--fortschreiben", action="store_true",
+                   help="alten Bestand behalten statt ihn zu ersetzen; mischt "
+                        "Raenge aus verschiedenen Tagen, siehe Kopf der Datei")
     a = p.parse_args()
 
     # Das Passwort auch dem Leser bereitstellen: `lesen()` holt es nur aus der
@@ -126,7 +134,7 @@ def main():
     if not neu:
         raise SystemExit(f"keine Bestenliste ueber den {quelle} bekommen")
 
-    bestand = {} if a.ersetzen else alt_laden()
+    bestand = alt_laden() if a.fortschreiben else {}
     for e in neu:
         e["stand"] = stand
         bestand[e["login"]] = e
