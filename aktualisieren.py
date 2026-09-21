@@ -51,6 +51,11 @@ BOUNTY_NAME = {
     "2000_3000": "2B to 3B",
     "3000": "3B and up",
 }
+# "3B and up" ist der oberste Topf und nach oben offen. Die Spitze der Bestenliste steht
+# weit darueber, am 21.09.2026 lief die Top 100 von 5361,9 bis 3130,8, die ersten zwoelf
+# ueber 4000. Trennen laesst sich das nicht: die Rohdateien tragen nur Leader und
+# Partienzahlen, keine Bounty je Partie. Ein eigener 4B Topf muesste vom Spiel kommen;
+# taucht er im Index auf, genuegt hier ein Eintrag und ein Wert in --bounty.
 ANZEIGE = {
     "Stats_lw": "Last Week Standard",
     "Stats_LWS1BillionBounty": "Last Week 1B Bounty",

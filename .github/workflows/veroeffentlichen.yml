@@ -82,7 +82,7 @@ jobs:
           python3 aktualisieren.py \
             --ziel public \
             --tage 30 \
-            --bounty 25_1000,1000_2000,2000_3000 \
+            --bounty 25_1000,1000_2000,2000_3000,3000 \
             --bilder
 
       # Die Rohlogs der Replays aendern sich nie. Ohne Zwischenspeicher zoege jeder
