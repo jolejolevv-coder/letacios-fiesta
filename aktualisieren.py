@@ -56,6 +56,20 @@ BOUNTY_NAME = {
 # ueber 4000. Trennen laesst sich das nicht: die Rohdateien tragen nur Leader und
 # Partienzahlen, keine Bounty je Partie. Ein eigener 4B Topf muesste vom Spiel kommen;
 # taucht er im Index auf, genuegt hier ein Eintrag und ein Wert in --bounty.
+# Bereiche, fuer die es beim Spiel keinen fertigen Satz gibt und die wir deshalb selbst
+# aus der Rohebene rechnen. Sie landen in derselben Auswahl wie die fertigen.
+ROH_SAETZE = ("3000",)
+
+
+def bounty_name(bereich: str) -> str:
+    """Anzeigename eines Bountybereichs, auch fuer einen, den wir noch nicht kennen."""
+    return BOUNTY_NAME.get(bereich, bereich)
+
+
+def roh_schluessel(modus: str, bereich: str) -> str:
+    return f"Roh_{modus}_{bereich}"
+
+
 ANZEIGE = {
     "Stats_lw": "Last Week Standard",
     "Stats_LWS1BillionBounty": "Last Week 1B Bounty",
@@ -217,11 +231,61 @@ def fertige_saetze(ziel: str) -> dict:
     return saetze
 
 
+_INDEX: list | None = None
+
+
+def index_schluessel() -> list:
+    """Der Dateiindex der Rohebene, einmal geholt und gemerkt.
+
+    Er ist knapp ein Megabyte und wird von `tage_laden` und `roh_satz` gebraucht.
+    """
+    global _INDEX
+    if _INDEX is None:
+        roh = urllib.request.urlopen(CDN + "files.json", timeout=180).read()
+        _INDEX = [e["Key"] for e in json.loads(roh)]
+    return _INDEX
+
+
+def fenster(anzahl: int) -> list:
+    """Die letzten N Tage, fuer die es ueberhaupt Rohdaten gibt."""
+    return sorted({k.split("/")[0] for k in index_schluessel()})[-anzahl:]
+
+
+def roh_satz(ziel: str, schluessel_alle: list, tage: list, modus: str,
+             bereich: str, schluessel: str, name: str) -> dict | None:
+    """Einen benannten Satz aus der Rohebene bauen, ueber das ganze Fenster.
+
+    Die fertigen Saetze des Spiels decken den obersten Bountybereich nicht ab, es gibt
+    dort keine Datei dafuer. Die Rohebene hat ihn, aber nur tageweise. Hier werden die
+    Tage eines Fensters zu einem Satz zusammengerechnet, damit er in derselben Auswahl
+    steht wie die fertigen.
+
+    Gerechnet wird aus den Rohdateien, nicht aus den Tagesdateien unter `tage/`: die
+    sind schon eingedampft und lassen sich nicht verlustfrei weiteraddieren.
+    """
+    passend = sorted(k for k in schluessel_alle
+                     if (t := k.split("/")) and len(t) >= 4 and t[0] in set(tage)
+                     and t[1] == modus and t[2] == bereich)
+    if not passend:
+        print(f"  {schluessel}: keine Rohdateien im Fenster, uebersprungen")
+        return None
+    print(f"  {schluessel}  {len(passend)} Teile aus {len(tage)} Tagen ...", flush=True)
+    try:
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            teile = list(pool.map(lambda k: hole("raw/" + k), passend))
+    except Exception as fehler:
+        print(f"    fehlgeschlagen: {fehler}")
+        return None
+    satz = eindampfen(zusammenfuehren(teile), name, modus, bereich)
+    groesse = schreiben(os.path.join(ziel, "saetze", schluessel + ".json.gz"), satz)
+    print(f"    {groesse/1e3:.0f} KB, {satz['partien']} Partien")
+    return satz
+
+
 def tage_laden(ziel: str, anzahl: int, modi: list, bereiche: list) -> list:
     """Je Tag, Modus und Bereich eine eingedampfte Datei. Vorhandene werden uebersprungen."""
-    index = json.loads(urllib.request.urlopen(CDN + "files.json", timeout=180).read())
-    schluessel = [e["Key"] for e in index]
-    tage = sorted({k.split("/")[0] for k in schluessel})[-anzahl:]
+    schluessel = index_schluessel()
+    tage = fenster(anzahl)
     plan = {}
     for k in schluessel:
         teil = k.split("/")
@@ -439,6 +503,22 @@ def main() -> None:
                 weg += 1
         if weg:
             print(f"  {weg} Tagesdateien ausserhalb des Fensters entfernt")
+
+    # Der oberste Bountybereich hat beim Spiel keinen fertigen Satz. Damit er in
+    # derselben Auswahl steht wie die anderen, wird er hier aus der Rohebene ueber das
+    # ganze Fenster gerechnet. Nur wenn er auch angefordert wurde.
+    if args.tage:
+        bereiche = [b.strip() for b in args.bounty.split(",") if b.strip()]
+        modi = [m.strip() for m in args.modi.split(",") if m.strip()]
+        for bereich in ROH_SAETZE:
+            if bereich not in bereiche or not modi:
+                continue
+            print(f"\nSatz aus der Rohebene, {bounty_name(bereich)}:")
+            satz = roh_satz(ziel, index_schluessel(), fenster(args.tage), modi[0],
+                            bereich, roh_schluessel(modi[0], bereich),
+                            f"{bounty_name(bereich)}, {args.tage} d")
+            if satz:
+                saetze[roh_schluessel(modi[0], bereich)] = satz
 
     verzeichnis = {
         "erstellt": max((s["stand"] for s in saetze.values()), default=""),
