@@ -257,6 +257,25 @@ header {
 
 .bkarte { width: calc(52px * var(--sk)); border-radius: 5px; overflow: hidden; display: block; }
 .bkarte.leader { width: calc(62px * var(--sk)); }
+
+/* Gerestet: die Karte liegt quer, wie auf dem Tisch.
+   Gedreht wird mit transform, und transform aendert das Layout nicht: die Karte ragt
+   also links und rechts ueber ihren Platz hinaus, bei einem Seitenverhaeltnis von 1,4
+   um je 20 Prozent der Kartenbreite. Frueher stand hier ein scale(0.82), das die Karte
+   kleiner machte, damit sie in die Spur passt. Seit dem 21.09.2026 behaelt sie ihre
+   Groesse, und stattdessen bekommt der Platz die Breite, die eine liegende Karte
+   braucht. Nur der Platz mit der gedrehten Karte wird breiter, die Reihe bleibt ruhig. */
+.bkarte.gerestet {
+  transform: rotate(90deg);
+  transform-origin: center;
+  transition: transform 180ms ease;
+}
+.platz:has(.bkarte.gerestet) { width: calc(52px * var(--sk) * 1.4); }
+.platz:has(.bkarte.leader.gerestet) { width: calc(62px * var(--sk) * 1.4); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bkarte.gerestet { transition: none; }
+}
 .brett .hand .bkarte { width: calc(44px * var(--sk)); }
 
 /* Verdeckter Stapel mit der echten Kartenrueckseite und der Zahl darauf. Die
@@ -472,6 +491,8 @@ header {
 
   .bkarte { width: calc(44px * var(--sk)); }
   .bkarte.leader { width: calc(50px * var(--sk)); }
+  .platz:has(.bkarte.gerestet) { width: calc(44px * var(--sk) * 1.4); }
+  .platz:has(.bkarte.leader.gerestet) { width: calc(50px * var(--sk) * 1.4); }
   .brett .hand .bkarte { width: calc(34px * var(--sk)); }
   .dons { max-width: calc(48px * var(--sk)); }
   .dons i { width: calc(11px * var(--sk)); height: calc(15px * var(--sk)); }

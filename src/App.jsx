@@ -5,10 +5,12 @@ import {
   anmelden,
   anzahl,
   bildpfad,
+  deckSchluessel,
   holen,
   kartenLaden,
   kennung,
   satzLaden,
+  spielerJeListe,
   verschluesselung,
   zeitraumLaden,
 } from "./daten.js";
@@ -334,9 +336,17 @@ function Quelle({ verzeichnis, wahl, setWahl, laedt }) {
    Decklisten
    -------------------------------------------------------------------------- */
 
-function Deckliste({ liste }) {
+function Deckliste({ liste, leaderId, spielerIndex }) {
   const g = liste.w + liste.l;
   const [kopiert, setKopiert] = useState(false);
+  // Wer diese Liste gespielt hat, soweit bekannt. Die Quelle sind die letzten neun
+  // Partien der Spieler aus der Bestenliste, also ein Ausschnitt: bei den meisten
+  // Listen bleibt es leer, und dann steht auch nichts da.
+  const gespieltVon = useMemo(() => {
+    if (!spielerIndex || !spielerIndex.size) return [];
+    const treffer = spielerIndex.get(deckSchluessel(liste.d, leaderId));
+    return treffer ? [...treffer].sort((a, b) => a.localeCompare(b)) : [];
+  }, [spielerIndex, liste, leaderId]);
 
   function kopieren() {
     const text = liste.d.map((e) => anzahl(e) + "x" + kennung(e)).join("\n");
@@ -388,6 +398,26 @@ function Deckliste({ liste }) {
         >
           {kopiert ? "Copied" : "Copy decklist"}
         </button>
+        {gespieltVon.length ? (
+          <div className="mt-1 grid gap-1 text-[13px]" style={{ color: "var(--leise)" }}>
+            <div className="etikett">Played by</div>
+            <div className="flex flex-wrap gap-1">
+              {gespieltVon.map((name) => (
+                <span
+                  key={name}
+                  className="rounded border px-1.5 py-0.5 text-[12px] font-semibold"
+                  style={{
+                    background: "var(--flaeche2)",
+                    borderColor: "var(--linie)",
+                    color: "var(--text)",
+                  }}
+                >
+                  {name}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap content-start gap-1.5">
@@ -1208,7 +1238,13 @@ function schritteBauen(zeilen) {
     let s = stand[wer];
     if (!s) {
       s = stand[wer] = { hand: [], board: [], trash: [], stagekarten: [],
-                         angelegt: {} };
+                         angelegt: {},
+                         // Gerestete Boardplaetze, der Leader getrennt. Resten ist kein
+                         // Zonenwechsel, es steht deshalb nur in den Klartextzeilen.
+                         gerestet: new Set(), leaderGerestet: false,
+                         // "will not Activate during next Refresh": bleibt einen Refresh
+                         // laenger liegen.
+                         bleibtGerestet: new Set() };
     }
     return s;
   };
@@ -1220,6 +1256,7 @@ function schritteBauen(zeilen) {
         ...s,
         hand: [...s.hand], board: [...s.board], trash: [...s.trash],
         stagekarten: [...s.stagekarten], angelegt: { ...s.angelegt },
+        gerestet: new Set(s.gerestet), bleibtGerestet: new Set(s.bleibtGerestet),
       };
     }
     return k;
@@ -1240,7 +1277,10 @@ function schritteBauen(zeilen) {
       let i = vonSlot >= 0 && vonSlot < liste.length && liste[vonSlot] === karte
         ? vonSlot
         : liste.indexOf(karte);
-      if (i >= 0) liste.splice(i, 1);
+      if (i >= 0) {
+        liste.splice(i, 1);
+        if (vonZone === Z_CHARACTER) plaetzeSchieben(s, i, -1);
+      }
     } else if (vonZone === Z_DON_EQUIPPED) {
       const wirt = Math.floor(vonSlot / 100);
       s.angelegt[wirt] = Math.max(0, (s.angelegt[wirt] || 0) - 1);
@@ -1251,6 +1291,9 @@ function schritteBauen(zeilen) {
       const liste = s[nachName];
       const i = Math.max(0, Math.min(nachSlot, liste.length));
       liste.splice(i, 0, karte);
+      // Eine frisch gespielte Karte steht aktiv, der Platz darf also keinen alten
+      // Restmerker erben.
+      if (nachZone === Z_CHARACTER) { plaetzeSchieben(s, i, 1); s.gerestet.delete(i); }
     } else if (nachZone === Z_DON_EQUIPPED) {
       // Der Slot traegt hier das Ziel: 99xx ist der Leader, sonst Boardplatz
       // mal hundert plus laufende Nummer.
@@ -1298,6 +1341,54 @@ function schritteBauen(zeilen) {
     const spr = SPRECHER.exec(text);
     const wer = spr ? spr[1] : null;
     if (wer) amZug = wer;
+
+    // --- Resten, aus den Klartextzeilen ---------------------------------------
+    // Resten ist kein Zonenwechsel und steht deshalb in keiner Bewegungszeile. Die
+    // vier Faelle, die im Log vorkommen, mit Beispiel aus einem echten Replay:
+    //
+    //   "Dracule Mihawk [OP14-020] attacking Rocks D. Xebec [OP17-039]"
+    //   "Gloriosa [OP17-046] Blocks"
+    //   "Dracule Mihawk [OP14-020]: Rest Otama [OP07-022]"
+    //   "Law & Bepo [ST24-004]: Rocks D. Xebec [OP17-118] will not Activate ..."
+    //
+    // Der Refresh kommt ohne eigene Zeile: er faellt mit dem Zugbeginn zusammen,
+    // also wird beim "End Turn" des einen die Gegenseite wieder aktiv gesetzt.
+    const karten = z.k || [];
+    if (wer) {
+      const meine = seite(wer);
+      const gegnerName = Object.keys(stand).find((n) => n !== wer);
+      const gegner = gegnerName ? stand[gegnerName] : null;
+
+      if (/\battacking\b/i.test(text) && karten.length) {
+        // Der Angreifer steht vorn in der Zeile. Ist es der Leader, kippt der Leader.
+        if (karten[0] === leader[wer]) meine.leaderGerestet = true;
+        else restenNachId(meine, karten[0]);
+      } else if (/\bBlocks\b/.test(text) && karten.length) {
+        restenNachId(meine, karten[0]);
+      } else if (/:\s*Rest\b/i.test(text) && karten.length) {
+        // Ziel ist die letzte genannte Karte, die Quelle die erste. Meistens restet
+        // man eigene Karten als Kosten, manche Effekte aber gegnerische.
+        const ziel = karten[karten.length - 1];
+        // Der eigene Leader ist ein gueltiges Ziel: Mihawks Leadereffekt restet "1 of
+        // your cards", und im Log steht dann der Leadername. Erst Leader, dann Board.
+        if (ziel === leader[wer]) meine.leaderGerestet = true;
+        else if (!restenNachId(meine, ziel)) restenNachId(gegner, ziel);
+      } else if (/will not Activate/i.test(text) && karten.length) {
+        // Trifft fast immer die Gegenseite, deshalb dort zuerst suchen.
+        const ziel = karten[karten.length - 1];
+        for (const s2 of [gegner, meine]) {
+          const i = platzNachId(s2, ziel);
+          if (i >= 0) { s2.bleibtGerestet.add(i); s2.gerestet.add(i); break; }
+        }
+      } else if (/End Turn/i.test(text) && gegner) {
+        // Refresh der Gegenseite: alles wird aktiv, ausser was ausdruecklich
+        // liegen bleibt. Der Merker gilt fuer genau diesen einen Refresh.
+        gegner.gerestet = new Set(gegner.bleibtGerestet);
+        gegner.bleibtGerestet = new Set();
+        gegner.leaderGerestet = false;
+      }
+    }
+
     schritte.push({
       wer,
       text: spr ? spr[2] : text,
@@ -1310,6 +1401,40 @@ function schritteBauen(zeilen) {
   }
 
   return { schritte, leader, nummern, zuege: zug };
+}
+
+/**
+ * Restmerker mitschieben, wenn sich die Boardplaetze verschieben.
+ *
+ * Die Merker haengen am Platz, nicht an der Karte, weil dieselbe Kartennummer mehrfach
+ * auf dem Brett stehen kann. Faellt ein Platz weg oder kommt einer dazu, ruecken alle
+ * dahinterliegenden Merker nach.
+ */
+function plaetzeSchieben(s, ab, richtung) {
+  for (const feld of ["gerestet", "bleibtGerestet"]) {
+    const neu = new Set();
+    for (const i of s[feld]) {
+      if (i < ab) neu.add(i);
+      else if (richtung < 0) { if (i > ab) neu.add(i - 1); }
+      else neu.add(i + 1);
+    }
+    s[feld] = neu;
+  }
+}
+
+/** Den ersten noch aktiven Platz mit dieser Kartennummer resten. */
+function restenNachId(s, id) {
+  if (!id || !s) return false;
+  for (let i = 0; i < s.board.length; i++) {
+    if (s.board[i] === id && !s.gerestet.has(i)) { s.gerestet.add(i); return true; }
+  }
+  return false;
+}
+
+/** Einen Platz suchen, um ihn zu markieren, egal ob schon gerestet. */
+function platzNachId(s, id) {
+  if (!id || !s) return -1;
+  return s.board.indexOf(id);
 }
 
 /** Angelegtes Don unter einer Karte, als kleine Reihe. */
@@ -1379,6 +1504,9 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
   const hand = s.hand || [];
   const board = s.board || [];
   const angelegt = s.angelegt || {};
+  // Gerestete Plaetze. Aeltere Schnappschuesse kennen das Feld nicht, dann steht alles
+  // aktiv, so wie der Viewer es bis zum 20.09.2026 gezeigt hat.
+  const gerestet = s.gerestet instanceof Set ? s.gerestet : new Set(s.gerestet || []);
   const angelegtGesamt = Object.values(angelegt).reduce((a, b) => a + b, 0);
   const life = s.life || 0;
 
@@ -1416,7 +1544,9 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
               board.map((k, i) => (
                 <span key={k + i} className="platz">
                   <Bild id={k} breite={120} hoehe={168}
-                        className="bkarte" alt={(namen[k] || {}).n || k} />
+                        className={"bkarte" + (gerestet.has(i) ? " gerestet" : "")}
+                        alt={(namen[k] || {}).n || k
+                             + (gerestet.has(i) ? ", rested" : "")} />
                   {/* Angelegtes Don steht unter der Karte, an der es haengt. Der
                       Slot der Bewegungszeile nennt den Boardplatz. */}
                   <AngelegtesDon n={angelegt[i] || 0} />
@@ -1435,7 +1565,8 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
               {leader ? (
                 <span className="platz">
                   <Bild id={leader} breite={120} hoehe={168}
-                        className="bkarte leader" alt={(namen[leader] || {}).n || leader} />
+                        className={"bkarte leader" + (s.leaderGerestet ? " gerestet" : "")}
+                        alt={(namen[leader] || {}).n || leader} />
                   {/* Der Slot 99xx meint den Leader. */}
                   <AngelegtesDon n={angelegt[99] || 0} />
                 </span>
@@ -2289,7 +2420,10 @@ export default function App() {
   /* Die Partien je Spieler. Eigene Datei, nur fuer die Spielerseite gebraucht,
      und sie darf ebenso fehlen wie die Bestenliste. */
   useEffect(() => {
-    if (entsperrt !== true || reiter !== "spieler" || spielerAlle !== null) return;
+    // Seit dem 10.09.2026 auch fuer den Deckreiter: dort steht unter jeder Liste, wer
+    // sie gespielt hat, und das kommt aus derselben Datei.
+    if (entsperrt !== true || spielerAlle !== null) return;
+    if (reiter !== "spieler" && reiter !== "decks") return;
     let abgebrochen = false;
     holen("spieler.json.gz")
       .then((d) => !abgebrochen && setSpielerAlle(d))
@@ -2298,6 +2432,9 @@ export default function App() {
       abgebrochen = true;
     };
   }, [entsperrt, reiter, spielerAlle]);
+
+  /* Wer hat welche Liste gespielt? Einmal bauen, nicht je Liste neu. */
+  const spielerIndex = useMemo(() => spielerJeListe(spielerAlle), [spielerAlle]);
 
   /* Adresse der Spielerseite mitfuehren. */
   useEffect(() => {
@@ -2923,7 +3060,12 @@ export default function App() {
                   </div>
                   <div className="grid gap-3">
                     {listen.slice(0, sichtbar).map((l, i) => (
-                      <Deckliste key={l.d.join("|") + i} liste={l} />
+                      <Deckliste
+                        key={l.d.join("|") + i}
+                        liste={l}
+                        leaderId={leader.id}
+                        spielerIndex={spielerIndex}
+                      />
                     ))}
                     {!listen.length ? (
                       <p className="py-10 text-center" style={{ color: "var(--still)" }}>

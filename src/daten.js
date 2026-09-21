@@ -38,6 +38,54 @@ export function anzahl(text) {
   return t ? parseInt(t[1], 10) : 1;
 }
 
+/**
+ * Schluessel einer Deckliste, unabhaengig von der Schreibweise.
+ *
+ * Die beiden Quellen schreiben dasselbe Deck verschieden: die Statistik fuehrt eine
+ * einzelne Kopie als "1xOP07-026", das Spielerprofil als "OP07-026". Und die Statistik
+ * traegt den Leader in der Liste, das Profil ebenso, aber an anderer Stelle. Hier wird
+ * beides auf "AnzahlxID" normiert, der Leader herausgenommen und sortiert.
+ */
+export function deckSchluessel(eintraege, leaderId) {
+  const leader = kennung(leaderId ?? "");
+  const teile = [];
+  for (const e of eintraege || []) {
+    const id = kennung(e);
+    if (leader && id === leader) continue;
+    teile.push(anzahl(e) + "x" + id);
+  }
+  return teile.sort().join("|");
+}
+
+/**
+ * Wer hat welche Liste gespielt? Aus den Profilen der Bestenliste.
+ *
+ * Die Zuordnung ist duenn und soll es auch bleiben: der Server schreibt je Spieler nur
+ * die letzten neun Partien, und nur die Spieler der Bestenliste werden gelesen. Getroffen
+ * werden dadurch vor allem die haeufig gespielten Listen. Wo nichts bekannt ist, steht
+ * nichts; geraten wird nicht.
+ */
+export function spielerJeListe(spielerAlle) {
+  const index = new Map();
+  const spieler = spielerAlle && spielerAlle.spieler;
+  if (!spieler) return index;
+  for (const eintrag of Object.values(spieler)) {
+    const name = eintrag && eintrag.name;
+    if (!name) continue;
+    for (const partie of eintrag.partien || []) {
+      const schluessel = deckSchluessel(partie.deck, partie.eigener_leader);
+      if (!schluessel) continue;
+      let namen = index.get(schluessel);
+      if (!namen) {
+        namen = new Set();
+        index.set(schluessel, namen);
+      }
+      namen.add(name);
+    }
+  }
+  return index;
+}
+
 /* ---------------------------------------------------------------------------
    Passwort.
 
