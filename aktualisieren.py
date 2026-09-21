@@ -57,8 +57,14 @@ BOUNTY_NAME = {
 # Partienzahlen, keine Bounty je Partie. Ein eigener 4B Topf muesste vom Spiel kommen;
 # taucht er im Index auf, genuegt hier ein Eintrag und ein Wert in --bounty.
 # Bereiche, fuer die es beim Spiel keinen fertigen Satz gibt und die wir deshalb selbst
-# aus der Rohebene rechnen. Sie landen in derselben Auswahl wie die fertigen.
-ROH_SAETZE = ("3000",)
+# aus der Rohebene rechnen. Sie landen in derselben Auswahl wie die fertigen und tragen
+# denselben Zuschnitt: sieben Tage, wie die drei "Last Week" Saetze des Spiels.
+#
+# Ein Unterschied bleibt und laesst sich nicht aufloesen: unsere sieben Tage sind die
+# letzten sieben, fuer die es Rohdaten gibt, die des Spiels koennen eine feste Woche
+# sein. Die Zahlen sind also vergleichbar, aber nicht taggleich.
+ROH_TAGE = 7
+ROH_SAETZE = {"3000": "Last Week 3B Bounty"}
 
 
 def bounty_name(bereich: str) -> str:
@@ -507,18 +513,16 @@ def main() -> None:
     # Der oberste Bountybereich hat beim Spiel keinen fertigen Satz. Damit er in
     # derselben Auswahl steht wie die anderen, wird er hier aus der Rohebene ueber das
     # ganze Fenster gerechnet. Nur wenn er auch angefordert wurde.
-    if args.tage:
-        bereiche = [b.strip() for b in args.bounty.split(",") if b.strip()]
-        modi = [m.strip() for m in args.modi.split(",") if m.strip()]
-        for bereich in ROH_SAETZE:
-            if bereich not in bereiche or not modi:
-                continue
-            print(f"\nSatz aus der Rohebene, {bounty_name(bereich)}:")
-            satz = roh_satz(ziel, index_schluessel(), fenster(args.tage), modi[0],
-                            bereich, roh_schluessel(modi[0], bereich),
-                            f"{bounty_name(bereich)}, {args.tage} d")
-            if satz:
-                saetze[roh_schluessel(modi[0], bereich)] = satz
+    bereiche = [b.strip() for b in args.bounty.split(",") if b.strip()]
+    modi = [m.strip() for m in args.modi.split(",") if m.strip()]
+    for bereich, anzeige in ROH_SAETZE.items():
+        if bereich not in bereiche or not modi:
+            continue
+        print(f"\nSatz aus der Rohebene, {anzeige}:")
+        satz = roh_satz(ziel, index_schluessel(), fenster(ROH_TAGE), modi[0],
+                        bereich, roh_schluessel(modi[0], bereich), anzeige)
+        if satz:
+            saetze[roh_schluessel(modi[0], bereich)] = satz
 
     verzeichnis = {
         "erstellt": max((s["stand"] for s in saetze.values()), default=""),
