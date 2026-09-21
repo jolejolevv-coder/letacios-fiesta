@@ -157,7 +157,24 @@ Eine Beobachtung fuer den naechsten Anlauf: nach vier unbekannten Aufrufen in de
 Sitzung antwortet der Server ueberhaupt nicht mehr. Wer Nummern durchprobiert, misst ab
 dem fuenften Kandidaten nur noch sich selbst und braucht je Kandidat eine eigene Sitzung.
 
-**Was fehlt, ist die Anmeldung.** Der Mitschnitt vom 21.09. begann bei einem bereits
+**Zweiter Mitschnitt, 21.09.2026, nur die Anmeldung.** Sie steht als
+`login_request` 0x2b mit acht Argumenten auf Knoten 1, also genau unsere Nummer. Ein
+Unterschied ist trotzdem da, im zweiten Argument, der Spielernummer: der Laeufer
+kodiert sie kompakt in drei Byte (`42 67 7f`), der Client laenger; unser Paket ist 85,
+seines 84 Byte. Das allein erklaert es aber nicht. Geprueft und beides ohne Erfolg:
+
+1. Das aufgezeichnete Anmeldepaket WOERTLICH eingespielt, statt es zu bauen.
+2. Die Reihenfolge des Clients uebernommen, also erst anmelden und den eigenen Knoten
+   danach registrieren. Im zweiten Mitschnitt kommt vor der Anmeldung keine einzige
+   Pfadanmeldung vor, der Client macht das spaeter.
+
+**Was jetzt fehlt, ist ein VOLLSTAENDIGER Mitschnitt.** Der erste begann bei einem schon
+angemeldeten Client, der zweite endete nach der Anmeldung. Gebraucht wird eine einzige
+Aufnahme ueber die ganze Strecke: tcpdump starten, DANN den Client starten, anmelden,
+Bestenliste oeffnen, blaettern, tcpdump beenden. Erst daraus laesst sich die komplette
+Reihenfolge lesen, und genau an einer Reihenfolge hing es schon am 02.09.2026.
+
+**Alte Notiz, erledigt:** Der Mitschnitt vom 21.09. begann bei einem bereits
 angemeldeten Client, das Anmeldepaket ist also nicht darin. Unsere Anmeldung mit
 `login_request` 0x2b bleibt unbeantwortet, und ohne sie beantwortet der Server auch
 nichts danach. Die Nummer selbst ist auf demselben Weg hergeleitet wie die drei
