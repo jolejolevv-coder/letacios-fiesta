@@ -92,102 +92,60 @@ Methodennummern verschieben, weil sie aus der Reihenfolge der Methoden im Skript
 entstehen. Beides bricht laut, nicht leise: falsche Nummer heisst keine Antwort. Der
 Laeufer meldet das und liefert die alte Datei weiter, statt eine leere zu schreiben.
 
-## OFFEN seit dem 09.09.2026: 2.6.1 bricht die Beschaffung
+## OFFEN seit dem 09.09.2026: 2.6.1 bricht den Laeufer
 
-Der Client aktualisiert sich selbst und ist zwischen dem 08. und dem 09.09.2026 von
-2.5.5 auf **2.6.1** gegangen. Genau dort endet die Datenreihe: der letzte Commit heisst
-"Bestenliste vom 2026-09-08". Der Lauf blieb trotzdem gruen, weil der Holschritt
-`continue-on-error` traegt; das meldet seit dem 21.09. ein eigener Wachjob.
+Am 09.09.2026 blieb `request_filtered_leaderboard` wieder unbeantwortet. Ursache war
+das Clientupdate auf 2.6.1 zwischen dem 08. und dem 09.09.
 
-Drei der vier versionsgebundenen Werte sind nachgezogen und belegt:
+**Am 21.09.2026 aus einem vollstaendigen Mitschnitt geklaert** (tcpdump von vor dem
+Clientstart bis nach dem Blaettern, 248 Pakete). Alles Folgende ist gemessen:
 
-**Versionszeichenkette**, 2.5.5 auf 2.6.1. Nachzusehen im laufenden Client:
+- Version `2.6.1`, Pruefsumme `110cfee48f4a1d1809fedd6cd0b42f59` fuer `root_main/Main`.
+- Methodennummern des Clients: `login_request` 0x2b, `request_upgrades` 0x65,
+  `update_my_leaderboard_info` 0x8b, `request_filtered_leaderboard` 0x4b,
+  `request_arena_stats` 0x45. Alle bestaetigt.
+- **Die Antwort kommt auf Methode 109, nicht mehr auf 104.** Nachgezogen in
+  `bestenliste_lesen.py` und `bestenliste_holen.py`. Veraltete Nummern fallen nicht
+  auf, der Leser meldet dann nur einen leeren Mitschnitt.
+- **Ein echter Fehler in der langen Aufrufform, behoben.** Die vier Byte vor der
+  Methode sind keine Knotennummer, sondern der Byte-Versatz, an dem der Pfad im
+  selben Paket beginnt: Godot liest `ofs = node_target & 0x7FFFFFFF` und ab dort die
+  Zeichenkette. Der Laeufer hatte die 0x58 aus dem Mitschnitt als feste Nummer
+  uebernommen. Jetzt wird der Versatz gerechnet, und unser Anmeldepaket ist byteweise
+  identisch mit dem des Clients, 103 Byte, Versatz 88.
 
-    strings ~/Library/Application\ Support/Godot/app_userdata/OPBounty/OPBounty.pck \
-      | grep -oE '"2\.[0-9]+\.[0-9]+"'
+**Und damit stehen wir wieder genau da wie am 01.09.2026.** Das Anmeldepaket ist
+byteweise identisch, der ENet-Rahmen ist identisch, der Server bestaetigt es auf
+Protokollebene, und das Spiel reagiert nicht: kein "Login successful!", keine
+Pfadbestaetigung, keine Bestenliste. Auch nicht in der langen Form, auch nicht in der
+Reihenfolge des Clients, auch nicht mit woertlich eingespieltem Anmeldepaket.
 
-**Pfadpruefsumme**, `c102025c5f763c7f3ab733d81e9d6825` auf
-`8de5e6c99ea8a8c55a484c9b3492ce26`. Die muss man nicht raten: der Server meldet
-`root_main/Main` seinerseits an und schickt die Pruefsumme dabei mit. Sichtbar mit
+Was der Server uns dabei schickt und dem echten Client nicht: direkt nach dem
+Verbinden einen Aufruf auf `root_main` Methode 0 mit der Zeichenkette "2.6.1", dazu
+die Pfadanmeldung fuer `root_main` unter der Nummer 1. Der Mitschnitt des Clients
+setzt spaeter ein, deshalb ist offen, ob er das auch bekommt.
 
-    python3 werkzeuge/bestenliste_holen.py --seiten 1 --uebersicht
+Es gilt derselbe Schluss wie beim ersten Mal, siehe den historischen Abschnitt weiter
+unten: **nicht weiter Pakete raten.** Der Mitschnittweg funktioniert vollstaendig und
+hat am 21.09.2026 wieder eine taggenaue Top 100 geliefert.
 
-unter "lesbare Zeichenketten".
+    sudo tcpdump -i any -s 0 -w ~/Downloads/bestenliste.pcap 'udp and host 34.235.236.170'
+    # Spiel oeffnen, Bestenliste, fuenfmal blaettern, Strg+C
+    python3 bestenliste_einbauen.py ~/Downloads/bestenliste.pcap
 
-**Methodennummern.** Godot vergibt sie ueber den Index in der sortierten Liste der
-@rpc Methoden des Knotens. 2.6.1 hat fuenf Methoden hinzugefuegt, vier davon sortieren
-vor `login_request`, alle fuenf vor den uebrigen:
+**Achtung, der Mitschnitt enthaelt das Kontopasswort im Klartext.** Es steht als
+drittes Argument in `login_request`. Die pcap gehoert nach dem Einlesen geloescht und
+niemals ins Repo.
 
-    login_request                 0x27 -> 0x2b
-    request_arena_stats           0x40 -> 0x45
-    request_filtered_leaderboard  0x46 -> 0x4b
-    request_upgrades              0x60 -> 0x65
-    update_auto_config            0x85 -> 0x8a
-
-Das ist nicht geraten. Seit 2.6.1 steht der GDScript Quelltext im Klartext im pck,
-`werkzeuge/methoden_aus_pck.py` liest die Liste aus und rechnet die Nummern. Der Lauf
-prueft sich selbst, indem er zusaetzlich den alten Stand rekonstruiert: dabei kommt
-fuer `request_filtered_leaderboard` genau die 0x46 aus dem Mitschnitt vom 01.09.2026
-heraus. Stimmt diese Probe, stimmen Liste und Sortierung.
-
-**Am 21.09.2026 aus einem Mitschnitt des echten Clients bestaetigt:**
-
-    Pfadanmeldung  byteweise identisch mit unserer, inklusive Pruefsumme
-    0x65 (101)  request_upgrades            2 Argumente
-    0x8b (139)  update_my_leaderboard_info  3 Argumente
-    0x4b ( 75)  request_filtered_leaderboard 4 Argumente, dann je Seite
-    0x45 ( 69)  request_arena_stats         2 Argumente
-
-Zwei Korrekturen kamen dabei heraus. Erstens sendet der Client seine EIGENE
-Pruefsumme, nicht die des Servers; beide melden `root_main/Main` an und schicken dabei
-verschiedene Werte, weil ihre Methodenlisten verschieden sind. Zweitens ist der Vorlauf
-`update_my_leaderboard_info` 0x8b und nicht `update_auto_config` 0x8a; die
-Rueckrechnung ueber den alten Textauszug hatte sich hier um eins vertan, weil der Name
-im alten Auszug fehlt und damit aus der rekonstruierten Liste fiel.
-
-Die Pruefsumme ist der MD5 ueber die aneinandergehaengten sortierten Methodennamen.
-Das ist gegen den Mitschnitt geprueft und macht sie herleitbar.
-
-**Es reicht trotzdem nicht.** Mit allen drei Werten bleibt die Anfrage unbeantwortet.
-Geprueft wurden vier Varianten, je in eigener Sitzung: kurze Form mit und ohne den
-Vorlauf beim Bestenlistensystem, lange Form mit Pfad `root_main/Main` und mit
-`root_main`. Keine liefert eine Seite, es kommen nur Sechsbytepakete zurueck.
-
-Eine Beobachtung fuer den naechsten Anlauf: nach vier unbekannten Aufrufen in derselben
-Sitzung antwortet der Server ueberhaupt nicht mehr. Wer Nummern durchprobiert, misst ab
-dem fuenften Kandidaten nur noch sich selbst und braucht je Kandidat eine eigene Sitzung.
-
-**Zweiter Mitschnitt, 21.09.2026, nur die Anmeldung.** Sie steht als
-`login_request` 0x2b mit acht Argumenten auf Knoten 1, also genau unsere Nummer. Ein
-Unterschied ist trotzdem da, im zweiten Argument, der Spielernummer: der Laeufer
-kodiert sie kompakt in drei Byte (`42 67 7f`), der Client laenger; unser Paket ist 85,
-seines 84 Byte. Das allein erklaert es aber nicht. Geprueft und beides ohne Erfolg:
-
-1. Das aufgezeichnete Anmeldepaket WOERTLICH eingespielt, statt es zu bauen.
-2. Die Reihenfolge des Clients uebernommen, also erst anmelden und den eigenen Knoten
-   danach registrieren. Im zweiten Mitschnitt kommt vor der Anmeldung keine einzige
-   Pfadanmeldung vor, der Client macht das spaeter.
-
-**Was jetzt fehlt, ist ein VOLLSTAENDIGER Mitschnitt.** Der erste begann bei einem schon
-angemeldeten Client, der zweite endete nach der Anmeldung. Gebraucht wird eine einzige
-Aufnahme ueber die ganze Strecke: tcpdump starten, DANN den Client starten, anmelden,
-Bestenliste oeffnen, blaettern, tcpdump beenden. Erst daraus laesst sich die komplette
-Reihenfolge lesen, und genau an einer Reihenfolge hing es schon am 02.09.2026.
-
-**Alte Notiz, erledigt:** Der Mitschnitt vom 21.09. begann bei einem bereits
-angemeldeten Client, das Anmeldepaket ist also nicht darin. Unsere Anmeldung mit
-`login_request` 0x2b bleibt unbeantwortet, und ohne sie beantwortet der Server auch
-nichts danach. Die Nummer selbst ist auf demselben Weg hergeleitet wie die drei
-bestaetigten, das Verdaechtige ist also eher die Argumentliste.
-
-**Naechster Schritt ist ein zweiter Mitschnitt, diesmal MIT der Anmeldung:** tcpdump
-starten, dann den Client frisch starten und einloggen, danach die Bestenliste oeffnen.
-
-    sudo tcpdump -i any -s 0 -w ~/Downloads/opbounty-2.6.1.pcap \
-      'udp and host 34.235.236.170'
-
-Dann im Client die Bestenliste oeffnen, eine Seite blaettern, tcpdump beenden.
-Auswertung mit `werkzeuge/pcap_enet.py`.
+**Vorschlag fuer eine dauerhafte Loesung, noch nicht umgesetzt und nicht freigegeben:**
+Die Liste liegt auch in Firestore, in `Users` nach `Bounty` absteigend, mit
+`nickname`, `Title` und `n`; Land und Leaderaufstellung stehen in `PublicUsers`.
+`tools/bestenliste_probe.py` im Simulatorprojekt holt das heute schon in einer
+Abfrage, und die Action hat die Zugangsdaten bereits als secrets. Der Vorteil waere,
+dass diese Quelle von Spielversionen unabhaengig ist, also nicht bei jedem Update
+wieder bricht. Der Preis: die Rangfolge und die Spalten muessten nachgebaut werden
+statt fertig vom Server zu kommen, und Felder, die nur die RPC-Antwort kennt, muessten
+einzeln geprueft werden.
 
 ## GELOEST am 02.09.2026: der Laeufer funktioniert
 

@@ -177,26 +177,37 @@ KNOTENPFAD = "root_main/Main"      # dort liegt login_request
 # Spielclient Anmeldung und Bestenliste an verschiedene Knoten; genau daran hing
 # die unbeantwortete Anfrage.
 KNOTENPFAD_SPIEL = "root_main"
-KNOTEN_SPIEL = 0x59
-KNOTEN_LANG = 0x58
 FLAGGE_PFAD_FOLGT = 0x80000000
 KOPF_LANGE_NUMMER = 0x20
+# Kopflaenge der langen Form: ein Byte Art, vier Byte Zahl, Methode, Anzahl.
+KOPF_LANG = 7
 
 
-def aufruf_mit_pfad(nummer: int, methode: int, argumente: list,
+def aufruf_mit_pfad(methode: int, argumente: list,
                     pfad: str = KNOTENPFAD) -> bytes:
     """Aufruf in der langen Form, mit dem Knotenpfad am Ende.
 
-    So schickt der Spielclient seinen ersten Aufruf. Die Knotennummer steht mit vier
-    Byte da und traegt im obersten Bit die Angabe, dass ein Pfad folgt; der Pfad
-    selbst haengt als nullterminierte Zeichenkette hinten dran, nicht als Variante.
-    Ohne diesen Schritt kennt der Server die kurze Nummer nicht und laesst spaetere
-    Aufrufe ins Leere laufen.
+    So schickt der Spielclient jeden Aufruf, dessen Knoten der Server noch nicht
+    bestaetigt hat. **Die vier Byte vor der Methode sind keine Knotennummer.** Sie
+    tragen im obersten Bit die Angabe "Pfad folgt", und die uebrigen 31 Bit sind der
+    Byte-Versatz, an dem der Pfad im selben Paket beginnt. Godot liest ihn so:
+
+        int ofs = node_target & 0x7FFFFFFF;
+        paths.parse_utf8((const char *)&p_packet[ofs], p_packet_len - ofs);
+
+    Im Mitschnitt vom 21.09.2026 steht dort 0x80000058, also Versatz 88, und genau
+    an Byte 88 des 103 Byte langen Anmeldepakets faengt `root_main/Main` an.
+
+    Hier lag der Fehler: der Laeufer hat die 0x58 als feste Knotennummer uebernommen.
+    Sein Paket ist aber kuerzer, der Pfad steht woanders, und der Server hat an
+    Versatz 88 nichts Brauchbares gefunden und den Aufruf still verworfen.
     """
+    rumpf = b"".join(argumente)
+    versatz = KOPF_LANG + len(rumpf)
     return (bytes((KOPF_LANGE_NUMMER,))
-            + struct.pack("<I", nummer | FLAGGE_PFAD_FOLGT)
+            + struct.pack("<I", versatz | FLAGGE_PFAD_FOLGT)
             + bytes((methode, len(argumente)))
-            + b"".join(argumente)
+            + rumpf
             + pfad.encode("utf-8") + b"\x00")
 
 
@@ -208,10 +219,9 @@ def bestenliste_anfrage_lang(seite: int, leader: str = "",
     Ob er sie bestaetigt hat, wissen wir nicht sicher, also schicken wir den Pfad
     jedes Mal mit. Das kostet fuenfzehn Byte und spart eine Fehlerquelle.
     """
-    return aufruf_mit_pfad(KNOTEN_SPIEL, METHODE_ANFRAGE,
+    return aufruf_mit_pfad(METHODE_ANFRAGE,
                            [kette(leader), kette(land),
-                            zahl(SEITENGROESSE), zahl(seite)],
-                           pfad=KNOTENPFAD_SPIEL)
+                            zahl(SEITENGROESSE), zahl(seite)])
 
 
 # Was der Spielclient nach der Anmeldung und vor dem ersten Bestenlistenabruf
@@ -252,7 +262,7 @@ def begleiter(benutzer: str, nummer: int,
 def anmeldung_lang(benutzer: str, nummer: int, passwort: str,
                    version: str) -> bytes:
     """Der Anmeldeaufruf in der langen Form, so wie er als erster gesendet wird."""
-    return aufruf_mit_pfad(KNOTEN_LANG, METHODE_ANMELDUNG,
+    return aufruf_mit_pfad(METHODE_ANMELDUNG,
                            [kette(benutzer), zahl(nummer), kette(passwort),
                             kette(version), nichts(), feld(), feld(), zahl(0)])
 

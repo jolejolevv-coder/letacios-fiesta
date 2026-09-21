@@ -8,7 +8,9 @@ Aufbau einer Antwort, aus dem Mitschnitt vom 01.09.2026 zurueckgerechnet:
 
     00        Befehlsart, 0 heisst entfernter Aufruf
     02        Knotennummer
-    68        Methodennummer 104, das ist send_leaderboard
+    6d        Methodennummer 109, das ist send_leaderboard. Bis Version 2.5.5
+              stand dort 104; die Nummern sind der Index in der sortierten Liste
+              der @rpc Namen und verschieben sich mit jeder Spielversion.
     08        Zahl der Argumente
     02 00     erstes Argument, der Seitenindex
     dann das erste Argument von Gewicht: ein Feld aus 20 Zeilen, jede Zeile
@@ -53,7 +55,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pcap_enet import pakete  # noqa: E402
 from enet_strom import nachrichten, kopf_lesen  # noqa: E402
 
-KNOTEN, METHODE = 2, 104
+# Aus dem Mitschnitt vom 21.09.2026, Version 2.6.1. Veraltete Nummern fallen nicht
+# auf: der Leser findet dann einfach keine Seite und meldet einen leeren Mitschnitt.
+KNOTEN, METHODE = 2, int(__import__("os").environ.get("OPBOUNTY_METHODE", 109))
 
 # Godot-Variantentypen, so weit sie hier vorkommen.
 NIL, BOOL, INT, FLOAT, STRING, ARRAY = 0, 1, 2, 3, 4, 28

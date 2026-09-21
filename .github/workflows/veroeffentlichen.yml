@@ -229,7 +229,8 @@ jobs:
             echo ""
             echo "Die Bestenliste ist ${TAGE} Tage alt, erlaubt sind ${MAX_TAGE}."
             echo "Die Seite ist trotzdem veroeffentlicht, sie zeigt nur alte Zahlen."
-            echo "Zum Nachsehen: python3 werkzeuge/bestenliste_holen.py --seiten 1"
+            echo "Der eigene Laeufer ist seit 2.6.1 kaputt, siehe specs/features/bestenliste.md."
+            echo "Neue Daten per Mitschnitt: python3 bestenliste_einbauen.py <pcap>"
             {
               echo ""
               echo "**Veraltet.** Die Seite ist veroeffentlicht, zeigt aber alte Zahlen."
