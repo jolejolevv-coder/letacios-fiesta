@@ -62,7 +62,7 @@ DROSSEL_VERZOEGERUNG = 2
 #   request_arena_stats           0x40 -> 0x45
 #   request_filtered_leaderboard  0x46 -> 0x4b
 #   request_upgrades              0x60 -> 0x65
-#   update_auto_config            0x85 -> 0x8a
+#   update_my_leaderboard_info    0x85 -> 0x8b
 
 KNOTEN_ANFRAGE, METHODE_ANFRAGE = 1, 0x4b        # request_filtered_leaderboard
 SEITENGROESSE = 20               # LEADERBOARD_ENTRIES_PER_REQUEST
@@ -220,7 +220,7 @@ def bestenliste_anfrage_lang(seite: int, leader: str = "",
 #   Methode 133 (nummer, "country", "Germany")       Land melden
 # Ohne diese Anmeldung beim Bestenlistensystem bleibt die Abfrage unbeantwortet.
 METHODE_WERTE_MELDEN = 0x65   # request_upgrades
-METHODE_FELD_MELDEN = 0x8a    # update_auto_config
+METHODE_FELD_MELDEN = 0x8b    # update_my_leaderboard_info
 
 
 def werte_melden(nummer: int, eintraege: list = (),
@@ -283,13 +283,18 @@ def pfad_anmeldung_lesen(daten: bytes):
 # Methodenliste des Knotens ab und ist damit an die Spielversion gebunden, nicht an
 # das Konto oder die Sitzung; aus dem Mitschnitt vom 02.09.2026, Version 2.5.5.
 PRUEFSUMME_MAIN = os.environ.get("OPBOUNTY_PRUEFSUMME",
-                                 "8de5e6c99ea8a8c55a484c9b3492ce26")
-# 02.09.2026, Version 2.5.5: c102025c5f763c7f3ab733d81e9d6825
-# 21.09.2026, Version 2.6.1: 8de5e6c99ea8a8c55a484c9b3492ce26
+                                 "110cfee48f4a1d1809fedd6cd0b42f59")
+# Es ist die Pruefsumme des EIGENEN Knotens, nicht die des Servers. Beide melden
+# `root_main/Main` an, und beide schicken dabei ihre eigene; sie sind verschieden, weil
+# Client und Server verschiedene Methodenlisten auf dem Knoten haben. Am 21.09.2026
+# habe ich zuerst die des Servers zurueckgeschickt, und genau daran lag es dann noch.
 #
-# Der Server schickt die Pruefsumme selbst mit, wenn er seinerseits `root_main/Main`
-# anmeldet. Der Laeufer liest sie seit dem 21.09.2026 aus dieser Nachricht und benutzt
-# den Wert hier nur noch als Rueckfall; siehe bestenliste_holen.holen().
+# Der Wert ist herleitbar: er ist der MD5 ueber die aneinandergehaengten, sortierten
+# Namen der @rpc Methoden des Knotens. `werkzeuge/methoden_aus_pck.py` rechnet ihn aus
+# dem pck des Clients aus, es braucht dafuer keinen Mitschnitt.
+#
+#   02.09.2026, 2.5.5: c102025c5f763c7f3ab733d81e9d6825
+#   21.09.2026, 2.6.1: 110cfee48f4a1d1809fedd6cd0b42f59
 
 
 def pfad_anmelden(nummer: int, pfad: str = KNOTENPFAD,

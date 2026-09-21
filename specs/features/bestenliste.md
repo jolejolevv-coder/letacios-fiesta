@@ -130,6 +130,24 @@ prueft sich selbst, indem er zusaetzlich den alten Stand rekonstruiert: dabei ko
 fuer `request_filtered_leaderboard` genau die 0x46 aus dem Mitschnitt vom 01.09.2026
 heraus. Stimmt diese Probe, stimmen Liste und Sortierung.
 
+**Am 21.09.2026 aus einem Mitschnitt des echten Clients bestaetigt:**
+
+    Pfadanmeldung  byteweise identisch mit unserer, inklusive Pruefsumme
+    0x65 (101)  request_upgrades            2 Argumente
+    0x8b (139)  update_my_leaderboard_info  3 Argumente
+    0x4b ( 75)  request_filtered_leaderboard 4 Argumente, dann je Seite
+    0x45 ( 69)  request_arena_stats         2 Argumente
+
+Zwei Korrekturen kamen dabei heraus. Erstens sendet der Client seine EIGENE
+Pruefsumme, nicht die des Servers; beide melden `root_main/Main` an und schicken dabei
+verschiedene Werte, weil ihre Methodenlisten verschieden sind. Zweitens ist der Vorlauf
+`update_my_leaderboard_info` 0x8b und nicht `update_auto_config` 0x8a; die
+Rueckrechnung ueber den alten Textauszug hatte sich hier um eins vertan, weil der Name
+im alten Auszug fehlt und damit aus der rekonstruierten Liste fiel.
+
+Die Pruefsumme ist der MD5 ueber die aneinandergehaengten sortierten Methodennamen.
+Das ist gegen den Mitschnitt geprueft und macht sie herleitbar.
+
 **Es reicht trotzdem nicht.** Mit allen drei Werten bleibt die Anfrage unbeantwortet.
 Geprueft wurden vier Varianten, je in eigener Sitzung: kurze Form mit und ohne den
 Vorlauf beim Bestenlistensystem, lange Form mit Pfad `root_main/Main` und mit
@@ -139,9 +157,14 @@ Eine Beobachtung fuer den naechsten Anlauf: nach vier unbekannten Aufrufen in de
 Sitzung antwortet der Server ueberhaupt nicht mehr. Wer Nummern durchprobiert, misst ab
 dem fuenften Kandidaten nur noch sich selbst und braucht je Kandidat eine eigene Sitzung.
 
-**Naechster Schritt ist ein Mitschnitt des echten Clients**, so wie am 02.09., weil nur
-er zeigt, was 2.6.1 zusaetzlich oder anders sendet. Er braucht root und damit den
-Nutzer:
+**Was fehlt, ist die Anmeldung.** Der Mitschnitt vom 21.09. begann bei einem bereits
+angemeldeten Client, das Anmeldepaket ist also nicht darin. Unsere Anmeldung mit
+`login_request` 0x2b bleibt unbeantwortet, und ohne sie beantwortet der Server auch
+nichts danach. Die Nummer selbst ist auf demselben Weg hergeleitet wie die drei
+bestaetigten, das Verdaechtige ist also eher die Argumentliste.
+
+**Naechster Schritt ist ein zweiter Mitschnitt, diesmal MIT der Anmeldung:** tcpdump
+starten, dann den Client frisch starten und einloggen, danach die Bestenliste oeffnen.
 
     sudo tcpdump -i any -s 0 -w ~/Downloads/opbounty-2.6.1.pcap \
       'udp and host 34.235.236.170'
