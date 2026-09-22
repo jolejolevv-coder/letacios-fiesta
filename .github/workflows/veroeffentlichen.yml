@@ -104,12 +104,32 @@ jobs:
       # weiter, statt die ganze Seite zu kosten.
       # Der Spielserver nennt seine Version gleich nach dem Verbinden, ohne Anmeldung.
       # Stimmt sie nicht mehr mit der im Code, haben sich die Methodennummern und die
-      # Pruefsumme verschoben und die Beschaffung laeuft ins Leere. Reparieren laesst
-      # sich das nur dort, wo der Spielclient liegt: die Nummern stehen im pck. Hier
-      # ist es eine Warnlampe, deshalb bricht es den Lauf nicht ab.
-      - name: Spielversion gegen den Code pruefen
+      # Pruefsumme verschoben und die Beschaffung laeuft ins Leere.
+      #
+      # Das repariert sich hier selbst: der Client laedt sein Paket von einer
+      # oeffentlichen Adresse, die im Paket selbst steht, und die Nummern sind daraus
+      # herleitbar. Es braucht also keinen Spielclient und niemanden, der ihn startet.
+      # Die 40 MB werden nur geladen, wenn die Versionen wirklich auseinanderlaufen.
+      - name: Spielversion pruefen und noetigenfalls nachziehen
         id: spielversion
-        run: python3 werkzeuge/version_nachziehen.py --nur-server
+        run: |
+          set -uo pipefail
+          if python3 werkzeuge/version_nachziehen.py --nur-server; then
+            exit 0
+          fi
+          echo "  Neue Spielversion, ziehe die Nummern nach"
+          python3 werkzeuge/version_nachziehen.py --laden --schreiben || exit 1
+          git add -A werkzeuge/
+          if git diff --cached --quiet; then
+            echo "  Der Server meldet eine andere Version, aber im Paket hat sich"
+            echo "  nichts geaendert. Das gehoert angesehen."
+            exit 1
+          fi
+          git -c user.name="ladder" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Spielversion nachgezogen, $(date +%F)"
+          git push -q origin HEAD:main
+          echo "  nachgezogen und gepusht, der naechste Schritt nutzt die neuen Nummern"
         continue-on-error: true
 
       - name: Bestenliste holen
@@ -240,13 +260,13 @@ jobs:
 
           if [ "${VERSION}" = "failure" ]; then
             echo ""
-            echo "Der Spielserver will eine andere Version als der Code kennt."
-            echo "Auf dem Rechner mit dem Client: OPBounty einmal starten, dann"
-            echo "  python3 werkzeuge/version_nachziehen.py --schreiben"
+            echo "Die Spielversion laeuft auseinander und das Nachziehen hat NICHT"
+            echo "funktioniert. Von Hand nachsehen:"
+            echo "  python3 werkzeuge/version_nachziehen.py --laden"
             {
               echo ""
-              echo "**Neue Spielversion.** Die Methodennummern muessen nachgezogen werden,"
-              echo "siehe den Schritt \"Spielversion gegen den Code pruefen\"."
+              echo "**Spielversion.** Das automatische Nachziehen ist fehlgeschlagen,"
+              echo "siehe den Schritt \"Spielversion pruefen und noetigenfalls nachziehen\"."
             } >> "${GITHUB_STEP_SUMMARY}"
           fi
 

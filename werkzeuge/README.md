@@ -20,31 +20,27 @@ Sie sprechen das Spielprotokoll (ENet ueber UDP, Port 4694):
 
 Jedes Update von OPBounty verschiebt die Methodennummern und die Pruefsumme, und die
 Beschaffung der Bestenliste laeuft danach ins Leere. Die Nummer einer Methode ist ihr
-Index in der SORTIERTEN Liste aller `@rpc` Namen, die Pruefsumme der MD5 darueber;
-beides steht im pck des Clients und muss nicht aus einem Mitschnitt geholt werden.
+Index in der SORTIERTEN Liste aller `@rpc` Namen, die Pruefsumme der MD5 darueber.
 
-**1. Gemerkt wird es von selbst.** Die Action fragt den Spielserver taeglich nach
-seiner Version und vergleicht sie mit der im Code. Weichen sie ab, steht in der
-Zusammenfassung des Laufs "Neue Spielversion". Selbst nachsehen geht ueberall, auch
-ohne Spielpaket:
+**Das erledigt sich von selbst, es ist nichts zu tun.** Die Action fragt den
+Spielserver taeglich nach seiner Version. Weicht sie von der im Code ab, laedt sie das
+Spielpaket von der oeffentlichen Adresse, aus der sich auch der Client bedient, leitet
+alle Werte daraus ab, schreibt sie und pusht den Commit. Der naechste Schritt desselben
+Laufs nutzt schon die neuen Nummern.
 
-    python3 werkzeuge/version_nachziehen.py --nur-server
+Moeglich ist das, weil das Paket ohne Anmeldung herunterladbar ist; die Adresse steht
+im Paket selbst, in `download_update_wl`. Es braucht also keinen Spielclient und
+niemanden, der ihn startet.
 
-**2. OPBounty einmal starten.** Der Client aktualisiert sich dabei selbst, und erst
-danach stehen die neuen Nummern im pck. Vorher waeren es die von gestern; das Werkzeug
-verweigert deshalb die Arbeit, solange Server und pck nicht dieselbe Version nennen.
+Von Hand nachsehen oder nachziehen, falls die Action meldet, dass es nicht geklappt hat:
 
-**3. Vergleichen, dann setzen.** Der erste Aufruf zeigt nur, der zweite schreibt, und
-zwar in beide Kopien der Werkzeuge, hier und im Simulatorprojekt:
+    python3 werkzeuge/version_nachziehen.py --nur-server      # nur fragen, ohne Paket
+    python3 werkzeuge/version_nachziehen.py --laden           # Paket holen, vergleichen
+    python3 werkzeuge/version_nachziehen.py --laden --schreiben
 
-    python3 werkzeuge/version_nachziehen.py
-    python3 werkzeuge/version_nachziehen.py --schreiben
-
-**4. Committen und pushen.** Danach laeuft der naechste Lauf der Action wieder gegen
-die richtigen Nummern.
-
-Ohne `--schreiben` endet der Befehl mit 1, sobald etwas abweicht, und mit 2, wenn das
-pck noch hinterherhinkt. Er taugt damit auch als Pruefung in einem Skript.
+Ohne `--laden` wird das lokal installierte Paket gelesen, das aber nur auf dem Rechner
+mit dem Spielclient aktuell ist. Ohne `--schreiben` endet der Befehl mit 1, sobald
+etwas abweicht, und mit 2, wenn das Paket aelter ist als das, was der Server will.
 
 **Der Kern, warum es funktioniert:** `pfad_anmelden` meldet den eigenen Knoten beim
 Server an, bevor irgendetwas anderes gesendet wird. Ohne das nimmt der Server die

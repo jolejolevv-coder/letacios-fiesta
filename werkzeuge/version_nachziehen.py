@@ -10,8 +10,8 @@ geholt werden, es steht im pck:
   * Die Pruefsumme ist der MD5 ueber dieselbe Liste, aneinandergehaengt.
   * Die Versionszeichenkette steht im Klartext daneben.
 
-    python3 werkzeuge/version_nachziehen.py               # nur vergleichen
-    python3 werkzeuge/version_nachziehen.py --schreiben    # Konstanten setzen
+    python3 werkzeuge/version_nachziehen.py                      # lokales Paket
+    python3 werkzeuge/version_nachziehen.py --laden --schreiben  # Paket holen, setzen
 
 Gefragt wird dabei auch der Spielserver: er nennt seine Version gleich nach dem
 Verbinden von sich aus, ohne Anmeldung. Drei Werte werden verglichen, Server, pck und
@@ -36,6 +36,7 @@ import hashlib
 import os
 import re
 import sys
+import urllib.request
 
 HIER = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HIER)
@@ -47,6 +48,15 @@ from methoden_aus_pck import (PCK, rpc_methoden, skriptblock,  # noqa: E402
 # Beide Kopien der Werkzeuge. Das Simulatorprojekt ist die Quelle, dieses Verzeichnis
 # die Kopie; gesetzt werden trotzdem beide, damit sie nicht auseinanderlaufen.
 KOPIEN = [HIER, os.path.expanduser("~/Downloads/xebec-mirror-sim/tools")]
+
+# Woher der Client sein eigenes Paket laedt. Steht im pck selbst, in der Funktion
+# `download_update_wl`, und ist oeffentlich ohne Anmeldung erreichbar.
+#
+# Das ist der Grund, warum hier kein Spielclient gebraucht wird: das Paket laesst sich
+# direkt holen, und die Nummern stehen darin. Am 22.09.2026 geprueft, das geladene
+# Paket liefert dieselbe Version, dieselben 144 Methoden und dieselbe Pruefsumme wie
+# das lokal installierte.
+PCK_URL = "https://opbountypck.s3.us-east-1.amazonaws.com/OPBounty.pck"
 
 # Je Eintrag: Anzeigename, Datei, Muster mit genau einer Gruppe fuer den Wert, und
 # woher der Sollwert kommt. `art` sagt, wie der Wert geschrieben wird.
@@ -72,6 +82,20 @@ STELLEN = [
      r'(?m)^(PRUEFSUMME_MAIN = os\.environ\.get\("OPBOUNTY_PRUEFSUMME",\s*\n\s*")'
      r"([0-9a-f]{32})", "text"),
 ]
+
+
+def pck_laden(ziel: str) -> str:
+    """Das Spielpaket von der oeffentlichen Adresse holen. Gibt den Pfad zurueck."""
+    os.makedirs(os.path.dirname(ziel) or ".", exist_ok=True)
+    print(f"  lade {PCK_URL}")
+    with urllib.request.urlopen(PCK_URL, timeout=600) as antwort:
+        daten = antwort.read()
+    if len(daten) < 8_000_000:
+        raise SystemExit(f"Paket zu klein ({len(daten)} Byte), Abbruch")
+    with open(ziel, "wb") as datei:
+        datei.write(daten)
+    print(f"  {len(daten) // 1024 // 1024} MB nach {ziel}")
+    return ziel
 
 
 def aus_pck(pfad: str) -> dict:
@@ -170,6 +194,9 @@ def main() -> int:
     p = argparse.ArgumentParser(
         description="Versionsabhaengige Werte aus dem Spielpaket nachziehen")
     p.add_argument("--pck", default=PCK)
+    p.add_argument("--laden", action="store_true",
+                   help="das Spielpaket erst herunterladen, statt das lokal "
+                        "installierte zu lesen; braucht keinen Spielclient")
     p.add_argument("--schreiben", action="store_true",
                    help="die Konstanten setzen statt nur zu vergleichen")
     p.add_argument("--ohne-server", action="store_true", dest="ohne_server",
@@ -182,8 +209,13 @@ def main() -> int:
     if a.nur_server:
         return nur_server()
 
-    soll, anzahl = aus_pck(a.pck)
-    print(f"  pck {a.pck}")
+    pfad = a.pck
+    if a.laden:
+        pfad = pck_laden(os.path.join(
+            os.environ.get("TMPDIR", "/tmp"), "OPBounty_geladen.pck"))
+
+    soll, anzahl = aus_pck(pfad)
+    print(f"  pck {pfad}")
     print(f"  Version {soll['Version']}, {anzahl} @rpc Methoden")
 
     # Der Server nennt seine Version von sich aus, ohne Anmeldung. Damit faellt ein
@@ -198,8 +230,8 @@ def main() -> int:
             # waeren alle Nummern von gestern, und --schreiben wuerde Mist festschreiben.
             print(f"\n  Der Server will {draussen}, das Spielpaket steht auf "
                   f"{soll['Version']}.")
-            print("  Starte OPBounty einmal, es aktualisiert sich dabei selbst, und "
-                  "ruf den Befehl danach erneut.")
+            print("  Mit --laden holt sich der Befehl das neue Paket selbst, dafuer "
+                  "braucht es keinen Spielclient.")
             print("  Es wird nichts geschrieben, sonst stuenden hier die Nummern von "
                   "gestern.")
             return 2
