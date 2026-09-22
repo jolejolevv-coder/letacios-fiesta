@@ -153,12 +153,18 @@ Das ist EIN Datenpunkt, keine Erklaerung. Deshalb wird jetzt gemessen statt gera
 **Die Messung laeuft seit dem 21.09.2026.** `werkzeuge/takt_messen.py` macht einen
 Abruf und haengt eine Zeile an `~/.opbounty_takt.log`: Zeitpunkt, Pause seit dem
 letzten Versuch, Seiten, Spieler, Notiz. Keine Zugangsdaten, und die Datei liegt
-ausserhalb des Repos. Getaktet wird ueber den launchd Agenten
-`~/Library/LaunchAgents/de.jole.opbounty-takt.plist`, einmal pro Stunde.
+ausserhalb des Repos. Getaktet wird auf dem **Bazzite Server**, nicht auf dem Mac. Der erste Versuch mit
+einem launchd Agenten auf dem Mac lieferte ueber Nacht null Messwerte: `StartInterval`
+feuert nicht, waehrend der Rechner schlaeft, und genau die langen Pausen sind das,
+worum es hier geht. Der Server laeuft durch. Nebenbei hat er eine andere Adresse als
+der Mac, damit zeigt sich auch, ob eine Sperre an der Adresse haengt oder am Konto.
+
+Einheit dort: `~/.config/systemd/user/takt.timer`, stuendlich zur vollen Stunde,
+`Persistent=true`. Das Protokoll liegt auf dem Server unter `~/.opbounty_takt.log`.
 
     python3 werkzeuge/takt_messen.py            # ein Versuch von Hand
     python3 werkzeuge/takt_messen.py --zeigen   # auswerten
-    launchctl unload ~/Library/LaunchAgents/de.jole.opbounty-takt.plist   # abschalten
+    ssh jole@192.168.178.182 systemctl --user disable --now takt.timer   # abschalten
 
 Auszuwerten ist eine einzige Frage: ist die Pause vor einem Treffer systematisch
 laenger als die vor einem Fehlschlag? Faellt das Muster, ist der Laeufer kein
