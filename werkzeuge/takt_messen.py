@@ -8,8 +8,12 @@ eher nach einer Sperre je Zeitfenster aus als nach einem Paketfehler.
 
 Dieses Werkzeug misst genau das und sonst nichts: ein Versuch, eine Zeile.
 
-    python3 werkzeuge/takt_messen.py          # ein Versuch, haengt eine Zeile an
+    python3 werkzeuge/takt_messen.py          # ein Versuch, wenn die Pause reicht
     python3 werkzeuge/takt_messen.py --zeigen # das Protokoll auswerten
+
+Der Takt kommt nicht vom Timer, sondern aus `PAUSEN_MIN`. Der Timer darf oft feuern;
+dieses Werkzeug entscheidet, ob schon genug Zeit vergangen ist. Sonst haette jeder
+Versuch dieselbe Pause davor und die Messung waere wertlos.
 
 Das Protokoll liegt ausserhalb des Repos und enthaelt keine Zugangsdaten, nur
 Zeitpunkt, Pause, Ergebnis und Zahlen.
@@ -30,19 +34,46 @@ PROTOKOLL = os.path.expanduser("~/.opbounty_takt.log")
 # Versuch kurz. Mehr Seiten wuerden die Messung nur laenger machen, nicht besser.
 SEITEN = 1
 
+# Die Pausen, die durchlaufen werden, in Minuten.
+#
+# Ein fester Takt waere hier nutzlos: dann haette jeder Versuch dieselbe Pause davor,
+# und die Groesse, um die es geht, waere gar keine Variable mehr. Herauskaeme ein Ja
+# oder Nein zu genau einem Wert, nicht die Grenze.
+#
+# Deshalb eine Treppe. Sie deckt gut zwei Zehnerpotenzen ab und enthaelt 60 Minuten,
+# weil das die Pause waere, mit der ein stuendlicher Laeufer arbeiten wuerde. Ein
+# Durchlauf dauert rund dreizehn Stunden, also knapp zwei pro Tag.
+PAUSEN_MIN = (5, 15, 30, 60, 120, 240, 480)
+
+
+def eintraege() -> list[list[str]]:
+    """Die Zeilen des Protokolls, ohne Kopf und Leerzeilen."""
+    if not os.path.exists(PROTOKOLL):
+        return []
+    with open(PROTOKOLL, encoding="utf-8") as datei:
+        return [z.rstrip("\n").split("\t") for z in datei
+                if z.strip() and not z.startswith("#")]
+
 
 def letzter_versuch() -> datetime.datetime | None:
     """Der Zeitpunkt der letzten Zeile, fuer die Pause davor."""
-    if not os.path.exists(PROTOKOLL):
-        return None
-    with open(PROTOKOLL, encoding="utf-8") as datei:
-        zeilen = [z for z in datei if z.strip() and not z.startswith("#")]
+    zeilen = eintraege()
     if not zeilen:
         return None
     try:
-        return datetime.datetime.fromisoformat(zeilen[-1].split("\t")[0])
-    except ValueError:
+        return datetime.datetime.fromisoformat(zeilen[-1][0])
+    except (ValueError, IndexError):
         return None
+
+
+def naechste_pause() -> int:
+    """Die Pause, die vor dem naechsten Versuch verstreichen soll.
+
+    Sie ergibt sich aus der Zahl der bisherigen Versuche, die Treppe wird also
+    reihum durchlaufen. Das braucht keine zusaetzliche Zustandsdatei: das Protokoll
+    ist der Zustand.
+    """
+    return PAUSEN_MIN[len(eintraege()) % len(PAUSEN_MIN)]
 
 
 def versuch() -> tuple[int, int, str]:
@@ -117,6 +148,11 @@ def main() -> int:
     jetzt = datetime.datetime.now()
     vorher = letzter_versuch()
     pause_min = None if vorher is None else int((jetzt - vorher).total_seconds() // 60)
+    soll = naechste_pause()
+    if pause_min is not None and pause_min < soll:
+        # Noch nicht dran. Der Timer darf ruhig oft feuern, die Treppe bestimmt hier.
+        print(f"  uebersprungen, {pause_min} von {soll} min vergangen")
+        return 0
     seiten, spieler, notiz = versuch()
     schreiben(jetzt, pause_min, seiten, spieler, notiz)
     print(f"  {jetzt.isoformat(timespec='seconds')}  Pause {pause_min} min  "

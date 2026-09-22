@@ -150,31 +150,25 @@ in beiden Faellen dieselben.
 
 Das ist EIN Datenpunkt, keine Erklaerung. Deshalb wird jetzt gemessen statt geraten.
 
-**Die Messung laeuft seit dem 21.09.2026.** `werkzeuge/takt_messen.py` macht einen
-Abruf und haengt eine Zeile an `~/.opbounty_takt.log`: Zeitpunkt, Pause seit dem
-letzten Versuch, Seiten, Spieler, Notiz. Keine Zugangsdaten, und die Datei liegt
-ausserhalb des Repos. Getaktet wird auf dem **Bazzite Server**, nicht auf dem Mac. Der erste Versuch mit
-einem launchd Agenten auf dem Mac lieferte ueber Nacht null Messwerte: `StartInterval`
-feuert nicht, waehrend der Rechner schlaeft, und genau die langen Pausen sind das,
-worum es hier geht. Der Server laeuft durch. Nebenbei hat er eine andere Adresse als
-der Mac, damit zeigt sich auch, ob eine Sperre an der Adresse haengt oder am Konto.
+**Der Test ist der taegliche Lauf selbst, nicht eine eigene Messreihe.**
+Am 22.09.2026 verworfen: erst ein stuendlicher Takt auf dem Mac, dann eine Treppe
+verschiedener Pausen auf dem Server. Beides war am Bedarf vorbei. Gebraucht wird ein
+einziger erfolgreicher Abruf pro Tag, und den macht die Action ohnehin um 06:20 UTC.
+Sie hat damit von sich aus die laengste Pause, die moeglich ist.
 
-Einheit dort: `~/.config/systemd/user/takt.timer`, stuendlich zur vollen Stunde,
-`Persistent=true`. Das Protokoll liegt auf dem Server unter `~/.opbounty_takt.log`.
+Schlimmer: eine eigene Messreihe zerstoert genau das, was sie messen soll. Haengt die
+Sperre am Konto, ist jeder zusaetzliche Versuch ein Stoerer, der der Action ihre lange
+Pause nimmt. Am 21.09. wurde den ganzen Tag von Hand probiert, und der Lauf der Action
+am selben Abend schlug fehl. Das kann Ursache gewesen sein, nicht nur Folge.
 
-    python3 werkzeuge/takt_messen.py            # ein Versuch von Hand
-    python3 werkzeuge/takt_messen.py --zeigen   # auswerten
-    ssh jole@192.168.178.182 systemctl --user disable --now takt.timer   # abschalten
+**Deshalb gilt ab jetzt: das Konto in Ruhe lassen.** Keine Abrufe von Hand, kein
+Timer. `werkzeuge/takt_messen.py` bleibt liegen, ist aber auf beiden Rechnern
+abgeschaltet (launchd auf dem Mac entladen, `takt.timer` auf dem Bazzite disabled).
 
-Auszuwerten ist eine einzige Frage: ist die Pause vor einem Treffer systematisch
-laenger als die vor einem Fehlschlag? Faellt das Muster, ist der Laeufer kein
-Reparaturfall, sondern ein Taktfall, und die Loesung heisst seltener fragen statt
-andere Pakete schicken. Faellt es nicht, ist der eine Treffer Zufall gewesen und es
-bleibt beim Mitschnittweg.
-
-Zu bedenken bei der Auswertung: der taegliche Lauf der Action fragt ebenfalls, von
-einer anderen Adresse aus. Wenn die Sperre an der Adresse haengt und nicht am Konto,
-stoeren sich die beiden nicht.
+Beobachtet wird stattdessen der Holschritt der Action ueber mehrere Tage. Gelingt er,
+war das Klopfen die Ursache und die Sache ist erledigt. Schlaegt er auch bei Ruhe
+mehrfach fehl, ist die Pause nicht die entscheidende Groesse und es bleibt beim
+Mitschnittweg. Der Stand steht in der Zusammenfassung jedes Laufs unter "Holschritt".
 
 **Firestore ist KEIN Ersatz. Am 21.09.2026 nachgemessen, nicht vermutet.**
 Der Gedanke lag nahe, weil die Action ohnehin Firestore liest und diese Quelle von
