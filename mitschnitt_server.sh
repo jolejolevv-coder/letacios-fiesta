@@ -263,6 +263,9 @@ python3 "$WERKZEUGE/plausibel.py" public/bestenliste.json.gz || \
   abbrechen "keine verschluesselte Fassung, fehlt ~/.fiesta_passwort?"
 
 if [ "$NUR_PRUEFEN" = 1 ]; then
+  # Die frisch verschluesselte Datei wieder auf den Stand im Repo setzen. Sonst liegt
+  # eine geaenderte, nicht committete Datei im Checkout und stoert den naechsten Pull.
+  git checkout -q -- public/bestenliste.json.gz.enc
   sagen "--pruefen: nicht gepusht"
   exit 0
 fi
