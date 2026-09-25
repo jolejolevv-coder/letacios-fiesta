@@ -12,9 +12,11 @@
 # und die eingedampften Replays. Beides sind Daten fremder Spieler; ein oeffentliches
 # Repo soll sie nicht tragen, auch nicht verschluesselt.
 #
-# Die Bestenliste holt seit dem 02.09.2026 der eigene Laeufer ueber das Spielprotokoll,
-# hier im Lauf. Kein Spielclient, kein Heimserver. Sie liegt verschluesselt im Repo,
-# weil sie zugleich der Ausgangsbestand des naechsten Laufs ist.
+# Die Bestenliste holt seit dem 25.09.2026 NICHT dieser Lauf, sondern der Bazzite: der
+# echte Spielclient ruft sie ab, ein Mitschnitt zeichnet sie auf, und der Server pusht
+# die verschluesselte Datei (mitschnitt_server.sh, mitschnitt.timer). Der Push loest
+# diesen Lauf aus. Der eigene Laeufer, der das hier bis dahin tat, bekommt seit dem
+# Clientupdate 2.6.1 keine Antwort mehr, siehe specs/features/bestenliste.md.
 # Faellt der Zwischenspeicher aus, holt der naechste Lauf alles neu. Das heilt sich also
 # selbst, es dauert nur laenger.
 #
@@ -38,7 +40,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  # Schreiben, weil der Lauf die frische Bestenliste zurueck ins Repo legt.
+  # Schreiben, weil der Lauf nachgezogene Spielversionen zurueck ins Repo legt.
   # Pushes mit dem GITHUB_TOKEN loesen keinen neuen Lauf aus, also keine Schleife.
   contents: write
   pages: write
@@ -53,7 +55,6 @@ jobs:
     runs-on: ubuntu-latest
     # Damit die Wache am Ende sagen kann, WARUM die Liste fehlt.
     outputs:
-      bestenliste: ${{ steps.bestenliste.outcome }}
       spielversion: ${{ steps.spielversion.outcome }}
     steps:
       - uses: actions/checkout@v4
@@ -95,13 +96,8 @@ jobs:
           key: replays-${{ github.run_id }}
           restore-keys: replays-
 
-      # Die Bestenliste holt der eigene Laeufer ueber das Spielprotokoll. Er meldet
-      # dabei zuerst seinen eigenen Knoten an; ohne das beantwortet der Server die
-      # Anfrage nicht (siehe specs/features/bestenliste.md).
-      #
-      # Muss VOR den Spielerdaten laufen: die lesen die user_ids aus dieser Datei.
-      # Schlaegt er fehl, bleibt der alte Stand im Repo stehen und der Lauf geht
-      # weiter, statt die ganze Seite zu kosten.
+      # Die Werkzeuge des eigenen Laeufers bleiben aktuell, auch wenn er hier nicht
+      # mehr laeuft: faengt er eines Tages wieder an zu antworten, passen die Nummern.
       # Der Spielserver nennt seine Version gleich nach dem Verbinden, ohne Anmeldung.
       # Stimmt sie nicht mehr mit der im Code, haben sich die Methodennummern und die
       # Pruefsumme verschoben und die Beschaffung laeuft ins Leere.
@@ -132,36 +128,8 @@ jobs:
           echo "  nachgezogen und gepusht, der naechste Schritt nutzt die neuen Nummern"
         continue-on-error: true
 
-      - name: Bestenliste holen
-        id: bestenliste
-        env:
-          OPBOUNTY_WERKZEUGE: ${{ github.workspace }}/werkzeuge
-          OPBOUNTY_USER: ${{ secrets.OPBOUNTY_USER }}
-          OPBOUNTY_PASS: ${{ secrets.OPBOUNTY_PASS }}
-          OPBOUNTY_ID: ${{ secrets.OPBOUNTY_ID }}
-          SEITEN_PASSWORT: ${{ secrets.SEITEN_PASSWORT }}
-        run: python3 bestenliste_einbauen.py
-        continue-on-error: true
-
-      # Nur die verschluesselte Fassung geht ins Repo. Sie ist der Ausgangsbestand des
-      # naechsten Laufs: Spieler, die aus den Top 100 fallen, bleiben so mit ihrem
-      # alten Stand erhalten, statt aus der Liste zu verschwinden.
-      - name: Frische Bestenliste zurueck ins Repo
-        run: |
-          git add -f public/bestenliste.json.gz.enc
-          if git diff --cached --quiet; then
-            echo "  unveraendert, nichts zu committen"
-          else
-            git -c user.name="ladder" \
-                -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-                commit -q -m "Bestenliste vom $(date +%F)"
-            git push -q origin HEAD:main
-            echo "  neuer Stand gepusht"
-          fi
-        continue-on-error: true
-
-      # Die Spielerdaten lesen die user_ids aus der eben geholten Bestenliste. Die
-      # liegt nur verschluesselt vor, deshalb braucht auch dieser Schritt das
+      # Die Spielerdaten lesen die user_ids aus der Bestenliste, die der Bazzite ins
+      # Repo gelegt hat. Die liegt nur verschluesselt vor, deshalb braucht auch dieser Schritt das
       # Seitenpasswort.
       - name: Spielerdaten holen
         env:
@@ -212,10 +180,9 @@ jobs:
 
   # Die Wache meldet, was sonst niemand meldet.
   #
-  # "Bestenliste holen" traegt continue-on-error, und das ist richtig: faellt der
-  # Laeufer aus, soll trotzdem die ganze Seite erscheinen. Der Preis war, dass der
-  # Lauf gruen blieb, waehrend die Bestenliste stehenblieb. Vom 09.09. bis zum
-  # 21.09.2026 ist das dreizehn Tage lang niemandem aufgefallen.
+  # Die Bestenliste kommt vom Bazzite. Faellt er aus, erscheint die Seite trotzdem,
+  # nur mit alten Zahlen, und genau das faellt sonst niemandem auf: vom 09.09. bis zum
+  # 21.09.2026 blieb die Liste dreizehn Tage stehen, ohne dass es jemand merkte.
   #
   # Dieser Job laeuft NACH dem Veroeffentlichen und haengt nichts davon ab. Er kann
   # die Seite also nicht verhindern, sondern nur den Lauf rot faerben, und genau das
@@ -228,24 +195,24 @@ jobs:
       - name: Ist die Bestenliste noch frisch?
         env:
           GH_TOKEN: ${{ github.token }}
-          HOLEN: ${{ needs.bauen.outputs.bestenliste }}
           VERSION: ${{ needs.bauen.outputs.spielversion }}
         run: |
           set -euo pipefail
           DATEI="public/bestenliste.json.gz.enc"
-          MAX_TAGE=2
+          # Der Bazzite pusht taeglich um 05:30 UTC, das Nachfassen um 06:30. 30 Stunden
+          # heisst: ein ausgefallener Tag faellt am selben Tag auf, sobald der geplante
+          # Lauf ihn sieht, aber ein Lauf zwischen den beiden Terminen meldet noch nichts.
+          MAX_STUNDEN=30
 
-          # Gefragt ist nicht, ob der Schritt lief, sondern ob die Datei frisch ist.
-          # Das faengt beide Faelle: der Laeufer bricht ab, oder er liefert still
-          # denselben Stand wie gestern.
+          # Gefragt ist nicht, ob etwas lief, sondern ob die Datei frisch ist.
           STAND=$(gh api "repos/${GITHUB_REPOSITORY}/commits?path=${DATEI}&per_page=1" \
                   --jq '.[0].commit.committer.date')
           if [ -z "${STAND}" ]; then
             echo "Kein Commit fuer ${DATEI} gefunden."
             exit 1
           fi
-          TAGE=$(( ( $(date -u +%s) - $(date -u -d "${STAND}" +%s) ) / 86400 ))
-          echo "Letzter Stand: ${STAND} (vor ${TAGE} Tagen), Holschritt: ${HOLEN}"
+          STUNDEN=$(( ( $(date -u +%s) - $(date -u -d "${STAND}" +%s) ) / 3600 ))
+          echo "Letzter Stand: ${STAND} (vor ${STUNDEN} Stunden)"
 
           {
             echo "## Bestenliste"
@@ -253,8 +220,7 @@ jobs:
             echo "| | |"
             echo "|---|---|"
             echo "| Letzter Stand | ${STAND} |"
-            echo "| Alter | ${TAGE} Tage |"
-            echo "| Holschritt | ${HOLEN} |"
+            echo "| Alter | ${STUNDEN} Stunden |"
             echo "| Spielversion | ${VERSION} |"
           } >> "${GITHUB_STEP_SUMMARY}"
 
@@ -270,19 +236,16 @@ jobs:
             } >> "${GITHUB_STEP_SUMMARY}"
           fi
 
-          if [ "${TAGE}" -gt "${MAX_TAGE}" ]; then
+          if [ "${STUNDEN}" -gt "${MAX_STUNDEN}" ]; then
             echo ""
-            echo "Die Bestenliste ist ${TAGE} Tage alt, erlaubt sind ${MAX_TAGE}."
+            echo "Die Bestenliste ist ${STUNDEN} Stunden alt, erlaubt sind ${MAX_STUNDEN}."
             echo "Die Seite ist trotzdem veroeffentlicht, sie zeigt nur alte Zahlen."
-            echo "Der eigene Laeufer ist seit 2.6.1 kaputt, siehe specs/features/bestenliste.md."
-            echo "Neue Daten per Mitschnitt: python3 bestenliste_einbauen.py <pcap>"
+            echo "Der Mitschnitt auf dem Bazzite hat nicht gepusht. Dort nachsehen:"
+            echo "  journalctl --user -u mitschnitt.service -n 50"
+            echo "  letztes Foto in ~/mitschnitt/lauf/letztes_foto.png"
             {
               echo ""
               echo "**Veraltet.** Die Seite ist veroeffentlicht, zeigt aber alte Zahlen."
             } >> "${GITHUB_STEP_SUMMARY}"
             exit 1
-          fi
-
-          if [ "${HOLEN}" != "success" ]; then
-            echo "::warning::Der Holschritt endete mit '${HOLEN}', die Datei ist aber noch frisch."
           fi
