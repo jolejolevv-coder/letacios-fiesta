@@ -150,7 +150,7 @@ KNOTEN_ANMELDUNG, METHODE_ANMELDUNG = 1, 0x2b    # login_request
 #
 # Ueber OPBOUNTY_VERSION laesst sich eine andere Zeichenkette setzen, ohne den Code zu
 # aendern. Das ist zum Probieren gedacht, nicht fuer den Betrieb.
-VERSION = os.environ.get("OPBOUNTY_VERSION", "2.6.1")
+VERSION = os.environ.get("OPBOUNTY_VERSION", "2.6.2")
 
 
 def anmeldung(benutzer: str, nummer: int, passwort: str, version: str) -> bytes:
