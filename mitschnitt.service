@@ -1,0 +1,21 @@
+# Die Bestenliste per Mitschnitt holen, auf dem Bazzite als Benutzerdienst.
+# Siehe mitschnitt_server.sh und specs/features/bestenliste-mitschnitt.md.
+#
+# Einrichten auf dem Server:
+#   cp mitschnitt.service mitschnitt.timer ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now mitschnitt.timer
+#
+# Nachsehen:
+#   systemctl --user list-timers mitschnitt.timer
+#   journalctl --user -u mitschnitt.service -n 50
+
+[Unit]
+Description=Letacios Fiesta: Bestenliste per Mitschnitt holen
+
+[Service]
+Type=oneshot
+ExecStart=%h/opbounty-ladder/seite/mitschnitt_server.sh
+# Leerlaufpruefung 30 s, Start bis zur Bestenliste hoechstens 300 s, Blaettern und
+# Auswerten rund eine Minute. Zehn Minuten sind die harte Grenze darueber.
+TimeoutStartSec=10min

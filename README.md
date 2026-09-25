@@ -68,34 +68,46 @@ Spielzeit und die Leaderaufstellung mit Sitzsplit; letztere zeigt der Spielclien
 nicht.
 
 Diese Daten kommen **nicht** vom CDN. Die Rangfolge rechnet der Spielserver und schickt
-sie ueber das Spielprotokoll, sie liegt in keiner Datenbank. Seit dem 02.09.2026 holt sie
-ein **eigener Laeufer**, der das Spielprotokoll selbst spricht:
+sie ueber das Spielprotokoll, sie liegt in keiner Datenbank.
+
+**Seit dem 25.09.2026 holt sie der echte Spielclient auf dem Bazzite**, und ein
+Mitschnitt zeichnet die Antwort auf. Der eigene Laeufer bekommt seit dem Clientupdate
+2.6.1 keine Antwort mehr, siehe `specs/features/bestenliste.md`. Der Ablauf steht in
+`specs/features/bestenliste-mitschnitt.md`:
 
 ```bash
-python3 bestenliste_einbauen.py            # holt fuenf Seiten ueber den Laeufer
-python3 bestenliste_einbauen.py auf.pcap   # Rueckfall: aus einem Mitschnitt lesen
+./mitschnitt_server.sh            # auf dem Bazzite: holen, pruefen, pushen
+./mitschnitt_server.sh --pruefen  # dasselbe ohne Push
+python3 bestenliste_einbauen.py auf.pcap   # nur auswerten, aus einem Mitschnitt
 ```
 
-Der Laeufer meldet dabei **zuerst seinen eigenen Knoten** beim Server an
-(`werkzeuge/enet_paket.pfad_anmelden`). Genau daran hing es monatelang: ohne diesen
-Aufruf nimmt der Server die Anfrage an und bestaetigt sie sogar, kann die Antwort danach
-aber niemandem zustellen. Die ganze Fehlersuche steht in
-`specs/features/bestenliste.md`.
+Das Skript startet das Spiel, klickt den Update Hinweis weg, meldet mit dem gespeicherten
+Konto an, oeffnet die Bestenliste und blaettert viermal. Vor jedem Klick vergleicht es
+das Bildschirmfoto mit einem Referenzbild (`werkzeuge/bildschirm.py`) und bricht ab,
+wenn es nicht passt; geklickt wird nie blind. tcpdump zeichnet nur die Pakete vom
+Spielserver auf, das Passwort der Anmeldung landet also nie in der Datei, und die pcap
+wird nach dem Auswerten in jedem Fall geloescht. `werkzeuge/plausibel.py` verlangt
+mindestens 90 Spieler von heute, sonst wird nichts gepusht. Ins Repo geht nur die
+verschluesselte Fassung.
 
-Das Skript schreibt `public/bestenliste.json.gz` und **schreibt den Bestand fort**: wer in
-einem neuen Lauf fehlt, bleibt mit seinem alten Stand und seinem Datum stehen. Die
-Discord-Kennungen, die der Server ungefragt mitschickt, werden dabei verworfen.
+Die Liste wird bei jedem Lauf **ersetzt**, nicht fortgeschrieben: der Rang gilt nur
+innerhalb einer Aufnahme. Die Discord-Kennungen, die der Server ungefragt mitschickt,
+werden verworfen.
 
-Der Laeufer laeuft im taeglichen Lauf auf GitHub mit; ein Spielclient, ein Mitschnitt oder
-ein Heimserver werden nicht mehr gebraucht. Die Pruefsumme in `pfad_anmelden` haengt an der
-Spielversion. Aendert das Spiel sich, bleibt die Antwort aus, der Schritt meldet das und
-der alte Stand bleibt stehen.
+**Nach einem Clientupdate** sind neue Referenzbilder noetig, wenn das Spiel seine
+Knoepfe verschiebt. Dann bricht der Lauf mit "nicht offen" oder "nicht zu sehen" ab und
+legt das letzte Foto in `~/mitschnitt/lauf/` auf dem Server. Neue Ausschnitte in
+Fensterkoordinaten nach `werkzeuge/referenz/<stelle>.png` legen und Box und Klickpunkt
+in `werkzeuge/klickstellen.json` nachziehen. Sieht ein Knopf je nach Zustand verschieden
+aus, bekommt er eine Variante `<stelle>__<zustand>.png`, etwa "Next Page" im Fokus.
 
 ## Veroeffentlichen
 
-Die Seite laeuft unter **https://fiesta.nahobinoco.com** auf GitHub Pages. Es ist nichts
-zu betreiben: die Action holt taeglich selbst die Daten, baut und veroeffentlicht. Weder
-ein Mac noch ein Homeserver muss dafuer laufen.
+Die Seite laeuft unter **https://fiesta.nahobinoco.com** auf GitHub Pages. Die Action holt
+taeglich selbst die Daten, baut und veroeffentlicht. Einzige Ausnahme ist die
+Bestenliste: die kommt vom Bazzite (`mitschnitt.timer`, 05:30 und 06:30 UTC), und sein
+Push loest die Action aus. Ist der Bazzite aus, erscheint die Seite trotzdem, nur mit der
+Bestenliste vom letzten guten Lauf; die Wache faerbt den Lauf dann nach 30 Stunden rot.
 
     .github/workflows/veroeffentlichen.yml
       schedule           taeglich 06:20 UTC

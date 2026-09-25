@@ -170,6 +170,14 @@ war das Klopfen die Ursache und die Sache ist erledigt. Schlaegt er auch bei Ruh
 mehrfach fehl, ist die Pause nicht die entscheidende Groesse und es bleibt beim
 Mitschnittweg. Der Stand steht in der Zusammenfassung jedes Laufs unter "Holschritt".
 
+**Ergebnis der Beobachtung, 25.09.2026: die Pause ist es nicht.** Der Holschritt der
+Action ist an allen vier Tagen seit der Ruhe gescheitert (22., 23., 24. und 25.09., jeweils
+"keine Bestenliste ueber den Laeufer bekommen"), ohne einen einzigen Abruf von Hand
+dazwischen. Die Spielversion stand dabei unveraendert auf 2.6.1, Server und Code gleich.
+Damit ist die Sperre je Zeitfenster widerlegt, und es bleibt, wie oben festgelegt, beim
+Mitschnittweg. Seit dem 24.09. meldet die Wache rot, weil die Datei aelter als zwei Tage
+ist; die Seite selbst wird weiter jeden Tag veroeffentlicht.
+
 **Firestore ist KEIN Ersatz. Am 21.09.2026 nachgemessen, nicht vermutet.**
 Der Gedanke lag nahe, weil die Action ohnehin Firestore liest und diese Quelle von
 Spielversionen unabhaengig waere. Er traegt aber nicht:

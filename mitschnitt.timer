@@ -1,0 +1,17 @@
+# Zweimal am Tag, in UTC und nicht in Ortszeit. Die Action steht auf 06:20 UTC; ein
+# Timer auf 07:30 Ortszeit liefe im Winter erst um 06:30 UTC, also danach. Der zweite
+# Termin ist das Nachfassen, er tut nichts, wenn der erste geklappt hat (Tagesmarke in
+# mitschnitt_server.sh). Der Push des Servers loest die Action ohnehin selbst aus.
+
+[Unit]
+Description=Letacios Fiesta: Bestenliste taeglich um 05:30 und 06:30 UTC
+
+[Timer]
+OnCalendar=*-*-* 05:30:00 UTC
+OnCalendar=*-*-* 06:30:00 UTC
+# War der Server zur Zeit aus, laeuft der Dienst nach dem Start nach. Die
+# Leerlaufpruefung im Skript verhindert, dass er dann in eine laufende Nutzung klickt.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

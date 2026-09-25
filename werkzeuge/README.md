@@ -11,6 +11,14 @@ Sie sprechen das Spielprotokoll (ENet ueber UDP, Port 4694):
 - `bestenliste_lesen.py`  Godot-Varianten lesen, Zeilen deuten
 - `bestenliste_holen.py`  der Laeufer: verbinden, anmelden, fuenf Seiten, trennen
 
+Fuer den Mitschnitt auf dem Bazzite (`mitschnitt_server.sh`), eigene Werkzeuge dieses
+Repos, keine Kopien:
+
+- `bildschirm.py`     erkennt am Bildschirmfoto, welcher Knopf zu sehen ist
+- `klickstellen.json` Box und Klickpunkt je Knopf, in Fensterkoordinaten
+- `referenz/`         die Referenzbilder dazu, Varianten als `<stelle>__<zustand>.png`
+- `plausibel.py`      prueft die fertige Liste vor dem Push
+
 - `methoden_aus_pck.py`    RPC-Nummern aus dem Spielpaket herleiten
 - `version_nachziehen.py` alle versionsabhaengigen Werte pruefen und setzen
 - `takt_messen.py`        einen Abruf versuchen und die Pause davor festhalten

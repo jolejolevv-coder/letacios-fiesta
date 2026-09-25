@@ -1,0 +1,7 @@
+{
+  "_hinweis": "Koordinaten relativ zum Spielfenster, nicht zum Bildschirm. Aufgenommen am 25.09.2026 mit Version 2.6.1, siehe specs/features/bestenliste-mitschnitt.md. box ist der Referenzausschnitt, klick die Stelle, die angeklickt wird.",
+  "hinweis_schliessen": {"box": [181, 33, 221, 73], "klick": [201, 53]},
+  "anmelden": {"box": [11, 277, 111, 307], "klick": [61, 292]},
+  "bestenlisten": {"box": [2, 492, 108, 518], "klick": [55, 505]},
+  "naechste_seite": {"box": [1738, 870, 1882, 912], "klick": [1808, 890]}
+}
