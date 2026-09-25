@@ -194,6 +194,19 @@ ein Spielfenster gibt und dass ein Fensterfoto so zuverlaessig ist wie ein
 Bildschirmfoto; im Probelauf hatte ich nur den ganzen Bildschirm fotografiert. Besser
 spezifizieren: im Probelauf dieselben Werkzeuge benutzen, die das Skript spaeter nimmt.
 
+## Stand Phase 3, 25.09.2026
+
+`mitschnitt.service` und `mitschnitt.timer` liegen im Repo und sind auf dem Bazzite
+eingerichtet (`~/.config/systemd/user/`, Linger an). Erster Lauf 26.09.2026, 05:30 UTC.
+Ein Prueflauf in der Umgebung eines systemd Benutzerdienstes (`systemd-run --user`)
+ging durch, 1 Minute 39 Sekunden. `sudo -n tcpdump` und die Anzeige funktionieren dort
+also auch ohne Terminal. Der Laeuferschritt ist aus der Action, die Wache misst in
+Stunden (Grenze 30) und verweist auf das Serverlog.
+
+Offen fuer den Abschluss: drei Tage in Folge frische Liste ohne Eingriff, danach die
+Retrospektive. Pruefen per `systemctl --user list-timers mitschnitt.timer` und
+`journalctl --user -u mitschnitt.service` auf dem Bazzite oder an der Wache der Action.
+
 ## Open questions
 
 - ~~**Uhrzeit.**~~ **Entschieden am 25.09.2026:** passend zum GitHub Lauf. Die Action
