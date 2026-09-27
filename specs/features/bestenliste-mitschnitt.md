@@ -207,6 +207,28 @@ Offen fuer den Abschluss: drei Tage in Folge frische Liste ohne Eingriff, danach
 Retrospektive. Pruefen per `systemctl --user list-timers mitschnitt.timer` und
 `journalctl --user -u mitschnitt.service` auf dem Bazzite oder an der Wache der Action.
 
+## Nachtrag 27.09.2026: vier Fehlschlaege, zwei Ursachen
+
+Am 26. und 27.09. scheiterten alle vier Laeufe (05:30 und 06:30 UTC), ohne einen Klick,
+jeweils nach 300 Sekunden. Die Wache meldete am 27. rot.
+
+1. **Der Starter laedt Updates mit rund 50 KB/s.** Am 25.09. um 16:40 UTC kam eine neue
+   Spieldatei (40 MB). Nach fuenf Minuten stand der Starter bei 38 Prozent, das Skript
+   brach ab, der naechste Lauf begann von vorn, und am Platz lag ein Rest von 19 MB.
+   `curl` holt dieselbe Datei auf dem Bazzite mit 4,6 MB/s. Behoben mit
+   `werkzeuge/spieldatei.py`: vor dem Start die Datei selbst laden, wenn Groesse oder
+   Last-Modified nicht zur gemerkten Kennung passen, und erst nach Groessenpruefung an
+   den Platz legen. Der Starter nimmt sie an und startet ohne eigenen Download.
+2. **Nach dem Neustart am 27.09. um 09:11 kein aktiver Monitor.** Der Laptopdeckel ist
+   zu, KDE schaltet eDP-1 ab, `xrandr --listmonitors` meldet 0. Das Spiel oeffnet dann
+   ein 64 x 64 Fenster und bleibt schwarz. Behoben im Skript: meldet X keinen Monitor,
+   wird der erste angeschlossene Ausgang fuer die Dauer des Laufs eingeschaltet und
+   danach wieder abgeschaltet. Entscheidung des Nutzers vom 27.09.2026, statt das
+   Deckelverhalten in den KDE Energieeinstellungen umzustellen.
+
+Prueflauf unter systemd danach: durch, 1 Minute 51 Sekunden. Die Beobachtung ueber drei
+Tage beginnt damit neu, ab dem 28.09.2026.
+
 ## Open questions
 
 - ~~**Uhrzeit.**~~ **Entschieden am 25.09.2026:** passend zum GitHub Lauf. Die Action

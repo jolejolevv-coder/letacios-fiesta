@@ -18,6 +18,7 @@ Repos, keine Kopien:
 - `klickstellen.json` Box und Klickpunkt je Knopf, in Fensterkoordinaten
 - `referenz/`         die Referenzbilder dazu, Varianten als `<stelle>__<zustand>.png`
 - `plausibel.py`      prueft die fertige Liste vor dem Push
+- `spieldatei.py`     laedt die Spieldatei vor dem Start selbst, der Starter ist zu langsam
 
 - `methoden_aus_pck.py`    RPC-Nummern aus dem Spielpaket herleiten
 - `version_nachziehen.py` alle versionsabhaengigen Werte pruefen und setzen

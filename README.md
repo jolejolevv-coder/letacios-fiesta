@@ -81,7 +81,11 @@ Mitschnitt zeichnet die Antwort auf. Der eigene Laeufer bekommt seit dem Clientu
 python3 bestenliste_einbauen.py auf.pcap   # nur auswerten, aus einem Mitschnitt
 ```
 
-Das Skript startet das Spiel, klickt den Update Hinweis weg, meldet mit dem gespeicherten
+Vor dem Start laedt das Skript eine neue Spieldatei selbst (`werkzeuge/spieldatei.py`),
+weil der Starter dafuer auf dem Bazzite eine halbe Stunde braucht, und schaltet den
+eingebauten Bildschirm ein, falls der Laptopdeckel zu ist und X keinen Monitor meldet;
+ohne Monitor bleibt das Spiel schwarz. Danach startet es das Spiel, klickt den Update
+Hinweis weg, meldet mit dem gespeicherten
 Konto an, oeffnet die Bestenliste und blaettert viermal. Vor jedem Klick vergleicht es
 das Bildschirmfoto mit einem Referenzbild (`werkzeuge/bildschirm.py`) und bricht ab,
 wenn es nicht passt; geklickt wird nie blind. tcpdump zeichnet nur die Pakete vom

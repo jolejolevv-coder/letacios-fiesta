@@ -52,6 +52,7 @@ NUR_PRUEFEN=0
 [ "${1:-}" = "--pruefen" ] && NUR_PRUEFEN=1
 
 TCPDUMP_PID=""
+EINGESCHALTET=""          # Ausgang, den das Skript selbst eingeschaltet hat
 
 X_FRIST=15                # Sekunden fuer jeden einzelnen X-Aufruf, siehe x_aufruf
 
@@ -89,10 +90,18 @@ tcpdump_stoppen() {
   TCPDUMP_PID=""
 }
 
+bildschirm_zuruecksetzen() {
+  # Nur einen Ausgang wieder abschalten, den dieses Skript selbst eingeschaltet hat.
+  [ -z "$EINGESCHALTET" ] && return 0
+  x_aufruf xrandr --output "$EINGESCHALTET" --off 2>/dev/null
+  EINGESCHALTET=""
+}
+
 aufraeumen() {
   spiel_beenden
   tcpdump_stoppen
   rm -f "$PCAP"
+  bildschirm_zuruecksetzen
 }
 trap aufraeumen EXIT
 
@@ -105,6 +114,25 @@ anzeige_finden() {
     export XAUTHORITY
   fi
   x_aufruf xdotool getdisplaygeometry >/dev/null 2>&1 || abbrechen "keine grafische Sitzung auf $DISPLAY"
+}
+
+bildschirm_sicherstellen() {
+  # Ist der Laptopdeckel zu, schaltet KDE den eingebauten Bildschirm ab, und X meldet
+  # keinen einzigen Monitor. Das Spiel sieht dann "screen_count = 0", oeffnet ein
+  # 64 x 64 Fenster und bleibt schwarz; so ab dem Neustart am 27.09.2026. Dann den
+  # ersten angeschlossenen Ausgang einschalten, fuer die Dauer des Laufs. Das Panel
+  # leuchtet hinter dem geschlossenen Deckel, aufraeumen schaltet es wieder ab.
+  local monitore ausgang
+  monitore="$(x_aufruf xrandr --listmonitors 2>/dev/null | head -1)"
+  [ "$monitore" != "Monitors: 0" ] && return 0
+  ausgang="$(x_aufruf xrandr --query 2>/dev/null | awk '$2 == "connected" {print $1; exit}')"
+  [ -n "$ausgang" ] || abbrechen "kein Monitor aktiv und kein Ausgang angeschlossen"
+  sagen "Kein Monitor aktiv, schalte $ausgang ein"
+  x_aufruf xrandr --output "$ausgang" --auto || abbrechen "$ausgang laesst sich nicht einschalten"
+  EINGESCHALTET="$ausgang"
+  sleep 3
+  monitore="$(x_aufruf xrandr --listmonitors 2>/dev/null | head -1)"
+  [ "$monitore" != "Monitors: 0" ] || abbrechen "$ausgang ist eingeschaltet, X meldet trotzdem keinen Monitor"
 }
 
 sitzung_ist_frei() {
@@ -173,6 +201,12 @@ sitzung_ist_frei || exit 0
 # Erst den Stand holen, damit der Push spaeter nicht an einem neueren Commit der
 # Action scheitert. Geht das nicht, wird gar nicht erst mitgeschnitten.
 git pull -q --ff-only || abbrechen "git pull ging nicht, der Checkout hat eigene Aenderungen"
+
+# Die Spieldatei selbst laden, bevor der Starter es mit 50 KB/s versucht; siehe
+# werkzeuge/spieldatei.py. Ohne aktuelle Datei scheitert der Lauf ohnehin.
+python3 "$WERKZEUGE/spieldatei.py" || abbrechen "Spieldatei nicht aktuell, der Starter wuerde zu langsam laden"
+
+bildschirm_sicherstellen
 
 sagen "Mitschnitt starten"
 rm -f "$PCAP"
