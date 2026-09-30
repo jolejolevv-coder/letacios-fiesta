@@ -12,6 +12,7 @@ Die Oberflaeche ist englisch, der Code und diese Anleitung sind deutsch.
     src/                React Quelltext
       App.jsx           die ganze Oberflaeche
       daten.js          Laden, Entpacken, Zusammenfuehren
+      replay.js         Replay Auswertung: Logzeilen zu Schritten, samt Angriffspfeilen
       Sombrero.jsx      die Marke
       index.css         Tailwind und die Farbvariablen
     public/             Daten und Bilder, wandern beim Build nach dist/
@@ -51,6 +52,10 @@ npm run build
 ```
 
 Danach liegt alles in `dist/`, rund 30 MB, davon 21 MB Bilder und Tagesdaten.
+
+Tests: `npm test` prueft die Replay Auswertung (`tests/replay.test.js`, eingebauter
+Testlauf von Node, kein Paket), `python3 -m unittest discover -s tests` die Werkzeuge
+fuer den Mitschnitt.
 
 `--bilder` nimmt die Bilder aus einer lokalen OPTCGSim Installation, wenn eine da ist,
 und holt den Rest von der offiziellen Kartenseite. In der Action gibt es keine

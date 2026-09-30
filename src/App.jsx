@@ -14,6 +14,7 @@ import {
   verschluesselung,
   zeitraumLaden,
 } from "./daten.js";
+import { schritteBauen } from "./replay.js";
 
 /* --------------------------------------------------------------------------
    Kleine Helfer
@@ -1097,345 +1098,6 @@ function replayAdresse(pfad) {
   );
 }
 
-/* --------------------------------------------------------------------------
-   Replay
-
-   Das Log erzaehlt die Partie in Klartextzeilen, dazwischen liegen nach jedem Zug
-   Zustandsabzuege beider Spieler:
-
-       [Spieler] Attach 3 Don to Portgas D. Ace [OP16-001] (3 Total)
-       [Spieler] Portgas D. Ace [OP16-001] attacking Rocks D. Xebec [OP17-039]
-       Portgas D. Ace [OP16-001][8000] vs Rocks D. Xebec [OP17-039][5000]
-       Rocks D. Xebec [OP17-039] hit for 1 damage
-       [Spieler] Hand: [...]   Board: [...]   Trash: [...]   Life: 5
-
-   Die Ansicht trennt beides: die Zuege erzaehlen, die Abzuege liefern den Stand am
-   Zugende. Ohne diese Trennung liest sich das Log als Wand aus Kartennummern.
-   -------------------------------------------------------------------------- */
-
-const ZUSTAND = /^\[(.+?)\]\s+(Hand|Board|Trash|Life):\s*(.*)$/;
-const SPRECHER = /^\[(.+?)\]\s*(.*)$/;
-const LEADERZEILE = /^\[(.+?)\]\s+Leader is .+\[([A-Z]{2,4}\d{2}-\d{3})\]/;
-
-function kartenliste(text) {
-  return text.match(/[A-Z]{2,4}\d{2}-\d{3}/g) || [];
-}
-
-/**
- * Aus den Logzeilen Zuege bauen.
- *
- * Der Gewinn gegenueber einer Textliste steckt in den Zustandsabzuegen: sie fuehren
- * Hand, Board und Trash nicht als Zahl, sondern mit den Kartennummern. Damit laesst
- * sich das Brett am Ende jedes Zuges wirklich zeigen, statt es zu beschreiben.
- */
-/* Die Zonencodes der Bewegungszeilen. Sie stehen als `enum CardZone` im
-   Spielpaket; die Checkpointzeile bildet denselben Enum auf ihre Zaehler ab.
-   Am 02.09.2026 an 311 Logs geprueft: die Bewegungen nachgespielt stimmen alle
-   zehn Zaehler an allen 135.846 Checkpoints. */
-const Z_DECK = 0, Z_HAND = 1, Z_CHARACTER = 2, Z_LIFE = 3;
-const Z_DON_START = 4, Z_DON_FIELD = 5, Z_TRASH = 6, Z_STAGE = 7;
-const Z_LEADER = 8, Z_DON_EQUIPPED = 9;
-
-// Nur diese Zonen fuehren wir als Kartenliste. Deck und Don sind verdeckte
-// Stapel, dort genuegt die Zahl aus dem Checkpoint.
-const LISTENZONEN = {
-  [Z_HAND]: "hand",
-  [Z_CHARACTER]: "board",
-  [Z_TRASH]: "trash",
-  [Z_STAGE]: "stagekarten",
-};
-
-/**
- * Aus den Logzeilen eine Schrittliste bauen, eine Klartextzeile ein Schritt.
- *
- * Der Zustand kommt aus drei Quellen, jede mit ihrer Rolle:
- *   - die Bewegungszeilen fuehren die Karten von Zone zu Zone. Daraus entsteht die
- *     genaue Aufstellung nach jedem einzelnen Schritt.
- *   - die Checkpoints liefern die Zaehler. Sie sind die Wahrheit fuer Zahlen, auch
- *     fuer die verdeckten Stapel Deck und Don-Deck, deren Inhalt niemand kennt.
- *   - die Klartextzeilen sind die Erzaehlung und geben die Schritte vor.
- *
- * Frueher stand die Aufstellung nur an den Zugenden, weil sie aus den
- * Klartextabzuegen kam. Ein gespielter Charakter erschien dadurch erst Zuege
- * spaeter auf dem Brett.
- */
-/**
- * Spielernummer zu Name, wenn die RZ1 Zeilen dazu fehlen.
- *
- * In 223 von 373 Replays gibt es keine PLY Zeile. Ohne sie liessen sich die
- * Checkpoints und Bewegungen keinem Namen zuordnen und das Brett blieb leer.
- *
- * Die Reihenfolge der "Leader is" Zeilen taugt NICHT als Ersatz: sie folgt der
- * Verbindungsreihenfolge, nicht der Spielernummer, und in rund jedem fuenften Log
- * sind beide vertauscht. Entschieden wird deshalb gemessen, genau wie in
- * `player_mapping` des Simulators: beide Zuordnungen durchspielen und die nehmen,
- * unter der die Lebenspunkte der Checkpoints zu den Klartextzeilen passen.
- */
-function zuordnungRaten(zeilen) {
-  const namen = [];
-  for (const z of zeilen) {
-    const t = z.t;
-    if (!t) continue;
-    const m = LEADERZEILE.exec(t);
-    if (m && !namen.includes(m[1])) namen.push(m[1]);
-    if (namen.length === 2) break;
-  }
-  if (namen.length < 2) return null;
-
-  const punkte = (zuordnung) => {
-    const life = {};
-    let treffer = 0;
-    for (const z of zeilen) {
-      if (z.c) {
-        life[z.c[0]] = z.c[4];
-        continue;
-      }
-      const t = z.t;
-      if (!t) continue;
-      const m = /^\[(.+?)\]\s+Life:\s*(\d+)$/.exec(t);
-      if (!m) continue;
-      const nr = zuordnung[m[1]];
-      if (nr !== undefined && life[nr] === parseInt(m[2], 10)) treffer += 1;
-    }
-    return treffer;
-  };
-
-  const a = { [namen[0]]: 1, [namen[1]]: 2 };
-  const b = { [namen[0]]: 2, [namen[1]]: 1 };
-  const pa = punkte(a);
-  const pb = punkte(b);
-  // Gleichstand heisst: nicht entscheidbar. Dann lieber die Reihenfolge nehmen,
-  // als eine Seite zu erfinden; die Zaehler sind dann im Zweifel vertauscht, die
-  // Karten der Klartextabzuege stimmen aber weiter, weil sie am Namen haengen.
-  const gewaehlt = pb > pa ? b : a;
-  const aus = {};
-  for (const [name, nr] of Object.entries(gewaehlt)) aus[nr] = name;
-  return aus;
-}
-
-function schritteBauen(zeilen) {
-  const leader = {};
-  const zuName = {};
-  const nummern = {};
-  const schritte = [];
-
-  let stand = {};
-  let zug = 1;
-  let amZug = null;
-
-  // Fehlen die PLY Zeilen, wird die Zuordnung gemessen statt geraten.
-  if (!zeilen.some((z) => z.p)) {
-    const geraten = zuordnungRaten(zeilen);
-    if (geraten) {
-      for (const [nr, name] of Object.entries(geraten)) {
-        zuName[Number(nr)] = name;
-        nummern[name] = Number(nr);
-      }
-    }
-  }
-
-  const seite = (wer) => {
-    let s = stand[wer];
-    if (!s) {
-      s = stand[wer] = { hand: [], board: [], trash: [], stagekarten: [],
-                         angelegt: {},
-                         // Gerestete Boardplaetze, der Leader getrennt. Resten ist kein
-                         // Zonenwechsel, es steht deshalb nur in den Klartextzeilen.
-                         gerestet: new Set(), leaderGerestet: false,
-                         // "will not Activate during next Refresh": bleibt einen Refresh
-                         // laenger liegen.
-                         bleibtGerestet: new Set() };
-    }
-    return s;
-  };
-
-  const kopie = () => {
-    const k = {};
-    for (const [wer, s] of Object.entries(stand)) {
-      k[wer] = {
-        ...s,
-        hand: [...s.hand], board: [...s.board], trash: [...s.trash],
-        stagekarten: [...s.stagekarten], angelegt: { ...s.angelegt },
-        gerestet: new Set(s.gerestet), bleibtGerestet: new Set(s.bleibtGerestet),
-      };
-    }
-    return k;
-  };
-
-  const anwenden = (m) => {
-    const [nr, karte, vonZone, vonSlot, nachZone, nachSlot] = m;
-    const wer = zuName[nr];
-    if (!wer) return;
-    const s = seite(wer);
-
-    const vonName = LISTENZONEN[vonZone];
-    if (vonName) {
-      const liste = s[vonName];
-      // Erst am gemeldeten Platz, sonst ueber die Kartennummer. Der Platz stimmt
-      // fast immer; der Rueckfall faengt die wenigen Faelle ab, in denen der
-      // Client eine Karte nennt, die er nie in diese Zone gelegt hat.
-      let i = vonSlot >= 0 && vonSlot < liste.length && liste[vonSlot] === karte
-        ? vonSlot
-        : liste.indexOf(karte);
-      if (i >= 0) {
-        liste.splice(i, 1);
-        if (vonZone === Z_CHARACTER) plaetzeSchieben(s, i, -1);
-      }
-    } else if (vonZone === Z_DON_EQUIPPED) {
-      const wirt = Math.floor(vonSlot / 100);
-      s.angelegt[wirt] = Math.max(0, (s.angelegt[wirt] || 0) - 1);
-    }
-
-    const nachName = LISTENZONEN[nachZone];
-    if (nachName) {
-      const liste = s[nachName];
-      const i = Math.max(0, Math.min(nachSlot, liste.length));
-      liste.splice(i, 0, karte);
-      // Eine frisch gespielte Karte steht aktiv, der Platz darf also keinen alten
-      // Restmerker erben.
-      if (nachZone === Z_CHARACTER) { plaetzeSchieben(s, i, 1); s.gerestet.delete(i); }
-    } else if (nachZone === Z_DON_EQUIPPED) {
-      // Der Slot traegt hier das Ziel: 99xx ist der Leader, sonst Boardplatz
-      // mal hundert plus laufende Nummer.
-      const wirt = Math.floor(nachSlot / 100);
-      s.angelegt[wirt] = (s.angelegt[wirt] || 0) + 1;
-    }
-  };
-
-  for (const z of zeilen) {
-    if (z.p) {
-      zuName[z.p[0]] = z.p[1];
-      nummern[z.p[1]] = z.p[0];
-      leader[z.p[1]] = z.p[2];
-      continue;
-    }
-    if (z.m) {
-      anwenden(z.m);
-      if (schritte.length) schritte[schritte.length - 1].stand = kopie();
-      continue;
-    }
-    if (z.c) {
-      const wer = zuName[z.c[0]];
-      if (!wer) continue;
-      const s = seite(wer);
-      s.don = {
-        deck: z.c[1], handzahl: z.c[2], boardzahl: z.c[3],
-        donDeck: z.c[5], aktiv: z.c[6], trash: z.c[7],
-        stage: z.c[8], gerastet: z.c[9],
-      };
-      if (z.c[4] > 0 || s.life !== undefined) s.life = z.c[4];
-      if (schritte.length) schritte[schritte.length - 1].stand = kopie();
-      continue;
-    }
-
-    const text = z.t;
-    if (!text) continue;
-
-    const ld = LEADERZEILE.exec(text);
-    if (ld && !leader[ld[1]]) leader[ld[1]] = ld[2];
-
-    // Die Klartextabzuege am Zugende werden nicht mehr gebraucht, die Aufstellung
-    // kommt jetzt aus den Bewegungen. Sie bleiben als Schritt aussen vor.
-    if (ZUSTAND.test(text)) continue;
-
-    const spr = SPRECHER.exec(text);
-    const wer = spr ? spr[1] : null;
-    if (wer) amZug = wer;
-
-    // --- Resten, aus den Klartextzeilen ---------------------------------------
-    // Resten ist kein Zonenwechsel und steht deshalb in keiner Bewegungszeile. Die
-    // vier Faelle, die im Log vorkommen, mit Beispiel aus einem echten Replay:
-    //
-    //   "Dracule Mihawk [OP14-020] attacking Rocks D. Xebec [OP17-039]"
-    //   "Gloriosa [OP17-046] Blocks"
-    //   "Dracule Mihawk [OP14-020]: Rest Otama [OP07-022]"
-    //   "Law & Bepo [ST24-004]: Rocks D. Xebec [OP17-118] will not Activate ..."
-    //
-    // Der Refresh kommt ohne eigene Zeile: er faellt mit dem Zugbeginn zusammen,
-    // also wird beim "End Turn" des einen die Gegenseite wieder aktiv gesetzt.
-    const karten = z.k || [];
-    if (wer) {
-      const meine = seite(wer);
-      const gegnerName = Object.keys(stand).find((n) => n !== wer);
-      const gegner = gegnerName ? stand[gegnerName] : null;
-
-      if (/\battacking\b/i.test(text) && karten.length) {
-        // Der Angreifer steht vorn in der Zeile. Ist es der Leader, kippt der Leader.
-        if (karten[0] === leader[wer]) meine.leaderGerestet = true;
-        else restenNachId(meine, karten[0]);
-      } else if (/\bBlocks\b/.test(text) && karten.length) {
-        restenNachId(meine, karten[0]);
-      } else if (/:\s*Rest\b/i.test(text) && karten.length) {
-        // Ziel ist die letzte genannte Karte, die Quelle die erste. Meistens restet
-        // man eigene Karten als Kosten, manche Effekte aber gegnerische.
-        const ziel = karten[karten.length - 1];
-        // Der eigene Leader ist ein gueltiges Ziel: Mihawks Leadereffekt restet "1 of
-        // your cards", und im Log steht dann der Leadername. Erst Leader, dann Board.
-        if (ziel === leader[wer]) meine.leaderGerestet = true;
-        else if (!restenNachId(meine, ziel)) restenNachId(gegner, ziel);
-      } else if (/will not Activate/i.test(text) && karten.length) {
-        // Trifft fast immer die Gegenseite, deshalb dort zuerst suchen.
-        const ziel = karten[karten.length - 1];
-        for (const s2 of [gegner, meine]) {
-          const i = platzNachId(s2, ziel);
-          if (i >= 0) { s2.bleibtGerestet.add(i); s2.gerestet.add(i); break; }
-        }
-      } else if (/End Turn/i.test(text) && gegner) {
-        // Refresh der Gegenseite: alles wird aktiv, ausser was ausdruecklich
-        // liegen bleibt. Der Merker gilt fuer genau diesen einen Refresh.
-        gegner.gerestet = new Set(gegner.bleibtGerestet);
-        gegner.bleibtGerestet = new Set();
-        gegner.leaderGerestet = false;
-      }
-    }
-
-    schritte.push({
-      wer,
-      text: spr ? spr[2] : text,
-      karten: z.k || [],
-      zug,
-      amZug,
-      stand: kopie(),
-    });
-    if (/End Turn/i.test(text)) zug += 1;
-  }
-
-  return { schritte, leader, nummern, zuege: zug };
-}
-
-/**
- * Restmerker mitschieben, wenn sich die Boardplaetze verschieben.
- *
- * Die Merker haengen am Platz, nicht an der Karte, weil dieselbe Kartennummer mehrfach
- * auf dem Brett stehen kann. Faellt ein Platz weg oder kommt einer dazu, ruecken alle
- * dahinterliegenden Merker nach.
- */
-function plaetzeSchieben(s, ab, richtung) {
-  for (const feld of ["gerestet", "bleibtGerestet"]) {
-    const neu = new Set();
-    for (const i of s[feld]) {
-      if (i < ab) neu.add(i);
-      else if (richtung < 0) { if (i > ab) neu.add(i - 1); }
-      else neu.add(i + 1);
-    }
-    s[feld] = neu;
-  }
-}
-
-/** Den ersten noch aktiven Platz mit dieser Kartennummer resten. */
-function restenNachId(s, id) {
-  if (!id || !s) return false;
-  for (let i = 0; i < s.board.length; i++) {
-    if (s.board[i] === id && !s.gerestet.has(i)) { s.gerestet.add(i); return true; }
-  }
-  return false;
-}
-
-/** Einen Platz suchen, um ihn zu markieren, egal ob schon gerestet. */
-function platzNachId(s, id) {
-  if (!id || !s) return -1;
-  return s.board.indexOf(id);
-}
 
 /** Angelegtes Don unter einer Karte, als kleine Reihe. */
 function AngelegtesDon({ n }) {
@@ -1498,7 +1160,7 @@ function Zone({ name, feld, className = "", children }) {
  * gegenueberliegen wie am Tisch. Gedreht wird nur das Raster ueber
  * grid-template-areas; die Karten bleiben aufrecht und damit lesbar.
  */
-function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
+function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug, geist }) {
   const s = stand || {};
   const don = s.don || {};
   const hand = s.hand || [];
@@ -1511,7 +1173,7 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
   const life = s.life || 0;
 
   return (
-    <div className={"seite" + (amZug ? " amzug" : "")}>
+    <div className={"seite" + (amZug ? " amzug" : "")} data-seite={wer}>
       <div className="kopf">
         <span className="text-[13px] font-bold"
               style={{ color: eigen ? "var(--akzent)" : "var(--text)" }}>
@@ -1540,18 +1202,27 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
 
         <Zone name="Character Area" feld className="z-chars">
           <div className="karten">
-            {board.length ? (
-              board.map((k, i) => (
-                <span key={k + i} className="platz">
-                  <Bild id={k} breite={120} hoehe={168}
-                        className={"bkarte" + (gerestet.has(i) ? " gerestet" : "")}
-                        alt={(namen[k] || {}).n || k
-                             + (gerestet.has(i) ? ", rested" : "")} />
-                  {/* Angelegtes Don steht unter der Karte, an der es haengt. Der
-                      Slot der Bewegungszeile nennt den Boardplatz. */}
-                  <AngelegtesDon n={angelegt[i] || 0} />
-                </span>
-              ))
+            {board.length || geist ? (
+              <>
+                {board.map((k, i) => (
+                  <Fragment key={k + i}>
+                    {/* Eine im laufenden Kampf zerstoerte Karte steht verblasst an
+                        ihrem alten Platz, bis der Kampf endet. Nur Anzeige, der
+                        Stand kennt sie nicht mehr. Siehe replay.js, angriffeSchieben. */}
+                    {geist && geist.platz === i ? <Geist id={geist.karte} namen={namen} /> : null}
+                    <span className="platz" data-platz={i}>
+                      <Bild id={k} breite={120} hoehe={168}
+                            className={"bkarte" + (gerestet.has(i) ? " gerestet" : "")}
+                            alt={(namen[k] || {}).n || k
+                                 + (gerestet.has(i) ? ", rested" : "")} />
+                      {/* Angelegtes Don steht unter der Karte, an der es haengt. Der
+                          Slot der Bewegungszeile nennt den Boardplatz. */}
+                      <AngelegtesDon n={angelegt[i] || 0} />
+                    </span>
+                  </Fragment>
+                ))}
+                {geist && geist.platz >= board.length ? <Geist id={geist.karte} namen={namen} /> : null}
+              </>
             ) : (
               <span className="brettleer">empty board</span>
             )}
@@ -1563,7 +1234,7 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
             <div className="zonenpaar">
               <div className="zonenname">Leader</div>
               {leader ? (
-                <span className="platz">
+                <span className="platz" data-platz="leader">
                   <Bild id={leader} breite={120} hoehe={168}
                         className={"bkarte leader" + (s.leaderGerestet ? " gerestet" : "")}
                         alt={(namen[leader] || {}).n || leader} />
@@ -1626,6 +1297,109 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug }) {
       </div>
       </div>
     </div>
+  );
+}
+
+/** Eine im laufenden Kampf zerstoerte Karte, verblasst an ihrem alten Platz. */
+function Geist({ id, namen }) {
+  return (
+    <span className="platz geist" data-platz="geist" aria-hidden="true">
+      <Bild id={id} breite={120} hoehe={168} className="bkarte gerestet"
+            alt={((namen[id] || {}).n || id) + ", destroyed"} />
+    </span>
+  );
+}
+
+/** Die Karte eines Pfeilendes im Brett suchen: Seite, dann Platz. */
+function pfeilKarte(ebene, ende) {
+  if (!ebene || !ende) return null;
+  const platz = ende.geist ? "geist" : ende.platz;
+  if (platz === null || platz === undefined) return null;
+  for (const seite of ebene.querySelectorAll("[data-seite]")) {
+    if (seite.dataset.seite !== ende.wer) continue;
+    return seite.querySelector(`[data-platz="${platz}"] .bkarte`);
+  }
+  return null;
+}
+
+// Abstand der Pfeilspitze vom Mittelpunkt des Ziels, in Pixeln bei Zoom 1. Die Spitze
+// soll auf der Karte liegen, aber ihr Bild nicht ganz verdecken.
+const PFEIL_VORSPRUNG = 14;
+// Wie weit der Bogen seitlich ausholt, als Anteil der Strecke. Ein gerader Pfeil lief
+// zwischen den Brettern oft genau ueber andere Karten.
+const PFEIL_BOGEN = 0.12;
+
+/**
+ * Der Angriffspfeil, als SVG Ebene ueber beiden Brettern.
+ *
+ * Gemessen wird nach jedem Schritt und bei jeder Groessenaenderung: die Lage der Karten
+ * haengt an Zoom, Fensterbreite und daran, ob eine Karte gerade quer liegt. Die Ebene
+ * liegt im rollbaren Brettcontainer und ist so gross wie sein Inhalt, rollt also mit.
+ */
+function Angriffspfeil({ angriff, ebeneRef, zoom, schritt }) {
+  const [linie, setLinie] = useState(null);
+
+  useLayoutEffect(() => {
+    const ebene = ebeneRef.current;
+    if (!angriff || !ebene) { setLinie(null); return; }
+
+    const messen = () => {
+      const von = pfeilKarte(ebene, angriff.von);
+      const auf = pfeilKarte(ebene, angriff.auf);
+      if (!von || !auf) { setLinie(null); return; }
+      const e = ebene.getBoundingClientRect();
+      const lage = (el) => {
+        const r = el.getBoundingClientRect();
+        return {
+          x: r.left - e.left + ebene.scrollLeft, y: r.top - e.top + ebene.scrollTop,
+          b: r.width, h: r.height,
+        };
+      };
+      setLinie({ von: lage(von), auf: lage(auf), breite: ebene.scrollWidth, hoehe: ebene.scrollHeight });
+    };
+
+    messen();
+    const beobachter = new ResizeObserver(messen);
+    beobachter.observe(ebene);
+    // Eine gerestete Karte dreht sich animiert; danach noch einmal messen, damit der
+    // Rahmen um das Ziel die endgueltige Lage trifft.
+    const nachher = setTimeout(messen, 350);
+    return () => { beobachter.disconnect(); clearTimeout(nachher); };
+  }, [angriff, ebeneRef, zoom, schritt]);
+
+  if (!linie) return null;
+  const { von, auf } = linie;
+  const x1 = von.x + von.b / 2, y1 = von.y + von.h / 2;
+  const mx = auf.x + auf.b / 2, my = auf.y + auf.h / 2;
+  const dx = mx - x1, dy = my - y1;
+  const laenge = Math.hypot(dx, dy) || 1;
+  const vor = Math.min(PFEIL_VORSPRUNG * zoom, laenge / 3);
+  const x2 = mx - (dx / laenge) * vor, y2 = my - (dy / laenge) * vor;
+  // Kontrollpunkt seitlich der Mitte, immer zur selben Seite gebogen.
+  const cx = (x1 + x2) / 2 - (dy / laenge) * laenge * PFEIL_BOGEN;
+  const cy = (y1 + y2) / 2 + (dx / laenge) * laenge * PFEIL_BOGEN;
+  const pfad = `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
+  const rahmen = (r, dick) => (
+    <rect x={r.x - 3} y={r.y - 3} width={r.b + 6} height={r.h + 6} rx={7}
+          fill="none" stroke="var(--angriff)" strokeWidth={dick} />
+  );
+
+  return (
+    <svg className="angriffspfeil" width={linie.breite} height={linie.hoehe} aria-hidden="true">
+      <defs>
+        <marker id="pfeilspitze" viewBox="0 0 10 10" refX="7" refY="5"
+                markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--angriff)" />
+        </marker>
+      </defs>
+      {rahmen(von, 1.5)}
+      {rahmen(auf, 2.5)}
+      {/* Dunkler Saum unter dem Pfeil, damit er auf hellen Kartenbildern lesbar bleibt. */}
+      <path d={pfad} fill="none" stroke="var(--grund)" strokeOpacity="0.7"
+            strokeWidth={7} strokeLinecap="round" />
+      <path d={pfad} fill="none" stroke="var(--angriff)" strokeWidth={3.5}
+            strokeLinecap="round" markerEnd="url(#pfeilspitze)" />
+    </svg>
   );
 }
 
@@ -1727,6 +1501,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
   const [laeuft, setLaeuft] = useState(false);
   const [logOffen, setLogOffen] = useState(false);
   const listeRef = useRef(null);
+  const ebeneRef = useRef(null);
 
   useEffect(() => {
     let abgebrochen = false;
@@ -1956,7 +1731,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           </div>
         </div>
 
-        <div className="grid gap-2 overflow-x-auto"
+        <div ref={ebeneRef} className="relative grid gap-2 overflow-x-auto"
              style={{ overscrollBehaviorX: "contain" }}>
           {seiten.map((n, k) => (
             <Brett
@@ -1968,8 +1743,11 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
               eigen={n === spieler}
               gedreht={k === 0}
               amZug={jetzt.amZug === n}
+              geist={jetzt.angriff?.auf?.geist && jetzt.angriff.auf.wer === n
+                ? jetzt.angriff.auf : null}
             />
           ))}
+          <Angriffspfeil angriff={jetzt.angriff} ebeneRef={ebeneRef} zoom={zoom} schritt={nr} />
         </div>
       </div>
     </div>

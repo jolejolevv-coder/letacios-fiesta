@@ -46,6 +46,9 @@
   --niederlage: #ff453a;
   --siegweich: rgba(48, 209, 88, 0.16);
   --niederlageweich: rgba(255, 69, 58, 0.14);
+  /* Angriffspfeil im Replay. Eigenes Orange: Blau ist der eigene Spieler, Rot die
+     Niederlage. */
+  --angriff: #ff9f0a;
   --schatten: 0 1px 2px rgba(0, 0, 0, 0.6), 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
@@ -497,3 +500,16 @@ header {
   .dons { max-width: calc(48px * var(--sk)); }
   .dons i { width: calc(11px * var(--sk)); height: calc(15px * var(--sk)); }
 }
+
+/* Angriffspfeil im Replay: eine Ebene ueber beiden Brettern, die Klicks durchlaesst. */
+.angriffspfeil {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 5;
+}
+
+/* Im laufenden Kampf zerstoert: die Karte bleibt verblasst stehen, bis er endet. */
+.platz.geist { opacity: 0.45; filter: grayscale(0.6); }
