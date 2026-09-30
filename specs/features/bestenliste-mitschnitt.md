@@ -90,7 +90,8 @@ Minuten behoben, der erste hat jeweils Tage gekostet.
 - [x] Unter 90 frischen Spielern wird nichts gepusht, der alte Stand bleibt.
 - [x] Ein gelungener Lauf pusht `public/bestenliste.json.gz.enc`, der Push loest die
       Action aus, und die Seite zeigt die Liste vom selben Tag.
-- [ ] Drei Tage in Folge frische Rangliste ohne Eingriff, die Wache bleibt gruen.
+- [x] Drei Tage in Folge frische Rangliste ohne Eingriff, die Wache bleibt gruen.
+      *(28., 29. und 30.09.2026)*
 - [x] Der Laeuferschritt ist aus der Action entfernt, der Rest der Action laeuft
       unveraendert.
 - [x] Tests fuer Bildvergleich und Plausibilitaetspruefung laufen lokal gruen.
@@ -228,6 +229,28 @@ jeweils nach 300 Sekunden. Die Wache meldete am 27. rot.
 
 Prueflauf unter systemd danach: durch, 1 Minute 51 Sekunden. Die Beobachtung ueber drei
 Tage beginnt damit neu, ab dem 28.09.2026.
+
+## Abnahme Phase 3, 30.09.2026
+
+Drei Tage in Folge ohne Eingriff: am 28., 29. und 30.09.2026 hat der 05:30 Lauf jeweils
+in rund 80 Sekunden gepusht, der 06:30 Termin meldete "Heute schon erledigt". Am 29.09.
+kam wieder ein Clientupdate; das Skript hat die neue Spieldatei selbst geladen, ohne
+Ausfall. Jeder Lauf hat den Bildschirm eingeschaltet, weil der Deckel zu ist. Damit ist
+das Vorhaben abgeschlossen.
+
+Retrospektive Phase 3.
+
+1. **Was gut lief:** Die Wache hat den ersten Ausfall am selben Tag gemeldet, und das
+   letzte Foto im Lauf zeigte die Ursache sofort (Downloadbalken bei 45 Prozent). Seit
+   den beiden Nachbesserungen vom 27.09. lief jeder Tag durch, auch ueber ein Update.
+2. **Wo ich falsch lag:** Ich habe den Prueflauf unter systemd fuer einen Beweis der
+   Robustheit gehalten. Er lief aber mit derselben Spielversion und demselben
+   Bildschirmzustand wie der Probelauf. Die beiden Ausfaelle kamen genau aus dem, was
+   sich zwischen den Tagen aendert: ein Clientupdate und ein Neustart mit zugeklapptem
+   Deckel.
+3. **Was besser spezifiziert werden sollte:** Bei einem taeglichen Lauf gehoeren die
+   Dinge, die sich zwischen zwei Laeufen aendern koennen, als eigene Faelle in die
+   Abnahme: neue Version, Neustart, andere Bildschirmlage. Nicht nur der gute Weg.
 
 ## Open questions
 
