@@ -64,3 +64,22 @@ Kandidaten dahinter sind nachweislich fremde Partien.
 Die Siegerbestimmung folgt jetzt `_winner_player_index` aus dem Spielcode, inklusive
 "dc" und "selfdc" als Niederlage und "kein Sieger" als eigenem Fall.
 
+
+## Nachtrag 20.10.2026: neuere Partien aus den Replays
+
+Der Schnappschuss `Public_matches` in `PublicUsers` endet oft Tage zurück (Rang 3 am 14.10., Rang 5
+am 06.10.). `frische_partien.py` ergänzt in der Action die Partien der letzten fünf Tage aus der
+Sammlung `Replays`:
+
+* Die Replays tragen keinen Namen und keine user_id; im Log steht der Ingame Name ("himm#7921"),
+  nicht der Name der Bestenliste ("hiiiiimmmmm"). Gelernt wird er aus den Schnappschusspartien,
+  die user_id und Replaypfad kennen: im Log steht er bei dem Leader, den der Spieler gespielt hat.
+* Gesucht wird nur in Western Replays, bei denen eine Seite mindestens die Bounty von Rang 100
+  minus 300 hatte (am 20.10. 422 Replays in fünf Tagen).
+* Sieg oder Niederlage über den Leader; im Mirror über die Bounty vor der Partie, sonst bleibt
+  die Partie weg.
+* Bei Siegen ist das Deck im Replay leer. Dann gilt die letzte bekannte Liste mit demselben
+  Leader, mit Datum (`deck_von`); die Seite sagt das.
+* Höchstens 20 Partien je Spieler, ohne Doppel. Dauer und gegner_id fehlen bei diesen Partien.
+
+Probelauf am 20.10.2026: 104 Ingame Namen gelernt, 203 neue Partien für 42 Spieler.

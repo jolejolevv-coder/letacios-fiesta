@@ -145,6 +145,19 @@ jobs:
         # ist. Lieber eine Seite ohne Spielerdaten als gar keine.
         continue-on-error: true
 
+      # Der Schnappschuss in PublicUsers endet oft Tage zurueck. Die neueren Partien kommen
+      # aus den Replays, zugeordnet ueber den Ingame Namen (frische_partien.py).
+      - name: Partien aus den Replays auffrischen
+        env:
+          OPBOUNTY_API_KEY: ${{ secrets.OPBOUNTY_API_KEY }}
+          OPBOUNTY_PROJECT: ${{ secrets.OPBOUNTY_PROJECT }}
+          OPBOUNTY_BUCKET: ${{ secrets.OPBOUNTY_BUCKET }}
+          OPBOUNTY_EMAIL: ${{ secrets.OPBOUNTY_EMAIL }}
+          OPBOUNTY_PASSWORT: ${{ secrets.OPBOUNTY_PASSWORT }}
+          SEITEN_PASSWORT: ${{ secrets.SEITEN_PASSWORT }}
+        run: python3 frische_partien.py
+        continue-on-error: true
+
       - name: Replays holen
         run: python3 replays_holen.py
         continue-on-error: true

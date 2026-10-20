@@ -1839,6 +1839,12 @@ function Partie({ p, namen, replayOeffnen }) {
 
       {offen ? (
         <div className="border-t px-3 pb-3 pt-3" style={{ borderColor: "var(--linie)" }}>
+          {p.deck_von ? (
+            <p className="mb-2 text-xs" style={{ color: "var(--still)" }}>
+              The replay of a win stores no list. Shown is this player's last known list with
+              this leader, from {String(p.deck_von).slice(0, 10)}.
+            </p>
+          ) : null}
           {karten.length ? (
             <div className="flex flex-wrap gap-1.5">
               {karten.map((k, i) => (
