@@ -346,7 +346,7 @@ if git diff --cached --quiet; then
   exit 0
 fi
 git -c user.name="ladder" -c user.email="ladder@localhost" \
-    commit -q -m "Bestenliste vom $(date +%F), per Mitschnitt"
+    commit -q -m "Bestenliste vom $(date +%F), per Bildschirm"
 # Hat die Action inzwischen selbst etwas committet, einmal nachziehen und neu pushen.
 if ! git push -q origin HEAD:main 2>/dev/null; then
   git pull -q --rebase && git push -q origin HEAD:main || \

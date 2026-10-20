@@ -29,6 +29,17 @@ class Felder(unittest.TestCase):
         self.assertIsNone(O.wr_aus("%"))
 
 
+class Vorbereiten(unittest.TestCase):
+    def test_rotkanal_trennt_hellblau_von_blau(self):
+        # Hinterlegte Zeile: Grund (29, 29, 98), Schrift hellblau. Im Grauwert liegen beide
+        # nah beieinander, im Rotkanal nicht.
+        bild = Image.new("RGB", (4, 1), (29, 29, 98))
+        bild.putpixel((1, 0), (150, 200, 255))
+        aus = O.vorbereiten(bild, 1, O.NAME_ROT_SCHWELLE, "R")
+        self.assertEqual(aus.getpixel((1, 0)), 0)      # Schrift schwarz
+        self.assertEqual(aus.getpixel((0, 0)), 255)    # Grund weiss
+
+
 class Bountyreihe(unittest.TestCase):
     def test_ausreisser_nach_oben_wird_geleert(self):
         # 6738.7 als 8738.7 gelesen, so am 20.10.2026 im Probelauf

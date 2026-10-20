@@ -74,9 +74,9 @@ def tesseract_pfad():
     raise SystemExit("tesseract fehlt (brew install tesseract)")
 
 
-def vorbereiten(bild, groesse, schwelle):
+def vorbereiten(bild, groesse, schwelle, kanal=None):
     """Helle Schrift auf dunklem Grund fuer Tesseract: vergroessern, dunkle Schrift auf Weiss."""
-    grau = bild.convert("L")
+    grau = bild.getchannel(kanal) if kanal else bild.convert("L")
     if schwelle:
         grau = grau.point(lambda v: 0 if v > schwelle else 255)
     else:
@@ -84,10 +84,10 @@ def vorbereiten(bild, groesse, schwelle):
     return grau.resize((grau.width * groesse, grau.height * groesse), Image.LANCZOS)
 
 
-def lesen(bild, erlaubt=None, groesse=3, schwelle=None):
+def lesen(bild, erlaubt=None, groesse=3, schwelle=None, kanal=None):
     """Eine Zeile Text. Leerer Text bei jedem Fehler von Tesseract."""
     with tempfile.NamedTemporaryFile(suffix=".png") as datei:
-        vorbereiten(bild, groesse, schwelle).save(datei.name)
+        vorbereiten(bild, groesse, schwelle, kanal).save(datei.name)
         befehl = [tesseract_pfad(), datei.name, "-", "--psm", "7"]
         if erlaubt:
             befehl += ["-c", f"tessedit_char_whitelist={erlaubt}"]
@@ -125,9 +125,15 @@ def wr_aus(text):
     return wert if 0 <= wert <= 100 else None
 
 
+NAME_ROT_SCHWELLE = 110        # hinterlegte Zeile: Grund (29, 29, 98), Schrift hellblau
+
+
 def name_lesen(zelle):
-    """Erst wie die Zahlen, bei leerem Ergebnis mit Schwelle (hinterlegte Zeilen sind blau)."""
-    return lesen(zelle) or lesen(zelle, schwelle=95)
+    """Erst wie die Zahlen, dann mit Schwelle, dann nur der Rotkanal. Hinterlegte Zeilen
+    (eigene Freunde, blau) haben hellblaue Schrift auf Blau; im Rotkanal steht die Schrift
+    bei rund 150, der Grund bei 29. So am 20.10.2026 fuer "nanana" auf Rang 18."""
+    return (lesen(zelle) or lesen(zelle, schwelle=95)
+            or lesen(zelle, schwelle=NAME_ROT_SCHWELLE, kanal="R"))
 
 
 # --- Leaderbilder -----------------------------------------------------------------
