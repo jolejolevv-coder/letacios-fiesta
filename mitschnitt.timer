@@ -4,11 +4,15 @@
 # mitschnitt_server.sh). Der Push des Servers loest die Action ohnehin selbst aus.
 
 [Unit]
-Description=Letacios Fiesta: Bestenliste taeglich um 05:30 und 06:30 UTC
+Description=Letacios Fiesta: Bestenliste taeglich ab 05:30 UTC, bis 21:30 UTC stuendlich nachfassen
 
 [Timer]
 OnCalendar=*-*-* 05:30:00 UTC
 OnCalendar=*-*-* 06:30:00 UTC
+# Seit dem 19.10.2026 zusaetzlich stuendlich bis zum Abend: an dem Tag waren die Spielserver von
+# OPBounty ab etwa 04:10 UTC fuer alle aus, und zwei Versuche am Morgen liessen den ganzen Tag
+# ohne Bestenliste. Nach einem Erfolg tun die weiteren Termine nichts (Tagesmarke).
+OnCalendar=*-*-* 07..21:30:00 UTC
 # War der Server zur Zeit aus, laeuft der Dienst nach dem Start nach. Die
 # Leerlaufpruefung im Skript verhindert, dass er dann in eine laufende Nutzung klickt.
 Persistent=true

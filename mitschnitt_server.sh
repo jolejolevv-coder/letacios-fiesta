@@ -3,9 +3,10 @@
 # Die Bestenliste per Mitschnitt holen und ins Repo legen. Laeuft taeglich auf dem
 # Bazzite, siehe specs/features/bestenliste-mitschnitt.md.
 #
-# Der echte Spielclient ruft die Bestenliste ab, tcpdump hoert mit, und
-# bestenliste_einbauen.py wertet aus. Der eigene Laeufer bekommt seit dem Clientupdate
-# 2.6.1 keine Antwort mehr, der Client schon.
+# Der echte Spielclient ruft die Bestenliste ab, das Skript fotografiert jede Seite, und
+# bestenliste_einbauen.py --fotos liest sie ab. Bis 2.6.9 hoerte hier tcpdump mit; seit
+# OPBounty 2.7 (19.10.2026) kommt die Liste per TLS, siehe den Nachtrag vom 20.10.2026 in
+# specs/features/bestenliste-mitschnitt.md.
 #
 #     ./mitschnitt_server.sh            # holen, auswerten, pruefen, pushen
 #     ./mitschnitt_server.sh --pruefen  # dasselbe, aber nichts pushen
@@ -13,45 +14,56 @@
 # Gestartet wird es von mitschnitt.timer, um 05:30 und zum Nachfassen um 06:30 UTC.
 #
 # Sicherheitsregeln, im Code unten jeweils an ihrer Stelle:
-#   * tcpdump zeichnet nur Pakete VOM Spielserver auf. Die Anmeldung mit dem Passwort
-#     geht in die andere Richtung und landet nie auf der Platte.
+#   * Fotografiert wird nur die geoeffnete Bestenliste, nie die Anmeldemaske.
 #   * Kein blinder Klick. Vor jedem Klick muss das Bildschirmfoto dem Referenzbild
 #     der Klickstelle entsprechen (werkzeuge/bildschirm.py), sonst Abbruch.
 #   * Keine Tastatureingabe ins Spiel.
 #   * Wird die Sitzung gerade benutzt oder laeuft das Spiel schon, faellt der Lauf aus.
-#   * Die pcap wird in jedem Fall geloescht, auch beim Abbruch.
+#   * Die Fotos bleiben nur bis zum naechsten Lauf in ~/mitschnitt/lauf (Rechte 700).
 #   * Nur die verschluesselte Fassung geht ins Repo.
 #
 set -uo pipefail
 
 HIER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WERKZEUGE="$HIER/werkzeuge"
-SPIEL_DIR="${OPBOUNTY_SPIEL:-$HOME/Downloads/Builds_Linux/OPTCGSim_Data/StreamingAssets/OPBounty/linux}"
+# Seit dem 19.10.2026 der eigenstaendige Linux Client (OPBounty_Linux.zip, vom Nutzer geladen).
+# Der eingebettete aus dem OPTCGSim Build zeigt seit 2.7 "Please update your SIM to v1.44a".
+SPIEL_DIR="${OPBOUNTY_SPIEL:-$HOME/Downloads/OPBounty_Linux}"
 SPIEL_NAME="OPBounty.x86_64"
+# Das Paket neben dem eigenstaendigen Client. Die alte Adresse, von der spieldatei.py lud, gibt
+# seit dem 19.10.2026 HTTP 403; neue Versionen kommen als Zip vom Nutzer.
+SPIELPAKET="${OPBOUNTY_PAKET:-$SPIEL_DIR/OPBounty.pck}"
 ARBEIT="$HOME/mitschnitt/lauf"
-PCAP="$ARBEIT/bestenliste.pcap"
 # Der Timer startet zweimal am Tag, der zweite Termin ist das Nachfassen. Gelingt der
 # erste, legt er diese Marke an, und der zweite endet sofort.
 ERLEDIGT="$HOME/mitschnitt/erledigt_$(date -u +%F)"
 FOTO="$ARBEIT/foto.png"
 
-SERVER_PORT=4694          # Spielserver, siehe werkzeuge/pcap_enet.py
 START_FRIST=300           # Sekunden vom Start bis zur offenen Bestenliste; das Update
                           # samt Neustart dauerte im Probelauf rund eine Minute
 SEITEN=5                  # Top 100, 20 Spieler je Seite
 BLAETTER_PAUSE=4          # Sekunden je Seite, im Probelauf ausreichend
 NACHLADE_PAUSE=5          # nach einem Klick, bis die naechste Maske steht
 MAX_KLICKS_JE_STELLE=2    # nie oefter auf dieselbe Maske klicken, etwa beim Anmelden
+START_WARTEN=35           # Sekunden nach dem Start, bis der Update Hinweis von selbst weg ist
+FENSTER_ABLAGE_X=600      # wohin das Menuefenster verschoben wird, damit es Klicks annimmt
+FENSTER_ABLAGE_Y=200
 LEERLAUF_SEKUNDEN=30      # so lange darf sich die Maus vor dem Start nicht bewegen
 # Hierhin wird die Maus vor jedem Foto geschoben, damit kein Knopf im Hover steht.
 # Rechts am Rand liegt in keiner der Masken ein Knopf.
 MAUS_PARK_X=1850
 MAUS_PARK_Y=600
+# Die 20. Zeile jeder Seite steht unter dem Rand der Liste. Mit dem Mausrad ueber der Liste
+# (kein Klick) rueckt sie ins Bild; danach ein zweites Foto, seite_N_b.png.
+LISTE_X=960
+LISTE_Y=500
+RAD_SCHRITTE=5
 
 NUR_PRUEFEN=0
+NUR_FOTOS=0               # nur die Seiten fotografieren, ohne Pull, Auswertung und Push
 [ "${1:-}" = "--pruefen" ] && NUR_PRUEFEN=1
+[ "${1:-}" = "--nur-fotos" ] && NUR_FOTOS=1 && NUR_PRUEFEN=1
 
-TCPDUMP_PID=""
 EINGESCHALTET=""          # Ausgang, den das Skript selbst eingeschaltet hat
 
 X_FRIST=15                # Sekunden fuer jeden einzelnen X-Aufruf, siehe x_aufruf
@@ -81,15 +93,6 @@ spiel_beenden() {
   kill -9 $(pgrep -x "$SPIEL_NAME") 2>/dev/null
 }
 
-tcpdump_stoppen() {
-  # Gestoppt wird ueber die PID des sudo Prozesses: sudo reicht SIGINT an tcpdump
-  # weiter, und tcpdump schreibt die Datei sauber zu Ende.
-  [ -z "$TCPDUMP_PID" ] && return 0
-  kill -INT "$TCPDUMP_PID" 2>/dev/null
-  wait "$TCPDUMP_PID" 2>/dev/null
-  TCPDUMP_PID=""
-}
-
 bildschirm_zuruecksetzen() {
   # Nur einen Ausgang wieder abschalten, den dieses Skript selbst eingeschaltet hat.
   [ -z "$EINGESCHALTET" ] && return 0
@@ -99,8 +102,6 @@ bildschirm_zuruecksetzen() {
 
 aufraeumen() {
   spiel_beenden
-  tcpdump_stoppen
-  rm -f "$PCAP"
   bildschirm_zuruecksetzen
 }
 trap aufraeumen EXIT
@@ -200,24 +201,22 @@ sitzung_ist_frei || exit 0
 
 # Erst den Stand holen, damit der Push spaeter nicht an einem neueren Commit der
 # Action scheitert. Geht das nicht, wird gar nicht erst mitgeschnitten.
-git pull -q --ff-only || abbrechen "git pull ging nicht, der Checkout hat eigene Aenderungen"
+if [ "$NUR_FOTOS" = 0 ]; then
+  git pull -q --ff-only || abbrechen "git pull ging nicht, der Checkout hat eigene Aenderungen"
+fi
 
 # Die Spieldatei selbst laden, bevor der Starter es mit 50 KB/s versucht; siehe
 # werkzeuge/spieldatei.py. Ohne aktuelle Datei scheitert der Lauf ohnehin.
-python3 "$WERKZEUGE/spieldatei.py" || abbrechen "Spieldatei nicht aktuell, der Starter wuerde zu langsam laden"
+python3 "$WERKZEUGE/spieldatei.py" || sagen "Spieldatei nicht nachgezogen, nehme $SPIELPAKET"
 
 bildschirm_sicherstellen
 
-sagen "Mitschnitt starten"
-rm -f "$PCAP"
-sudo -n tcpdump -i any -n -s 0 -U -Z "$(id -un)" -w "$PCAP" \
-  "udp and src port $SERVER_PORT" > "$ARBEIT/tcpdump.log" 2>&1 &
-TCPDUMP_PID=$!
-sleep 2
-kill -0 "$TCPDUMP_PID" 2>/dev/null || abbrechen "tcpdump startet nicht: $(tail -1 "$ARBEIT/tcpdump.log")"
-
 sagen "Spiel starten"
-( cd "$SPIEL_DIR" && nohup "./$SPIEL_NAME" > "$ARBEIT/spiel.log" 2>&1 & )
+# Direkt mit dem Spielpaket starten. Bis 2.6.9 startete das Programm erst sein eigenes
+# Startpaket von 2024, und das startete sich mit --main-pack neu; seit dem Update vom 19.10.2026
+# bleibt dieses Startpaket bei "Retrying connection..." haengen. spieldatei.py hat das Paket
+# ohnehin schon geladen, und --main-pack ist genau der Aufruf, den das Startpaket selbst macht.
+( cd "$SPIEL_DIR" && nohup "./$SPIEL_NAME" --main-pack "$SPIELPAKET" > "$ARBEIT/spiel.log" 2>&1 & )
 
 # Welche Maske zeigt eines der Spielfenster? Setzt FENSTER und STELLE, oder laesst
 # STELLE leer, wenn keines einen bekannten Knopf zeigt.
@@ -225,6 +224,12 @@ maske_erkennen() {
   FENSTER="" STELLE=""
   local w
   for w in $(fenster_liste); do
+    if knopf_im_fenster "$w"; then return 0; fi
+    # Seit 2.7 nimmt das kleine Menuefenster Klicks erst an, wenn es einmal verschoben wurde;
+    # danach steht es auch wieder im alten Aufbau (Bestenlisten bei 55, 505). Hinweis des
+    # Nutzers am 19.10.2026, am selben Abend nachgemessen.
+    x_aufruf xdotool windowmove "$w" "$FENSTER_ABLAGE_X" "$FENSTER_ABLAGE_Y" 2>/dev/null
+    sleep 2
     if knopf_im_fenster "$w"; then return 0; fi
     # Nichts erkannt: Vollbild neu erzwingen und noch einmal schauen. Das Spiel
     # verkleinert sein Fenster selbst, etwa fuer den Update Hinweis auf 225 x 421, und
@@ -249,6 +254,12 @@ knopf_im_fenster() {
   FENSTER="$1"
 }
 
+# Seit 2.7.0 (19.10.2026) zeigt das Spiel nach dem Start rund 20 Sekunden lang seinen Update
+# Hinweis und baut dann selbst auf die Anmeldung um. Waehrend dieses Umbaus das Fenster nicht
+# anfassen: ein Umschalten auf Vollbild mitten darin liess es zweimal mit einem
+# Speicherzugriffsfehler abstuerzen. Deshalb erst warten, dann wie gewohnt erkennen.
+sleep "$START_WARTEN"
+
 declare -A KLICKS=()
 OFFEN=0
 FRIST=$((SECONDS + START_FRIST))
@@ -257,7 +268,12 @@ while [ "$SECONDS" -lt "$FRIST" ]; do
   case "$STELLE" in
     naechste_seite)
       OFFEN=1; break ;;
-    bestenlisten|anmelden|hinweis_schliessen)
+    hinweis_schliessen)
+      # Seit 2.7.0 (19.10.2026) hat der Update Hinweis kein X mehr; er verschwindet nach
+      # rund 20 Sekunden von selbst. An der alten Stelle des X liegt jetzt eine Lupe, ein Klick
+      # dort wuerde die Oberflaeche verkleinern. Also nur warten, die Frist gilt weiter.
+      sleep "$NACHLADE_PAUSE" ;;
+    bestenlisten|anmelden)
       KLICKS[$STELLE]=$(( ${KLICKS[$STELLE]:-0} + 1 ))
       [ "${KLICKS[$STELLE]}" -gt "$MAX_KLICKS_JE_STELLE" ] && \
         abbrechen "$STELLE bleibt nach $MAX_KLICKS_JE_STELLE Klicks stehen"
@@ -272,24 +288,37 @@ if [ "$OFFEN" != 1 ]; then
   abbrechen "Bestenliste nach $START_FRIST Sekunden nicht offen, letztes Foto in $ARBEIT"
 fi
 
-sagen "Bestenliste offen, blaettern"
-for ((seite = 2; seite <= SEITEN; seite++)); do
+sagen "Bestenliste offen, fotografieren und blaettern"
+rm -f "$ARBEIT"/seite_*.png
+for ((seite = 1; seite <= SEITEN; seite++)); do
+  foto_machen "$FENSTER" || abbrechen "Foto von Seite $seite misslungen"
+  cp -f "$FOTO" "$ARBEIT/seite_$seite.png"
+  x_aufruf xdotool mousemove --window "$FENSTER" "$LISTE_X" "$LISTE_Y"
+  x_aufruf xdotool click --repeat "$RAD_SCHRITTE" 5
+  sleep 1
+  foto_machen "$FENSTER" && cp -f "$FOTO" "$ARBEIT/seite_${seite}_b.png"
+  x_aufruf xdotool mousemove --window "$FENSTER" "$LISTE_X" "$LISTE_Y"
+  x_aufruf xdotool click --repeat "$RAD_SCHRITTE" 4
+  sleep 1
   foto_machen "$FENSTER"
+  [ "$seite" = "$SEITEN" ] && break
   python3 "$WERKZEUGE/bildschirm.py" pruefe "$FOTO" naechste_seite || \
-    abbrechen "Next Page vor Seite $seite nicht zu sehen"
+    abbrechen "Next Page vor Seite $((seite + 1)) nicht zu sehen"
   klicken "$FENSTER" naechste_seite
   sleep "$BLAETTER_PAUSE"
 done
 
 spiel_beenden
-tcpdump_stoppen
+if [ "$NUR_FOTOS" = 1 ]; then
+  sagen "--nur-fotos: $SEITEN Seiten in $ARBEIT, fertig"
+  exit 0
+fi
 
 # --- Auswerten und ablegen --------------------------------------------------
 sagen "Auswerten"
 export OPBOUNTY_WERKZEUGE="$WERKZEUGE"
-python3 bestenliste_einbauen.py "$PCAP"
+python3 bestenliste_einbauen.py --fotos "$ARBEIT"
 EINBAU=$?
-rm -f "$PCAP"
 [ "$EINBAU" = 0 ] || abbrechen "bestenliste_einbauen.py ist gescheitert"
 python3 "$WERKZEUGE/plausibel.py" public/bestenliste.json.gz || \
   abbrechen "nicht plausibel, nichts gepusht, der alte Stand bleibt"

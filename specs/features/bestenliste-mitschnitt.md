@@ -271,3 +271,87 @@ Retrospektive Phase 3.
 - **Bildvergleich.** Welches Werkzeug auf dem Bazzite vorhanden ist (ImageMagick,
   Python mit Pillow), klaert Phase 1. Keine neue Installation ohne deine Freigabe.
 - ~~**Blaettern.**~~ **Entschieden am 25.09.2026:** Top 100 reicht, also fuenf Seiten.
+
+## Nachtrag 19.10.2026: Ausfall der Spielserver, Nachfassen bis zum Abend
+
+Am 19.10. scheiterten beide Läufe (05:30 und 06:30 UTC) mit "Bestenliste nach 300 Sekunden nicht
+offen". Das Spiel blieb bei "Retrying connection..." stehen. Ursache war nicht der Mitschnitt:
+das Spiel schickte ENet Verbindungsanfragen an `34.235.236.170:4694` (dieselbe Adresse wie im
+Startpaket von 2024) und bekam keine Antwort, und laut Nachlader von Metacoach kam ab etwa
+04:10 UTC von niemandem mehr eine Partie herein (vorher 75 bis 92 Xebec Partien je Stunde). Die
+Spielserver waren für alle aus, vermutlich wegen der Wartung zu 2.6.9. Spielpaket und Godot
+Version (4.1.2) passten.
+
+Geändert: `mitschnitt.timer` fasst zusätzlich stündlich von 07:30 bis 21:30 UTC nach. Nach einem
+Erfolg tun die weiteren Termine nichts (Tagesmarke). Auf dem Server ist die installierte Kopie
+unter `~/.config/systemd/user/` geändert, nicht der Klon unter `~/opbounty-ladder/seite`: eine
+geänderte Datei dort würde `git pull --rebase` und damit den Push blockieren.
+
+Zwei Fallen beim Untersuchen: die Umgebungsvariable `standalone` lässt das Spiel ohne seine
+Firebase Bausteine starten ("Identifier Firebase not declared"), also nie setzen; und Kopfzeilen
+mit `tcpdump -q` reichen, um Ziel und Antworten zu sehen, ohne Inhalt mitzuschneiden.
+
+### Stand am Nachmittag des 19.10.2026 (Version 2.7.1)
+
+Die Server liefen ab etwa 11 UTC wieder. Gefunden und in der Arbeitskopie von
+`mitschnitt_server.sh` geändert, noch nicht gepusht:
+
+* Das Startpaket von 2024 bleibt bei "Retrying connection..." hängen; das Spiel startet jetzt
+  direkt mit `--main-pack` auf das Paket, das `spieldatei.py` lädt.
+* Der Update Hinweis hat seit 2.7.0 kein X mehr und verschwindet nach rund 20 Sekunden selbst;
+  das Skript wartet 35 Sekunden, bevor es das Fenster anfasst. Ein Umschalten auf Vollbild
+  während des Umbaus vom Hinweis zur Anmeldung liess das Spiel zweimal abstürzen.
+* Mit gesetztem Häkchen "nicht mehr anzeigen" (im Vollbild angeklickt, Spiel danach normal über
+  das Fenster geschlossen) bleibt der Hinweis bei den nächsten Starts weg, bis zur nächsten
+  Version.
+* Die Anmeldung wird mit der alten Vorlage erkannt und geklickt (61, 292).
+
+Offen:
+
+* Nach der Anmeldung zeigt das Spiel "Please update your SIM to v1.44a!" mit Download Knopf und
+  X. Der Linux Build von OPTCGSim auf dem Server ist älter.
+* Das Menü steht jetzt in einem schmalen Fenster 225 x 623; "Bestenlisten" lag einmal bei
+  (55, 369), einmal bei (55, 162), je nachdem, wie weit das Plakat oben sichtbar war. Neue
+  Vorlagen und Klickstellen für Bestenlisten, das X des SIM Hinweises und "Next Page" fehlen.
+* Lehre: beim Aufnehmen nie blind klicken. Zwei Handklicks ohne Vorlage öffneten die
+  Einstellungen und den Link "Game icons by game-icons.net" im Firefox des Servers.
+
+### Nachtrag 20.10.2026: Fotos und OCR statt Mitschnitt (Version 2.7.2)
+
+**Warum.** Seit 2.7 kommt die Bestenliste über `wss://api.apibounty.online/ws`, TLS über
+Cloudflare. Ein Mitschnitt sieht nur verschlüsselte Bytes. Mitlesen ginge nur mit einem Eingriff
+in den Client, und der ist ausgeschlossen. Vom Nutzer am 20.10. freigegeben: die Liste vom
+Bildschirm lesen.
+
+**Ablauf.** Klickfolge wie bisher (Anmelden, Bestenlisten). Dann fotografiert
+`mitschnitt_server.sh` jede der fünf Seiten (`seite_N.png`), scrollt mit dem Mausrad über der
+Liste (kein Klick), fotografiert noch einmal (`seite_N_b.png`, für die 20. Zeile, die unter dem
+Rand steht), scrollt zurück und blättert. `bestenliste_einbauen.py --fotos <ordner>` liest die
+Fotos mit `werkzeuge/bestenliste_ocr.py`. Plausibilität, Verschlüsselung und Push wie bisher.
+`tcpdump` und `sudo` braucht der Lauf nicht mehr. `--nur-fotos` macht nur die Fotos, ohne Pull,
+Auswertung und Push.
+
+**Was gelesen wird.**
+
+| Feld | Woher | Gegenprobe |
+|---|---|---|
+| Rang | Seite und Zeile, nicht aus dem Bild | Zeilen über die grauen Trennlinien, sonst festes Raster |
+| Name | Tesseract | Zuordnung zu bekannten Namen (letzte Bestenliste, Gegner in den Partien von `spieler.json`) |
+| Bounty | Tesseract, zwei Größen | beide Lesungen gleich; muss mit dem Rang fallen (längste fallende Folge) |
+| Bis zu drei Leader | Kartenbild im Vergleich mit den Leaderkarten der Seite | Vorsprung vor dem zweitbesten Treffer |
+| Winrate je Leader | Tesseract | 0 bis 100 % |
+
+Was unsicher ist, bleibt leer und steht in `unsicher`. Jeder Eintrag trägt `"quelle": "ocr"`.
+
+**Was fehlt.** Partien, Spielzeit und der Sitzsplit je Leader stehen nicht in der Zeile. Die
+Seite zeigt dort "-" und einen Hinweis. `user_id` steht nicht im Bild: Spieler, deren Name
+keinem bekannten zugeordnet werden kann, haben keine Spielerseite, bis sie als Gegner in einer
+Partie auftauchen.
+
+**Abnahme am 20.10.2026.** Zwei Probeläufe auf dem Bazzite, je fünf Seiten. Zweiter Lauf: 100
+von 100 Rängen, alle Bounties bestehen die Gegenprobe, alle Leader sicher erkannt; Seite 1 von
+Hand gegen das Foto geprüft. Namen haben vereinzelt OCR Fehler ("nanania" statt "nanana"), die
+die Zuordnung zu bekannten Namen korrigiert, wenn der Spieler bekannt ist. Laufzeit der OCR auf
+dem Bazzite rund vier Minuten. Werkzeuge: Tesseract aus Homebrew
+(`/home/linuxbrew/.linuxbrew/bin/tesseract`), Pillow; Leaderbilder im Zwischenspeicher
+`~/mitschnitt/leaderbilder`, geholt von der eigenen Seite.

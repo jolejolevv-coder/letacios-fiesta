@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Die Bestenliste aus einem Mitschnitt in die Seite legen.
+"""Die Bestenliste aus einem Mitschnitt oder aus Fotos in die Seite legen.
+
+Seit OPBounty 2.7 (19.10.2026) laeuft die Bestenliste verschluesselt ueber eine WebSocket
+Verbindung, ein Mitschnitt sieht nichts mehr. Dann gilt `--fotos <ordner>`: die Seiten
+werden vom Bildschirm gelesen (`werkzeuge/bestenliste_ocr.py`), mit Rang, Name, Bounty und
+der Winrate der bis zu drei Leader, ohne Partien, Spielzeit und Sitzsplit.
 
 Der Auslöser für die Daten ist der Spielclient: er stellt die Anfrage, tcpdump hört
 mit, dieses Skript wertet aus. Warum es keinen eigenen Läufer gibt, steht in
@@ -112,6 +117,8 @@ def main():
     p = argparse.ArgumentParser(description="Bestenliste in die Seite legen")
     p.add_argument("mitschnitt", nargs="?",
                    help="pcap; ohne Angabe holt der Laeufer die Liste selbst")
+    p.add_argument("--fotos", help="Ordner mit seite_N.png; Bestenliste per OCR, seit "
+                                   "OPBounty 2.7 der Weg (werkzeuge/bestenliste_ocr.py)")
     p.add_argument("--stand", help="Datum der Aufnahme, sonst heute")
     p.add_argument("--fortschreiben", action="store_true",
                    help="alten Bestand behalten statt ihn zu ersetzen; mischt "
@@ -125,7 +132,12 @@ def main():
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
     stand = a.stand or datetime.date.today().isoformat()
-    if a.mitschnitt:
+    if a.fotos:
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "werkzeuge"))
+        from bestenliste_ocr import aus_fotos
+        neu = aus_fotos(a.fotos, seitenpasswort(), ZIEL)
+        quelle = "Bildschirm"
+    elif a.mitschnitt:
         neu = aus_mitschnitt(a.mitschnitt)
         quelle = "Mitschnitt"
     else:

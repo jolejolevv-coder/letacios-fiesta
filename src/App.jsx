@@ -883,9 +883,13 @@ function Bestenliste({ daten, namen, oeffnen }) {
   const angereichert = useMemo(
     () =>
       daten.spieler.map((e) => {
-        const siege = (e.leader || []).reduce((a, l) => a + l.siege, 0);
-        const partien = (e.leader || []).reduce((a, l) => a + l.partien, 0);
-        return { ...e, siege, partien, wr: proz(siege, partien) };
+        // Seit OPBounty 2.7 (20.10.2026) wird die Liste vom Bildschirm gelesen. Dann gibt
+        // es je Leader nur die Winrate, keine Partien; die Spalten bleiben leer.
+        const leader = (e.leader || []).filter((l) => l.leader);
+        if (e.quelle === "ocr") return { ...e, leader, siege: null, partien: null, wr: null };
+        const siege = leader.reduce((a, l) => a + l.siege, 0);
+        const partien = leader.reduce((a, l) => a + l.partien, 0);
+        return { ...e, leader, siege, partien, wr: proz(siege, partien) };
       }),
     [daten]
   );
@@ -995,8 +999,11 @@ function Bestenliste({ daten, namen, oeffnen }) {
                       dort ohnehin steht, und war ein zweites Ziel in derselben
                       Zeile. */}
                   <tr
-                    className="cursor-pointer transition-colors hover:bg-[var(--flaeche2)]"
-                    onClick={() => oeffnen(e.user_id)}
+                    className={e.user_id != null
+                      ? "cursor-pointer transition-colors hover:bg-[var(--flaeche2)]"
+                      : undefined}
+                    onClick={e.user_id != null ? () => oeffnen(e.user_id) : undefined}
+                    title={e.user_id != null ? undefined : "No player page: name not matched yet"}
                   >
                     <td className="zahl border-b px-2 py-1.5 text-right sm:px-3"
                         style={{ borderColor: "var(--linie)", color: "var(--still)" }}>
@@ -1015,7 +1022,7 @@ function Bestenliste({ daten, namen, oeffnen }) {
                     </td>
                     <td className="zahl hidden border-b px-2 py-1.5 text-right sm:table-cell sm:px-3"
                         style={{ borderColor: "var(--linie)", color: "var(--leise)" }}>
-                      {fmtZahl(e.partien)}
+                      {e.partien == null ? "-" : fmtZahl(e.partien)}
                     </td>
                     <td
                       className="zahl whitespace-nowrap border-b px-2 py-1.5 text-right font-semibold sm:px-3"
@@ -1028,7 +1035,7 @@ function Bestenliste({ daten, namen, oeffnen }) {
                     </td>
                     <td className="zahl hidden border-b px-2 py-1.5 text-right sm:table-cell sm:px-3"
                         style={{ borderColor: "var(--linie)", color: "var(--leise)" }}>
-                      {stunden(e.spielzeit || 0)}
+                      {e.partien == null ? "-" : stunden(e.spielzeit || 0)}
                     </td>
                     <td className="border-b px-2 py-1.5 sm:px-3" style={{ borderColor: "var(--linie)" }}>
                       {top ? (
@@ -1040,7 +1047,9 @@ function Bestenliste({ daten, namen, oeffnen }) {
                           <span className="hidden sm:contents">
                             <LeaderName id={top.leader} namen={namen} klein />
                             <span className="zahl text-xs" style={{ color: "var(--still)" }}>
-                              {top.siege}&ndash;{top.niederlagen}
+                              {top.partien == null
+                                ? top.winrate == null ? "" : top.winrate.toFixed(1) + " %"
+                                : <>{top.siege}&ndash;{top.niederlagen}</>}
                             </span>
                           </span>
                         </span>
@@ -1055,6 +1064,13 @@ function Bestenliste({ daten, namen, oeffnen }) {
           </tbody>
         </table>
       </div>
+      {angereichert.some((e) => e.quelle === "ocr") ? (
+        <p className="pt-3 text-xs" style={{ color: "var(--still)" }}>
+          Since OPBounty 2.7 the leaderboard is read from the game screen. It shows the win
+          rate of each player's top three leaders, but no games, play time or first and
+          second split.
+        </p>
+      ) : null}
       {!spieler.length ? (
         <p className="py-10 text-center" style={{ color: "var(--still)" }}>
           No player matches.
@@ -1909,7 +1925,9 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen }) {
                         kind={<span className="zahl">{daten.siege}&ndash;{daten.niederlagen}</span>} />
             </>
           ) : null}
-          <Kennzahl etikett="Games" kind={<Zaehler wert={eintrag.partien} />} nurGross />
+          {eintrag.quelle === "ocr" ? null : (
+            <Kennzahl etikett="Games" kind={<Zaehler wert={eintrag.partien} />} nurGross />
+          )}
         </div>
       </section>
 
@@ -1917,7 +1935,7 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen }) {
       {/* Getrennt wird ueber Abstand, nicht ueber Trennzeichen, und ohne Balken.
           Bricht die Zeile am Handy um, bleibt jede der drei Angaben fuer sich lesbar. */}
       <div className="grid gap-2">
-        {(eintrag.leader || []).map((l) => (
+        {(eintrag.leader || []).filter((l) => l.leader).map((l) => (
           <div key={l.leader} className="grid grid-cols-[34px_minmax(0,1fr)] items-center gap-3">
             <Bild id={l.leader} breite={120} hoehe={168}
                   className="h-[46px] w-[34px] rounded-[3px] object-cover" />
@@ -1925,9 +1943,15 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen }) {
               <LeaderName id={l.leader} namen={namen} klein />
               <span className="zahl flex flex-wrap gap-x-5 text-xs"
                     style={{ color: "var(--still)" }}>
-                <span>{l.siege}&ndash;{l.niederlagen} in {l.partien} games</span>
-                <span>first {proz(l.erst_siege, l.erst_siege + l.erst_niederlagen).toFixed(1)} %</span>
-                <span>second {proz(l.zweit_siege, l.zweit_siege + l.zweit_niederlagen).toFixed(1)} %</span>
+                {l.partien == null ? (
+                  <span>{l.winrate == null ? "win rate unreadable" : l.winrate.toFixed(1) + " % win rate"}</span>
+                ) : (
+                  <>
+                    <span>{l.siege}&ndash;{l.niederlagen} in {l.partien} games</span>
+                    <span>first {proz(l.erst_siege, l.erst_siege + l.erst_niederlagen).toFixed(1)} %</span>
+                    <span>second {proz(l.zweit_siege, l.zweit_siege + l.zweit_niederlagen).toFixed(1)} %</span>
+                  </>
+                )}
               </span>
             </span>
           </div>
