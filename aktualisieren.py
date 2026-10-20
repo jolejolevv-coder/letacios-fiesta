@@ -109,6 +109,16 @@ def _addiere(ziel: dict, quelle: dict, felder) -> None:
 ZAEHLER = ("wins", "losses", "first_wins", "first_losses",
            "second_wins", "second_losses", "number_of_matches", "duration")
 
+# Version der eingedampften Dateien. 2 seit dem 20.10.2026: je Leader die Kartenwerte fuer den
+# Reiter Analysis (`hand`, in den Saetzen auch `kopien`). Aeltere Tagesdateien im
+# Zwischenspeicher werden neu gebaut. 3: Tagesdateien ohne `kopien`.
+FORMAT = 3
+# Je Karte in der Starthand acht Zaehler, in dieser Reihenfolge (specs/features/mulligan-guide.md):
+HAND_FELDER = ("subject_keep_first", "subject_keep_second",
+               "subject_mulligan_first", "subject_mulligan_second",
+               "subject_wins_in_hand_first", "subject_wins_in_hand_second",
+               "subject_losses_in_hand_first", "subject_losses_in_hand_second")
+
 
 def zusammenfuehren(teile: list) -> dict:
     """Fuehrt mehrere Statistikdateien zu einer zusammen.
@@ -120,6 +130,7 @@ def zusammenfuehren(teile: list) -> dict:
     """
     decks: dict = {}
     praesenz: dict = {}
+    karten: dict = {}
     partien = 0
     stand = ""
     for teil in teile:
@@ -153,10 +164,25 @@ def zusammenfuehren(teile: list) -> dict:
                                    ("sl", "subject_second_losses")):
                     reihe = eintrag.get(lang, []) or []
                     g[kurz] += reihe[i] if i < len(reihe) else 0
-    return {"decks": decks, "praesenz": praesenz, "partien": partien, "stand": stand}
+        for eintrag in teil.get("cards_presence", []) or []:
+            ziel = karten.setdefault(eintrag.get("leader"), {"hand": {}, "kopien": {}})
+            for i, karte_ in enumerate(eintrag.get("subject_mulligan", []) or []):
+                zaehler = ziel["hand"].setdefault(karte_, [0] * len(HAND_FELDER))
+                for j, feld in enumerate(HAND_FELDER):
+                    reihe = eintrag.get(feld, []) or []
+                    zaehler[j] += (reihe[i] or 0) if i < len(reihe) else 0
+            spiele = eintrag.get("subject_matches", []) or []
+            siege = eintrag.get("subject_wins", []) or []
+            for i, karte_ in enumerate(eintrag.get("subject", []) or []):
+                z = ziel["kopien"].setdefault(karte_, [0, 0])
+                z[0] += (spiele[i] or 0) if i < len(spiele) else 0
+                z[1] += (siege[i] or 0) if i < len(siege) else 0
+    return {"decks": decks, "praesenz": praesenz, "karten": karten,
+            "partien": partien, "stand": stand}
 
 
-def eindampfen(roh: dict, name: str = "", modus: str = "", bounty: str = "") -> dict:
+def eindampfen(roh: dict, name: str = "", modus: str = "", bounty: str = "",
+               mit_kopien: bool = True) -> dict:
     """Nur die Felder behalten, die die Seite zeigt.
 
     Kurze Schluessel, weil sie sich je Liste und je Gegner wiederholen: w/l Siege und
@@ -179,7 +205,12 @@ def eindampfen(roh: dict, name: str = "", modus: str = "", bounty: str = "") -> 
         spiele_leader = max(1, p.get("number_of_matches", 0) or 1)
         if not listen and not gegner:
             continue
+        k = roh.get("karten", {}).get(kennung, {})
+        # Die Kopienwerte sind gross (am 19.10. 26 KB je Tagesdatei gegen 7 KB fuer die
+        # Starthand) und stehen deshalb nur in den Saetzen, nicht in jeder Tagesdatei.
+        hand = {karte_: z for karte_, z in k.get("hand", {}).items() if any(z)}
         leader.append({
+            "hand": hand, "kopien": k.get("kopien", {}) if mit_kopien else {},
             "id": kennung,
             "w": p.get("wins", 0), "l": p.get("losses", 0),
             "fw": p.get("first_wins", 0), "fl": p.get("first_losses", 0),
@@ -195,7 +226,7 @@ def eindampfen(roh: dict, name: str = "", modus: str = "", bounty: str = "") -> 
             "listen": listen,
         })
     leader.sort(key=lambda e: -(e["w"] + e["l"]))
-    return {"name": name, "stand": roh["stand"], "partien": roh["partien"],
+    return {"format": FORMAT, "name": name, "stand": roh["stand"], "partien": roh["partien"],
             "modus": modus, "bounty": bounty, "leader": leader}
 
 
@@ -320,7 +351,7 @@ def tage_laden(ziel: str, anzahl: int, modi: list, bereiche: list) -> list:
     for (tag, modus, bereich), dateien in sorted(plan.items()):
         name = f"{tag}__{modus}__{bereich}"
         pfad = os.path.join(ziel, "tage", name + ".json.gz")
-        if os.path.exists(pfad):
+        if os.path.exists(pfad) and lesen(pfad).get("format", 1) >= FORMAT:
             verzeichnis.append({"tag": tag, "modus": modus, "bounty": bereich,
                                 "datei": "tage/" + name + ".json.gz",
                                 "partien": lesen(pfad).get("partien", 0)})
@@ -335,7 +366,7 @@ def tage_laden(ziel: str, anzahl: int, modi: list, bereiche: list) -> list:
         satz = eindampfen(
             zusammenfuehren(teile),
             f"{tag}, {MODI.get(modus, modus)}, {BOUNTY_NAME.get(bereich, bereich)}",
-            modus, bereich)
+            modus, bereich, mit_kopien=False)
         groesse = schreiben(pfad, satz)
         print(f"    {groesse/1e3:.0f} KB, {satz['partien']} Partien")
         verzeichnis.append({"tag": tag, "modus": modus, "bounty": bereich,

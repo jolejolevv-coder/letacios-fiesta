@@ -45,7 +45,7 @@ mit ihnen gewinnt, getrennt nach first und second, im gewählten Zeitraum und Bo
    * je Karte mit Anzahl die Partien und Siege.
 2. `daten.js` addiert diese Blöcke über die gewählten Tage und Bountystufen, wie es das schon
    für die Winrates tut.
-3. Auf dem Reiter Decklists bekommt jeder Leader unter dem Kopf den Abschnitt **Opening hand**,
+3. Ein neuer Reiter **Analysis** (Pfad `/analysis?leader=...`) zeigt für den gewählten Leader den Abschnitt **Opening hand**,
    für first und second nebeneinander:
    * je Karte die Keep Rate: Anteil behaltener erster Hände, in denen die Karte lag,
    * die Winrate mit der Karte in der Starthand,
@@ -83,14 +83,23 @@ mit ihnen gewinnt, getrennt nach first und second, im gewählten Zeitraum und Bo
 1. `aktualisieren.py`: `cards_presence` zusammenführen und eindampfen, Tests, ein Lauf von Hand
    für 30 Tage.
 2. `daten.js`: Blöcke addieren, Tests.
-3. Oberfläche: Opening hand und Copies auf dem Reiter Decklists, Handy prüfen.
+3. Oberfläche: Reiter Analysis mit Opening hand und Copies, Handy prüfen.
 4. Abnahme gegen die Tagesdatei, Push, Action prüfen.
+
+## Entscheidungen vom 20.10.2026
+
+* Eigener Reiter **Analysis**, nicht unter Decklists.
+* Mindestzahl **100 Partien** je Karte, darunter grau.
+
+## Abweichung bei der Umsetzung (20.10.2026)
+
+Mit den Kopienwerten wuchsen die Tagesdateien um rund 50 Prozent (Kopien 26 KB, Starthand 7 KB
+je Datei). Die Kopien stehen deshalb nur in den fertigen Sätzen (`saetze/`), nicht in den
+Tagesdateien (`FORMAT = 3`). Für einen frei gewählten Zeitraum zeigt der Reiter nur die
+Starthand und sagt das bei Copies.
 
 ## Open questions
 
-* **Wo genau.** Vorschlag: Decklists, unter dem Leaderkopf, weil die Werte je Leader gelten.
-  Alternative: ein eigener Reiter "Mulligan".
-* **Mindestzahl** für eine Karte in der Liste. Vorschlag: 30 Partien in der Hand, darunter grau.
 * **Die Lücke zwischen Keep und "in hand"** (68 gegen 20 im Beispiel). Ich prüfe sie in Schritt 1
   an mehreren Tagen. Wenn sie sich nicht erklären lässt, zeigt die Seite nur Verhältnisse
   innerhalb jeder Zählung, nie eine Zählung geteilt durch die andere.

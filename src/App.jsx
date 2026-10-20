@@ -1999,6 +1999,7 @@ const PFADE = {
   beste: "/leaderboard",
   spieler: "/player",
   replay: "/replay",
+  analyse: "/analysis",
 };
 
 function reiterAusPfad(pfad) {
@@ -2105,6 +2106,207 @@ function Schloss({ aufSchliessen }) {
 /* --------------------------------------------------------------------------
    Die Seite
    -------------------------------------------------------------------------- */
+
+/* --------------------------------------------------------------------------
+   Analysis
+
+   Kartenwerte je Leader aus den oeffentlichen Statistiken von OPBounty, siehe
+   specs/features/mulligan-guide.md. hand: je Karte acht Zaehler in der Reihenfolge
+   keep first, keep second, mulligan first, mulligan second, wins in hand first, wins in
+   hand second, losses in hand first, losses in hand second. kopien: je "2xOP17-041"
+   [Partien, Siege].
+
+   Keep und "in hand" zaehlt OPBounty auf verschiedenen Grundlagen; die Summen passen nicht
+   zueinander (am 20.10.2026 geprueft). Deshalb wird jede Zahl nur durch ihre eigene
+   Zaehlung geteilt, nie eine durch die andere.
+   -------------------------------------------------------------------------- */
+
+const ANALYSE_MINDEST = 100;   // Entscheidung vom 20.10.2026: darunter grau
+
+function Analyse({ leader, namen }) {
+  const [kopienOffen, setKopienOffen] = useState(false);
+  const eigen = kennung(leader.id);
+  const basis = {
+    first: proz(leader.fw, leader.fw + leader.fl),
+    second: proz(leader.sw, leader.sw + leader.sl),
+  };
+
+  const hand = useMemo(() => {
+    const zeilen = Object.entries(leader.hand || {})
+      .filter(([karte]) => kennung(karte) !== eigen)
+      .map(([karte, z]) => {
+        const [kf, ks, mf, ms, wf, ws, lf, ls] = z;
+        return {
+          karte: kennung(karte),
+          first: { haende: kf + mf, keep: kf, spiele: wf + lf, siege: wf },
+          second: { haende: ks + ms, keep: ks, spiele: ws + ls, siege: ws },
+        };
+      });
+    const wr = (z) => proz(z.first.siege + z.second.siege, z.first.spiele + z.second.spiele);
+    const genug = (z) => z.first.spiele + z.second.spiele >= ANALYSE_MINDEST;
+    return zeilen.sort((a, b) => (genug(b) - genug(a)) || wr(b) - wr(a));
+  }, [leader, eigen]);
+
+  const kopien = useMemo(() => {
+    const je = new Map();
+    for (const [eintrag, [spiele, siege]] of Object.entries(leader.kopien || {})) {
+      const karte = kennung(eintrag);
+      if (!karte || karte === eigen) continue;
+      const n = anzahl(eintrag) || 1;
+      if (!je.has(karte)) je.set(karte, { karte, stufen: {}, spiele: 0 });
+      const z = je.get(karte);
+      z.stufen[n] = { spiele, siege };
+      z.spiele += spiele;
+    }
+    return [...je.values()].sort((a, b) => b.spiele - a.spiele);
+  }, [leader, eigen]);
+
+  const zelleWr = (z, sitz) => {
+    const genug = z.spiele >= ANALYSE_MINDEST;
+    const w = proz(z.siege, z.spiele);
+    const abstand = w - basis[sitz];
+    return (
+      <td className="zahl whitespace-nowrap border-b px-2 py-1.5 text-right sm:px-3"
+          style={{ borderColor: "var(--linie)",
+                   color: genug ? (abstand >= 0 ? "var(--sieg)" : "var(--niederlage)") : "var(--still)" }}
+          title={z.spiele ? `${fmtZahl(z.spiele)} games, ±${fehler(z.spiele).toFixed(1)} points` : "no games"}>
+        {z.spiele ? w.toFixed(1) + " %" : "–"}
+        <span className="block text-[11px]" style={{ color: "var(--still)" }}>
+          {z.spiele ? fmtZahl(z.spiele) + " g" : ""}
+        </span>
+      </td>
+    );
+  };
+  const zelleKeep = (z) => (
+    <td className="zahl whitespace-nowrap border-b px-2 py-1.5 text-right sm:px-3"
+        style={{ borderColor: "var(--linie)",
+                 color: z.haende >= ANALYSE_MINDEST ? "var(--text)" : "var(--still)" }}
+        title={`${fmtZahl(z.haende)} opening hands with this card`}>
+      {fmtProz(z.keep, z.haende)}
+    </td>
+  );
+  const kopf = (t, rechts = true, klasse = "") => (
+    <th key={t} scope="col"
+        className={"whitespace-nowrap border-b px-2 py-2 etikett sm:px-3 " + (rechts ? "text-right " : "text-left ") + klasse}
+        style={{ background: "var(--flaeche)", borderColor: "var(--linie)", color: "var(--still)" }}>
+      {t}
+    </th>
+  );
+
+  if (!hand.length) {
+    return (
+      <p className="py-10 text-center" style={{ color: "var(--still)" }}>
+        No card data for this leader in the selected period yet. The daily files carry it
+        since 20 October 2026.
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <p className="max-w-[74ch] pb-3 text-[13px]" style={{ color: "var(--still)" }}>
+        From OPBounty's public statistics for {(namen[eigen] || {}).n || eigen}, against all
+        opponents. <b>Keep</b> is the share of opening hands with this card that were kept;
+        it is a decision about the whole hand. <b>Win rate in hand</b> counts the games where
+        the card was in the hand the player started with. Green is above the leader's own win
+        rate on that seat ({basis.first.toFixed(1)} % first, {basis.second.toFixed(1)} % second),
+        grey means fewer than {ANALYSE_MINDEST} games.
+      </p>
+
+      <h2 className="pb-2 text-base font-semibold">Opening hand</h2>
+      <div className="tabellenhuelle overflow-x-auto rounded-lg border"
+           style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}>
+        <table className="w-full min-w-[520px] border-collapse">
+          <thead>
+            <tr>
+              {kopf("Card", false)}
+              {kopf("Keep first")}
+              {kopf("Win rate in hand first")}
+              {kopf("Keep second")}
+              {kopf("Win rate in hand second")}
+            </tr>
+          </thead>
+          <tbody>
+            {hand.map((z) => (
+              <tr key={z.karte}>
+                <td className="border-b px-2 py-1.5 sm:px-3" style={{ borderColor: "var(--linie)" }}>
+                  <span className="flex items-center gap-2">
+                    <Bild id={z.karte} breite={120} hoehe={168}
+                          className="h-[38px] w-[27px] shrink-0 rounded-[3px] object-cover" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-[13px] font-semibold">
+                        {(namen[z.karte] || {}).n || z.karte}
+                      </span>
+                      <span className="zahl block text-[11px]" style={{ color: "var(--still)" }}>{z.karte}</span>
+                    </span>
+                  </span>
+                </td>
+                {zelleKeep(z.first)}
+                {zelleWr(z.first, "first")}
+                {zelleKeep(z.second)}
+                {zelleWr(z.second, "second")}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <button type="button" onClick={() => setKopienOffen((v) => !v)}
+              className="mt-5 text-base font-semibold" aria-expanded={kopienOffen}>
+        {kopienOffen ? "▾" : "▸"} Copies
+      </button>
+      {kopienOffen && !kopien.length ? (
+        <p className="max-w-[74ch] py-2 text-[13px]" style={{ color: "var(--still)" }}>
+          Copies are kept in the prepared sets only, such as Last Week Standard. Pick one
+          above instead of a day range to see them.
+        </p>
+      ) : null}
+      {kopienOffen && kopien.length ? (
+        <>
+          <p className="max-w-[74ch] py-2 text-[13px]" style={{ color: "var(--still)" }}>
+            Win rate of the leader with exactly this many copies of the card in the list,
+            both seats together. Overall the leader wins {fmtProz(leader.w, leader.w + leader.l)}.
+          </p>
+          <div className="tabellenhuelle overflow-x-auto rounded-lg border"
+               style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}>
+            <table className="w-full min-w-[460px] border-collapse">
+              <thead>
+                <tr>{kopf("Card", false)}{[1, 2, 3, 4].map((n) => kopf(n + "x"))}</tr>
+              </thead>
+              <tbody>
+                {kopien.map((z) => (
+                  <tr key={z.karte}>
+                    <td className="border-b px-2 py-1.5 sm:px-3" style={{ borderColor: "var(--linie)" }}>
+                      <span className="flex items-center gap-2">
+                        <Bild id={z.karte} breite={120} hoehe={168}
+                              className="h-[38px] w-[27px] shrink-0 rounded-[3px] object-cover" />
+                        <span className="truncate text-[13px] font-semibold">{(namen[z.karte] || {}).n || z.karte}</span>
+                      </span>
+                    </td>
+                    {[1, 2, 3, 4].map((n) => {
+                      const s = z.stufen[n] || { spiele: 0, siege: 0 };
+                      const genug = s.spiele >= ANALYSE_MINDEST;
+                      return (
+                        <td key={n} className="zahl whitespace-nowrap border-b px-2 py-1.5 text-right sm:px-3"
+                            style={{ borderColor: "var(--linie)",
+                                     color: !s.spiele || !genug ? "var(--still)" : farbe(s.siege, s.spiele) }}>
+                          {s.spiele ? fmtProz(s.siege, s.spiele) : "–"}
+                          <span className="block text-[11px]" style={{ color: "var(--still)" }}>
+                            {s.spiele ? fmtZahl(s.spiele) + " g" : ""}
+                          </span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : null}
+    </>
+  );
+}
 
 export default function App() {
   const [entsperrt, setEntsperrt] = useState(null);
@@ -2435,7 +2637,7 @@ export default function App() {
     );
   }
 
-  const leaderbezogen = reiter === "decks" || reiter === "matchups";
+  const leaderbezogen = reiter === "decks" || reiter === "matchups" || reiter === "analyse";
 
   const eingabe = {
     background: "var(--flaeche2)",
@@ -2519,6 +2721,7 @@ export default function App() {
             ["matrix", "Matchup matrix", "Matrix"],
             ["rang", "Power rankings", "Ranking"],
             ["beste", "Leaderboard", "Ladder"],
+            ["analyse", "Analysis", "Analysis"],
           ].map(([k, lang, kurz]) => (
             <button
               key={k}
@@ -2994,6 +3197,8 @@ export default function App() {
                 <>
                   <Rangliste satz={satz} namen={namen} />
                 </>
+              ) : reiter === "analyse" ? (
+                <Analyse leader={leader} namen={namen} />
               ) : reiter === "replay" ? (
                 <>
                   {replayPfad ? (

@@ -256,7 +256,8 @@ export function verschmelzen(saetze, name) {
       let ziel = leader.get(e.id);
       if (!ziel) {
         ziel = { id: e.id, w: 0, l: 0, fw: 0, fl: 0, sw: 0, sl: 0,
-                 dauerSumme: 0, dauerPartien: 0, gegner: new Map(), listen: new Map() };
+                 dauerSumme: 0, dauerPartien: 0, gegner: new Map(), listen: new Map(),
+                 hand: {}, kopien: {} };
         leader.set(e.id, ziel);
       }
       for (const f of ZAEHLER) ziel[f] += e[f] || 0;
@@ -275,6 +276,18 @@ export function verschmelzen(saetze, name) {
         g.sw += (e.gsw || [])[i] || 0;
         g.sl += (e.gsl || [])[i] || 0;
       });
+
+      // Kartenwerte fuer den Reiter Analysis, seit Format 2 (aktualisieren.py, 20.10.2026).
+      // hand: je Karte acht Zaehler, siehe HAND_FELDER dort; kopien: je "2xOP17-041" [Partien, Siege].
+      for (const [karte, z] of Object.entries(e.hand || {})) {
+        const ziel8 = (ziel.hand[karte] ||= [0, 0, 0, 0, 0, 0, 0, 0]);
+        z.forEach((wert, i) => { ziel8[i] += wert || 0; });
+      }
+      for (const [karte, [m, w]] of Object.entries(e.kopien || {})) {
+        const ziel2 = (ziel.kopien[karte] ||= [0, 0]);
+        ziel2[0] += m || 0;
+        ziel2[1] += w || 0;
+      }
 
       for (const li of e.listen || []) {
         const schluessel = [...li.d].sort().join("|");
@@ -296,6 +309,8 @@ export function verschmelzen(saetze, name) {
     w: e.w, l: e.l, fw: e.fw, fl: e.fl, sw: e.sw, sl: e.sl,
     dur: e.dauerPartien ? Math.round(e.dauerSumme / e.dauerPartien) : 0,
     gegner: [...e.gegner.values()].sort((a, b) => b.m - a.m),
+    hand: e.hand,
+    kopien: e.kopien,
     listen: [...e.listen.values()]
       .map((l) => ({ ...l, dur: l.dauerPartien ? Math.round(l.dauerSumme / l.dauerPartien) : 0 }))
       .sort((a, b) => b.w + b.l - (a.w + a.l)),
