@@ -344,9 +344,14 @@ Auswertung und Push.
 Was unsicher ist, bleibt leer und steht in `unsicher`. Jeder Eintrag trägt `"quelle": "ocr"`.
 
 **Was fehlt.** Partien, Spielzeit und der Sitzsplit je Leader stehen nicht in der Zeile. Die
-Seite zeigt dort "-" und einen Hinweis. `user_id` steht nicht im Bild: Spieler, deren Name
-keinem bekannten zugeordnet werden kann, haben keine Spielerseite, bis sie als Gegner in einer
-Partie auftauchen.
+Seite zeigt dort "-" und einen Hinweis. `user_id` steht nicht im Bild. Sie trägt die Action nach
+(`spieler_daten.py`, `ids_nachtragen`): Kandidaten sind alle mit einer gespeicherten Western
+Platzierung bis 300 in `PublicUsers` und alle Gegner in den Partien der bekannten Spieler. Je
+Kandidat steht in `PublicUsers/<id>.Western.Leaders` die Winrate je Leader, dieselbe Zahl, die
+die Bestenliste zeigt. Passen mindestens zwei Leader samt Winrate auf genau einen Kandidaten,
+gilt dessen id; sonst der Name. So wurde Rang 1 "bblova" als 33748 erkannt, der in seinen
+Partien noch "lolbriann" heißt. Am 20.10. damit 87 von 99, ohne Doppelvergabe. Die
+Namenstabelle liegt als `namen` in `spieler.json`. Gelesen wird dafür nur `PublicUsers`.
 
 **Abnahme am 20.10.2026.** Zwei Probeläufe auf dem Bazzite, je fünf Seiten. Zweiter Lauf: 100
 von 100 Rängen, alle Bounties bestehen die Gegenprobe, alle Leader sicher erkannt; Seite 1 von

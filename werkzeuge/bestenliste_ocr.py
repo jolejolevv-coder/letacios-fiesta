@@ -159,10 +159,16 @@ def bekannte_ids(passwort):
     Name und user_id. So findet auch ein Spieler, der neu in den Top 100 ist, oft seine
     Spielerseite, sofern er gegen einen bekannten gespielt hat."""
     try:
-        spieler = von_der_seite("spieler.json.gz", passwort).get("spieler", {})
+        paket = von_der_seite("spieler.json.gz", passwort)
     except (OSError, ValueError):
         return {}
+    spieler = paket.get("spieler", {})
+    # Die Namenstabelle, die spieler_daten.py in der Action aus PublicUsers aufbaut.
     ids = {}
+    for uid, s in paket.get("namen", {}).items():
+        name = s.get("name") if isinstance(s, dict) else s
+        if name:
+            ids[name] = int(uid)
     for daten in spieler.values():
         for p in daten.get("partien", []):
             if p.get("gegner") and p.get("gegner_id") is not None:
