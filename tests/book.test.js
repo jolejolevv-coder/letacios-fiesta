@@ -7,8 +7,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
-  abwehrSatz, angriffSatz, bookAusschnitt, gegnerListe, mulliganSatz, ortEnglisch, spielenSaetze,
-  spitzeSatz, unterschiedeImZug, zuegeMitDaten,
+  abwehrBeleg, abwehrSatz, angriffBeleg, angriffSatz, BELEG_KARTEN, bookAusschnitt, gegnerListe, mulliganBelege,
+  mulliganSatz, ortEnglisch, spielenSaetze, spitzeSatz, unterschiedeImZug, zuegeMitDaten, zugBelege,
 } from "../src/book.js";
 import * as H from "./referenz_hilfen.js";
 
@@ -89,6 +89,78 @@ test("Ausschnitt: Rueckfall auf alle Gegner, Mihawk und Unbekanntes", () => {
   assert.equal(bookAusschnitt(daten, "OP14-020", "first"), null);
   assert.equal(bookAusschnitt(daten, "X", "first"), null);
   assert.deepEqual(gegnerListe(daten).map((g) => g.gegner), ["alle", "K"]);
+});
+
+test("Belege: nach Wert sortiert, Strich unter 30 Haenden, Rat und zweitbester Play markiert", () => {
+  const a = { karten: { 3: [karte("A", 50, 1.5), karte("B", 40, 4), karte("C", 60, 2.5), karte("D", 70, 9, 29),
+    karte("E", 30, -3)] } };
+  const b = zugBelege(3, null, a, 30);
+  assert.equal(b.stufe, "feld");
+  assert.deepEqual(b.karten.map((k) => k.karte), ["B", "C", "A", "E", "D"]);
+  assert.equal(b.karten.find((k) => k.karte === "D").wert, null);
+  assert.equal(b.rat, "B");
+  assert.deepEqual(b.zweit, { karte: "C", schaetzung: true });
+  assert.deepEqual(b.karten.map((k) => k.rolle), ["rat", "zweit", null, "halten", null]);
+  // Der Satz nennt dieselbe Karte wie der Beleg.
+  assert.match(spielenSaetze(3, null, a, 30, namen)[0].text, /Play B/);
+});
+
+test("Belege: nach einem Standard ist der zweitbeste Play der naechste Standard, sonst der beste Wert", () => {
+  const zwei = { karten: { 1: [karte("S", 95, 0.1, 200), karte("T", 92, -1, 100), karte("W", 50, 6)] } };
+  assert.deepEqual(zugBelege(1, null, zwei, 30).zweit, { karte: "T", schaetzung: false });
+  const einer = { karten: { 1: [karte("S", 95, 0.1), karte("W", 50, 6), karte("V", 50, 2)] } };
+  const b = zugBelege(1, null, einer, 30);
+  assert.equal(b.rat, "S");
+  assert.deepEqual(b.zweit, { karte: "W", schaetzung: true });
+  assert.deepEqual(b.karten.map((k) => k.karte), ["W", "V", "S"]);
+  // Ohne Rat gibt es keinen zweitbesten Play.
+  const ohne = { karten: { 1: [karte("A", 50, 0.5), karte("B", 50, 0.2)] } };
+  assert.equal(zugBelege(1, null, ohne, 30).rat, null);
+  assert.equal(zugBelege(1, null, ohne, 30).zweit, null);
+  // Die Haltekarte ist kein Play.
+  const halten = { karten: { 1: [karte("A", 50, 3), karte("H", 50, -4)] } };
+  assert.equal(zugBelege(1, null, halten, 30).zweit, null);
+});
+
+test("Belege: die Spitze geht vor, markierte Karten stehen auch hinter der Grenze", () => {
+  const viele = Array.from({ length: BELEG_KARTEN + 2 }, (_, i) => karte("K" + i, 50, 5 - i * 0.1));
+  const spitze = { karten: { 2: [...viele, karte("S", 96, -1)] } };
+  const b = zugBelege(2, spitze, { karten: { 2: [karte("F", 99, 0)] } }, 30);
+  assert.equal(b.stufe, "spitze");
+  assert.equal(b.karten.length, BELEG_KARTEN + 1);
+  assert.equal(b.karten.at(-1).karte, "S");
+  assert.equal(b.karten.at(-1).rolle, "rat");
+  assert.equal(b.mehr, 2);
+  assert.deepEqual(b.zweit, { karte: "K0", schaetzung: true });
+});
+
+test("Belege: Angriffszeile und Abwehrzellen des Zugs", () => {
+  const feld = {
+    angriffe: [{ T: 4, n: 300, leader_anteil: 30, urteil: "character", q: -0.8 }],
+    abwehr: { zug: { 4: { 3: { n: 50, urteil: "nehmen" }, 1: { n: 20, urteil: null } } } },
+  };
+  const spitze = { angriffe: [{ T: 4, n: 40, urteil: "leader", q: 0.3 }], abwehr: { zug: {} } };
+  assert.deepEqual(angriffBeleg(4, spitze, feld), { feld: feld.angriffe[0], spitze: spitze.angriffe[0] });
+  assert.equal(angriffBeleg(5, spitze, feld), null);
+  const w = abwehrBeleg(4, spitze, feld);
+  assert.equal(w.stufe, "feld");
+  assert.deepEqual(w.zellen.map((z) => z.life), [1, 3]);
+  assert.equal(abwehrBeleg(4, { abwehr: { zug: { 4: { 2: { n: 9 } } } } }, feld).stufe, "spitze");
+  assert.equal(abwehrBeleg(6, spitze, feld), null);
+});
+
+test("Belege: Mulligan je Karte, unter 30 Partien keine Winrate, nach Abstand", () => {
+  const m = (k, b, w, wb, ww) => ({ karte: k, behalten: b, weg: w, wr_behalten: wb, wr_weg: ww });
+  const a = { mulligan: { behalten: 500, wr_behalten: 54, weg: 20, wr_weg: 40,
+    karten: [m("A", 100, 40, 52, 50), m("B", 100, 29, 70, 40), m("C", 100, 40, 60, 50), m("D", 50, 50, 40, 46)] } };
+  const b = mulliganBelege(a, 30);
+  assert.equal(b.wr_behalten, 54);
+  assert.equal(b.wr_weg, null);
+  assert.deepEqual(b.karten.map((k) => k.karte), ["C", "A", "D", "B"]);
+  assert.equal(b.karten[3].wr_weg, null);
+  assert.equal(b.karten[3].wr_behalten, 70);
+  assert.equal(b.karten[3].abstand, null);
+  assert.equal(mulliganBelege({ mulligan: { behalten: 0, weg: 0, karten: [] } }, 30), null);
 });
 
 // ------------------------------------------------------------ Abgleich mit Metacoach

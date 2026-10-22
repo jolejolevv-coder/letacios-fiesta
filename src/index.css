@@ -2233,10 +2233,6 @@ input[type="date"].feld {
 .tafel .zeile .zeile:nth-child(even) > .vorn {
   background: var(--zebra);
 }
-.matchup-titel h2 {
-  margin: 0;
-  font: 600 21px/1.15 var(--kopf-font);
-}
 .rueck.gross .zugreihe .rueck-blatt {
   margin: 4px 10px 10px 54px;
 }
@@ -2247,9 +2243,6 @@ input[type="date"].feld {
   }
   .rueck.gross .zugreihe .rueck-blatt {
     margin: 2px 4px 10px;
-  }
-  .matchup-titel h2 {
-    font-size: 18px;
   }
 }
 
@@ -2282,75 +2275,6 @@ input[type="date"].feld {
   color: var(--text-2);
 }
 
-/* Spickzettel: ein Blick von drei Sekunden, große ruhige Zeilen ohne Zahlen */
-.spick-steuer {
-  margin-top: 0;
-  margin-bottom: 18px;
-}
-.spick {
-  list-style: none;
-  margin: 16px 0 0;
-  padding: 0;
-  border-top: 1px solid var(--linie-stark);
-}
-.spick li {
-  display: grid;
-  grid-template-columns: 40px 30px minmax(0, 1fr);
-  gap: 0 14px;
-  align-items: center;
-  padding: 10px 8px;
-  border-bottom: 1px solid var(--linie);
-}
-.spick li:nth-child(even) {
-  background: var(--zebra);
-}
-.spick li.spick-satz {
-  grid-template-columns: 40px minmax(0, 1fr);
-}
-.spick p {
-  margin: 0;
-  font-size: 18px;
-  line-height: 1.3;
-}
-.spick p b {
-  font-weight: 600;
-}
-.spick-don {
-  display: inline-block;
-  margin-left: 10px;
-  font: 500 14px/1 var(--kopf-font);
-  color: var(--text-3);
-  white-space: nowrap;
-}
-.spick-label {
-  display: block;
-  margin-bottom: 3px;
-  font: 600 12px/1.2 var(--kopf-font);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-3);
-}
-@media (max-width: 760px) {
-  .spick li {
-    grid-template-columns: 34px 26px minmax(0, 1fr);
-    gap: 0 10px;
-    padding: 11px 4px;
-  }
-  .spick li.spick-satz {
-    grid-template-columns: 34px minmax(0, 1fr);
-  }
-  .spick p {
-    font-size: 19px;
-  }
-  .spick-don {
-    display: block;
-    margin: 3px 0 0;
-    font-size: 14px;
-  }
-  .spick-steuer .wahlfeld {
-    flex-basis: 100%;
-  }
-}
 @media (max-width: 760px) {
   .tafel .vorn > .dreh {
     align-self: center;
@@ -2759,10 +2683,17 @@ button { color: inherit; }
 .leiste-liste li a { cursor: pointer; }
 
 /* --------------------------------------------------------------- Kartenbild */
+/* Fehlt ein Kartenbild, steht die Nummer da (Etikett, 10.5px). Ist das Feld schmaler als
+   KB_VOLL, bleibt nur die Kartennummer ohne Set; sonst Set und Nummer in zwei Zeilen. */
 .kb-kaputt {
-  display: grid; place-items: center; width: 100%; height: 100%;
-  font: 500 6px/1 var(--kopf-font); color: var(--text-3); text-align: center;
+  display: grid; place-content: center; width: 100%; height: 100%;
+  container-type: inline-size;
+  font: 600 10.5px/1.1 var(--kopf-font); letter-spacing: 0.02em; color: var(--text-3); text-align: center;
   border: 1px dashed var(--linie-stark); border-radius: 3px; overflow: hidden;
+}
+.kb-kaputt > span { display: block; white-space: nowrap; }
+@container (max-width: 29px) {
+  .kb-kaputt > .kb-satz { display: none; }
 }
 
 /* Kopf der Tafeln: sortierbare Spalten sind Knöpfe in derselben Schrift. */
@@ -2776,7 +2707,7 @@ button { color: inherit; }
 .spalten button[data-sortiert="ab"]::after { content: " \2193"; }
 .spalten button[data-sortiert="auf"]::after { content: " \2191"; }
 .knopf.rand[aria-pressed="true"] { border-color: var(--akzent); background: var(--akzent-flaeche); color: var(--akzent-hell); }
-.bkarte.kb-kaputt { display: grid; aspect-ratio: 120 / 167; font-size: 8px; }
+.bkarte.kb-kaputt { display: grid; aspect-ratio: 120 / 167; font-size: 12px; }
 .spalten .rechts button { width: 100%; text-align: right; }
 .tafel .vorn.still { cursor: default; }
 .zahlzelle { text-align: right; }
@@ -2976,18 +2907,15 @@ button { color: inherit; }
 .lifeleiste { display: flex; gap: 3px; }
 .lifeleiste i { width: 8px; height: 13px; background: var(--akzent-hell); border-radius: 2px; display: block; }
 .ereignisse { display: grid; gap: 4px; }
-.ereignis { display: block; width: 100%; text-align: left; border: 0; border-left: 2px solid var(--linie-stark); padding: 4px 0 4px 9px; background: transparent; cursor: pointer; border-radius: 0 var(--r) var(--r) 0; }
+.ereignis { display: block; width: 100%; text-align: left; border: 0; padding: 5px 8px; background: transparent; cursor: pointer; border-radius: var(--r); }
 .ereignis.jetzt { background: var(--akzent-flaeche); }
 .ereignis.spaeter { opacity: 0.45; }
-.ereignis .art { font: 600 10px/1.2 var(--kopf-font); text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-3); }
+.ereignis .art { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; font: 500 12px/1.2 var(--kopf-font); color: var(--text-3); }
 .ereignis .text { font-size: 13.5px; line-height: 1.3; }
 .ereignis .wer { margin-right: 4px; font-weight: 600; color: var(--text-2); }
-/* Die Art steht in Helligkeit und Strich, nicht in Farbe. */
-.ereignis.draw { border-left-color: var(--text-3); }
-.ereignis.effect { border-left-color: var(--akzent-rand); }
-.ereignis.combat { border-left-color: var(--akzent-hell); }
-.ereignis.info { border-left-color: var(--linie); }
-.ereignis.start { border-left-color: var(--text); }
+/* Die Art steht als Etikett vor dem Zug, in Helligkeit und Rand; nur Kampf traegt Blau. */
+.etikett.art-start { color: var(--text); border-color: var(--text-2); }
+.etikett.art-draw, .etikett.art-info { border-style: dotted; color: var(--text-3); }
 .r-raster { display: grid; gap: 12px; }
 @media (min-width: 1024px) {
   .r-raster.mit-log { grid-template-columns: 300px minmax(0, 1fr); align-items: start; }
@@ -3132,4 +3060,24 @@ button { color: inherit; }
   .spiele .vorn > .dreh { grid-area: dreh; align-self: center; width: 26px; height: 26px; }
   .spiele .rueck-blatt { margin: 2px 4px 10px; padding-left: 10px; padding-right: 10px; }
   .r-analyse-kopf .knopfreihe { margin-left: 0; }
+}
+
+/* ------------------------------------------------------- Belege im Guide */
+.beleg-titel {
+  display: flex; align-items: center; gap: 7px;
+  margin: 14px 0 6px; font: 600 11.5px/1.2 var(--kopf-font);
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2);
+}
+.beleg-titel:first-of-type { margin-top: 2px; }
+.beleg-titel svg { color: var(--akzent-hell); flex: none; }
+.beleg-zeile { margin: 8px 0 0; font-size: 14px; color: var(--text-2); }
+.beleg-zeile b { color: var(--text); font-weight: 600; }
+.tab .name .rolle { margin-left: 8px; }
+.rueck-blatt .tab tr.markiert { background: var(--akzent-flaeche); }
+.tab .hantelzelle { width: 90px; padding-left: 4px; padding-right: 4px; }
+.tab .hantelzelle .hantel { display: block; }
+.schritt .rueck-blatt .lesart { font-size: 13px; color: var(--text-3); margin-top: 10px; }
+@media (max-width: 760px) {
+  .tab .name .rolle { margin-left: 0; margin-top: 3px; display: table; }
+  .tab .name small { margin-left: 6px; }
 }

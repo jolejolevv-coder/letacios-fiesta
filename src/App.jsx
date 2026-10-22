@@ -17,9 +17,9 @@ import {
 } from "./daten.js";
 import { eindampfen, schritteBauen } from "./replay.js";
 import {
-  abwehrSatz, ALLE as BOOK_ALLE, angriffSatz, bookAusschnitt, gegnerListe, MIN_ZELLE as BOOK_MIN_ZELLE,
-  mulliganSatz, spielenSaetze, spitzeSatz, unterschiedeImZug, unterschiedeSonst, zahl as bookZahl, zuegeMitDaten,
-  zugDaten,
+  abwehrBeleg, abwehrSatz, ALLE as BOOK_ALLE, angriffBeleg, angriffSatz, bookAusschnitt, gegnerListe,
+  MIN_ZELLE as BOOK_MIN_ZELLE, mulliganBelege, mulliganSatz, spielenSaetze, spitzeSatz, unterschiedeImZug,
+  unterschiedeSonst, vorzeichen, zahl as bookZahl, zuegeMitDaten, zugBelege, zugDaten,
 } from "./book.js";
 import { eigeneNummer, partieLesen } from "./zuglager.js";
 import { netzBauen } from "./wertnetz.js";
@@ -111,7 +111,13 @@ function Zeichen({ name, groesse = 18 }) {
 function Bild({ id, className = "", alt = "", breite, hoehe }) {
   const [kaputt, setKaputt] = useState(false);
   if (kaputt) {
-    return <span className={className + " kb-kaputt"} title={id}>{id}</span>;
+    const strich = id.lastIndexOf("-");
+    return (
+      <span className={className + " kb-kaputt"} title={id}>
+        {strich > 0 ? <span className="kb-satz">{id.slice(0, strich + 1)}</span> : null}
+        <span className="kb-nr">{strich > 0 ? id.slice(strich + 1) : id}</span>
+      </span>
+    );
   }
   return (
     <img
@@ -212,10 +218,23 @@ function Abschnitt({ titel, children, className = "" }) {
   );
 }
 
-/** Der Drehknopf rechts in einer Zeile. Der Klick landet auf der Zeile selbst. */
-function DrehKnopf({ offen, label }) {
+/**
+ * Der Drehknopf rechts in einer Zeile. Ohne umdrehen landet der Klick auf der Zeile selbst;
+ * mit text steht "Show evidence" daneben wie "Belege anzeigen" im Book von Metacoach.
+ */
+function DrehKnopf({ offen, label, text = false, umdrehen }) {
+  const klick = umdrehen ? (e) => { e.stopPropagation(); umdrehen(); } : undefined;
+  if (text) {
+    return (
+      <button type="button" className="dreh dreh-text" aria-expanded={offen} onClick={klick}>
+        <Zeichen name="dreh" groesse={15} />
+        <span>{offen ? "Hide evidence" : "Show evidence"}</span>
+        <span className="nur-sr"> {label}</span>
+      </button>
+    );
+  }
   return (
-    <button type="button" className="dreh" aria-expanded={offen}
+    <button type="button" className="dreh" aria-expanded={offen} onClick={klick}
             aria-label={(offen ? "Close: " : "Open: ") + label}>
       <Zeichen name="dreh" groesse={15} />
     </button>
@@ -1248,7 +1267,7 @@ function Angriffspfeil({ angriff, ebeneRef, zoom, schritt }) {
   );
 }
 
-/** Ereignisart aus der Zeile ableiten, fuer den Strich am linken Rand. */
+/** Ereignisart aus der Zeile ableiten, fuer das Etikett vor dem Zug. */
 function ereignisart(text) {
   if (/Leader is|Chose to go|Will select turn order/i.test(text)) return "start";
   if (/Has Connected|Version is|Waiting for/i.test(text)) return "info";
@@ -1561,7 +1580,10 @@ function Replay({ pfad, namen, eigenerLeader, zurueck, zeilenDirekt, analyseDire
                   onClick={() => setI(j)}
                   className={"ereignis " + art + (dran ? " jetzt" : "") + (j > nr ? " spaeter" : "")}
                 >
-                  <div className="art">{art} &middot; turn {s.zug}</div>
+                  <div className="art">
+                    <span className={"etikett art-" + art + (art === "combat" ? " akzent" : "")}>{art}</span>
+                    <span>turn {s.zug}</span>
+                  </div>
                   <div className="text">
                     {s.wer ? (
                       <span className={"wer" + (s.wer === spieler ? " eigen" : "")}>{s.wer.split("#")[0]}</span>
@@ -1940,18 +1962,231 @@ function BookZeile({ etikett, saetze, zeichen }) {
   );
 }
 
-/* Ein nummerierter Schritt mit Nummernfeld. Mit liste=false steht freier Inhalt darin. */
-function BookSchritt({ marke, titel, unter, id, liste = true, children }) {
+/*
+ * Ein nummerierter Schritt mit Nummernfeld. Mit liste=false steht freier Inhalt darin.
+ * Mit belege (eine Funktion, gebaut erst beim ersten Oeffnen) traegt der Kopf den Knopf
+ * "Show evidence" und unter den Zeilen klappt die Rueckseite auf.
+ */
+function BookSchritt({ marke, titel, unter, id, liste = true, belege, belegTitel, children }) {
+  const [offen, setOffen] = useState(false);
   return (
     <li className="schritt" id={id}>
       <span className="schritt-nr" aria-hidden="true">{marke}</span>
       <div style={{ minWidth: 0 }}>
         <div className="schritt-kopf">
           <h3>{titel}{unter ? <span className="don"> · {unter}</span> : null}</h3>
+          {belege ? <DrehKnopf offen={offen} label={titel} text umdrehen={() => setOffen((o) => !o)} /> : null}
         </div>
         {liste ? <ul className="hilfe">{children}</ul> : <div className="schritt-text">{children}</div>}
+        {belege ? (
+          <Rueckseite offen={offen}>
+            <RueckMarke>{belegTitel}</RueckMarke>
+            {belege()}
+          </Rueckseite>
+        ) : null}
       </div>
     </li>
+  );
+}
+
+/* ------------------------------------------------------------ Belege im Guide */
+
+const STUFE_TEXT = { spitze: "top players", feld: "all players" };
+const ROLLE_TEXT = { rat: "Advice", zweit: "Next best", halten: "Hold" };
+const URTEIL_TEXT = {
+  leader: "attack the leader", character: "attack the character",
+  countern: "counter", nehmen: "take the damage", gleich: "even",
+};
+const urteilText = (u) => (u ? URTEIL_TEXT[u] ?? u : "too few cases");
+const STRICH_LEER = "\u2013";
+const punkte = (w) => (w === null || w === undefined ? STRICH_LEER : vorzeichen(w));
+const prozentOder = (w) => (w === null || w === undefined ? STRICH_LEER : bookZahl(w) + " %");
+
+/* Rolle einer Karte als Etikett; ein zweitbester Play aus dem Wertnetz traegt die Raute. */
+function RollenEtikett({ rolle, schaetzung }) {
+  if (!rolle) return null;
+  const klasse = rolle === "rat" ? "etikett voll" : rolle === "zweit" ? "etikett akzent" : "etikett";
+  return (
+    <span className={klasse + " rolle"}>
+      {rolle === "zweit" && schaetzung ? <span className="raute" aria-hidden="true">{"\u25C6"} </span> : null}
+      {ROLLE_TEXT[rolle]}
+      {rolle === "zweit" && schaetzung ? <span className="nur-sr"> (estimate)</span> : null}
+    </span>
+  );
+}
+
+function ZugBelege({ b, T, mindest, name }) {
+  const k = zugBelege(T, b.spitze, b.feld, mindest);
+  const angriff = angriffBeleg(T, b.spitze, b.feld);
+  const abwehr = abwehrBeleg(T, b.spitze, b.feld);
+  const zweit = k.zweit ? k.karten.find((x) => x.karte === k.zweit.karte) : null;
+  return (
+    <>
+      {k.karten.length ? (
+        <>
+          <h4 className="beleg-titel"><Zeichen name="hand" groesse={15} />Play · cards in hand, {STUFE_TEXT[k.stufe]}</h4>
+          <div className="scrollx">
+            <table className="tab">
+              <thead>
+                <tr>
+                  <th className="bildzelle"><span className="nur-sr">Image</span></th>
+                  <th>Card</th>
+                  <th className="rechts">Play rate</th>
+                  <th className="rechts" title="Points of win chance from the Metacoach model">Value</th>
+                  <th className="rechts">Hands</th>
+                </tr>
+              </thead>
+              <tbody>
+                {k.karten.map((x) => (
+                  <tr key={x.karte} className={x.rolle ? "markiert" : undefined}>
+                    <td className="bildzelle"><Kartenbild id={x.karte} breite={24} /></td>
+                    <td className="name">
+                      <b>{name(x.karte)}</b><small>{x.karte}</small>
+                      <RollenEtikett rolle={x.rolle} schaetzung={x.rolle === "zweit" && k.zweit.schaetzung} />
+                    </td>
+                    <td className="rechts z">{bookZahl(x.rate, 0)} %</td>
+                    <td className="rechts">{x.wert === null ? <span className="blass">{STRICH_LEER}</span> : <span className="sch">{punkte(x.wert)}</span>}</td>
+                    <td className="rechts z">{fmtZahl(x.n_hand)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="beleg-zeile">
+            Next best play:{" "}
+            {zweit ? (
+              <>
+                <b>{name(zweit.karte)}</b>,{" "}
+                {k.zweit.schaetzung
+                  ? <span className="sch">{punkte(zweit.wert)} points win chance</span>
+                  : <span className="z">played {bookZahl(zweit.rate, 0)} %</span>}
+              </>
+            ) : <span className="blass">none, {k.rat ? "no other card has a value with enough hands" : "there is no advice for this turn"}</span>}
+            {k.mehr ? <span className="blass"> · {k.mehr} more cards not shown</span> : null}
+          </p>
+        </>
+      ) : null}
+
+      {angriff ? (
+        <>
+          <h4 className="beleg-titel"><Zeichen name="schwert" groesse={15} />Attack · opponent has a rested character</h4>
+          <div className="scrollx">
+            <table className="tab">
+              <thead>
+                <tr>
+                  <th>Players</th>
+                  <th className="rechts">On the leader</th>
+                  <th className="rechts">Cases</th>
+                  <th>Verdict</th>
+                </tr>
+              </thead>
+              <tbody>
+                {["feld", "spitze"].map((st) => {
+                  const a = angriff[st];
+                  return (
+                    <tr key={st}>
+                      <th scope="row">{st === "feld" ? "All players" : "Top players"}</th>
+                      {a ? (
+                        <>
+                          <td className="rechts z">{prozentOder(a.leader_anteil)}</td>
+                          <td className="rechts z">{fmtZahl(a.n)}</td>
+                          <td>{urteilText(a.urteil)} <span className="sch">{punkte(a.q)}</span></td>
+                        </>
+                      ) : (
+                        <td colSpan={3} className="blass">{STRICH_LEER}</td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : null}
+
+      {abwehr ? (
+        <>
+          <h4 className="beleg-titel"><Zeichen name="schild" groesse={15} />Defend · opponent turn {T}, {STUFE_TEXT[abwehr.stufe]}</h4>
+          <div className="scrollx">
+            <table className="tab">
+              <thead>
+                <tr>
+                  <th>Your life</th>
+                  <th className="rechts">Take</th>
+                  <th className="rechts">Counter</th>
+                  <th className="rechts">Block</th>
+                  <th className="rechts">Cases</th>
+                  <th>Verdict</th>
+                </tr>
+              </thead>
+              <tbody>
+                {abwehr.zellen.map((z) => (
+                  <tr key={z.life}>
+                    <th scope="row">{z.life} life</th>
+                    <td className="rechts z">{prozentOder(z.nehmen === undefined ? null : Math.round(z.nehmen))}</td>
+                    <td className="rechts z">{prozentOder(z.countern === undefined ? null : Math.round(z.countern))}</td>
+                    <td className="rechts z">{prozentOder(z.blocken === undefined ? null : Math.round(z.blocken))}</td>
+                    <td className="rechts z">{fmtZahl(z.n)}</td>
+                    <td>{urteilText(z.urteil)} {z.urteil ? <span className="sch">{punkte(z.q)}</span> : null}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : null}
+      <p className="lesart">
+        Values are points of win chance from the Metacoach model; a dash means no value, either fewer than {mindest} hands or none from the model.
+        Take, counter and block are shares of the attacks on your leader that would hit.
+      </p>
+    </>
+  );
+}
+
+function MulliganBelege({ a, mindest, name }) {
+  const m = mulliganBelege(a, mindest);
+  if (!m) return <p className="leer-satz">No mulligan numbers for this seat.</p>;
+  return (
+    <>
+      <dl className="rueck-zeilen">
+        <div><dt>Kept</dt><dd className="z">{prozentOder(m.wr_behalten)} <span className="blass">({fmtZahl(m.behalten)})</span></dd></div>
+        <div><dt>Mulliganed</dt><dd className="z">{prozentOder(m.wr_weg)} <span className="blass">({fmtZahl(m.weg)})</span></dd></div>
+      </dl>
+      {m.karten.length ? (
+        <div className="scrollx" style={{ marginTop: 12 }}>
+          <table className="tab mull-beleg">
+            <thead>
+              <tr>
+                <th className="bildzelle"><span className="nur-sr">Image</span></th>
+                <th>Card in opening hand</th>
+                <th className="rechts">Kept</th>
+                <th className="rechts">Win rate</th>
+                <th className="hantelzelle"><span className="nur-sr">Kept against mulliganed</span></th>
+                <th className="rechts">Mulliganed</th>
+                <th className="rechts">Win rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {m.karten.map((k) => (
+                <tr key={k.karte}>
+                  <td className="bildzelle"><Kartenbild id={k.karte} breite={24} /></td>
+                  <td className="name"><b>{name(k.karte)}</b><small>{k.karte}</small></td>
+                  <td className="rechts z">{fmtZahl(k.behalten)}</td>
+                  <td className="rechts z">{prozentOder(k.wr_behalten)}</td>
+                  <td className="hantelzelle">{k.abstand === null ? <span className="hantel" /> : <Hantel mit={k.wr_behalten} ohne={k.wr_weg} />}</td>
+                  <td className="rechts z">{fmtZahl(k.weg)}</td>
+                  <td className="rechts z">{prozentOder(k.wr_weg)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      <p className="lesart">
+        Real win rate from the ladder replays, no model. A dash means fewer than {mindest} games. Filled dot: kept,
+        ring: mulliganed, scale {HANTEL_UNTEN} to {HANTEL_OBEN} %.
+      </p>
+    </>
   );
 }
 
@@ -2059,7 +2294,9 @@ function Book({ namen, startLeader }) {
             <div style={{ minWidth: 0 }}>
               <Abschnitt titel="Turn by turn">
                 <ol className="schritte">
-                  <BookSchritt marke={<Zeichen name="karte" groesse={20} />} titel="Mulligan" unter="before turn 1" id="zug-0">
+                  <BookSchritt marke={<Zeichen name="karte" groesse={20} />} titel="Mulligan" unter="before turn 1" id="zug-0"
+                               belegTitel={"Evidence mulligan · " + sitz}
+                               belege={() => <MulliganBelege a={b.feld ?? b.spitze} mindest={mindest} name={name} />}>
                     <BookZeile etikett="Opening hand" zeichen="karte" saetze={[mulliganSatz(b.feld ?? b.spitze, mindest, name)]} />
                   </BookSchritt>
                   {zuege.map((T) => {
@@ -2068,6 +2305,8 @@ function Book({ namen, startLeader }) {
                     const abwehr = abwehrSatz(T, b.spitze, b.feld);
                     return (
                       <BookSchritt key={T} marke={T} titel={"Turn " + T} id={"zug-" + T}
+                                   belegTitel={"Evidence turn " + T}
+                                   belege={() => <ZugBelege b={b} T={T} mindest={mindest} name={name} />}
                                    unter={z && z.don !== null && z.don !== undefined ? bookZahl(z.don) + " Don" : ""}>
                         <BookZeile etikett="Play" zeichen="hand" saetze={spielenSaetze(T, b.spitze, b.feld, mindest, name)} />
                         <BookZeile etikett="Attack" zeichen="schwert" saetze={angriff ? [angriff] : []} />

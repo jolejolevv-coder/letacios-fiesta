@@ -1,0 +1,955 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-22T11:51:59+00:00",
+  "title": "Design System: Letacios Fiesta",
+  "extensions": {
+    "colorMeta": {
+      "akzent": {
+        "role": "primary",
+        "displayName": "Turn Order Blau",
+        "canonical": "#2c66d6",
+        "tonalRamp": [
+          "#04004d",
+          "#00106f",
+          "#053692",
+          "#2657b6",
+          "#487cde",
+          "#689fff",
+          "#8dc6ff",
+          "#b2eeff"
+        ],
+        "oklch": "oklch(53.7% 0.183 261.8)"
+      },
+      "akzent-band": {
+        "role": "primary",
+        "displayName": "Kopfband Blau",
+        "canonical": "#3170e0",
+        "tonalRamp": [
+          "#03004d",
+          "#00116f",
+          "#003692",
+          "#2358b6",
+          "#457dde",
+          "#669fff",
+          "#8ac6ff",
+          "#b0eeff"
+        ],
+        "oklch": "oklch(56.7% 0.183 260.9)"
+      },
+      "akzent-hell": {
+        "role": "primary",
+        "displayName": "Helles Blau",
+        "canonical": "#93b3f3",
+        "tonalRamp": [
+          "#000134",
+          "#091f53",
+          "#243d73",
+          "#405c95",
+          "#617fbc",
+          "#82a1e0",
+          "#a6c7ff",
+          "#cdefff"
+        ],
+        "oklch": "oklch(76.7% 0.099 263.7)"
+      },
+      "akzent-flaeche": {
+        "role": "primary",
+        "displayName": "Blaue Fläche",
+        "canonical": "rgba(44, 102, 214, 0.15)",
+        "tonalRamp": [
+          "#04004d",
+          "#00106f",
+          "#053692",
+          "#2657b6",
+          "#487cde",
+          "#689fff",
+          "#8dc6ff",
+          "#b2eeff"
+        ]
+      },
+      "akzent-rand": {
+        "role": "primary",
+        "displayName": "Blauer Rand",
+        "canonical": "rgba(44, 102, 214, 0.55)",
+        "tonalRamp": [
+          "#04004d",
+          "#00106f",
+          "#053692",
+          "#2657b6",
+          "#487cde",
+          "#689fff",
+          "#8dc6ff",
+          "#b2eeff"
+        ]
+      },
+      "karte-rand": {
+        "role": "primary",
+        "displayName": "Kartenrand",
+        "canonical": "rgba(44, 102, 214, 0.5)",
+        "tonalRamp": [
+          "#04004d",
+          "#00106f",
+          "#053692",
+          "#2657b6",
+          "#487cde",
+          "#689fff",
+          "#8dc6ff",
+          "#b2eeff"
+        ]
+      },
+      "faden": {
+        "role": "primary",
+        "displayName": "Schrittfaden",
+        "canonical": "rgba(44, 102, 214, 0.45)",
+        "tonalRamp": [
+          "#04004d",
+          "#00106f",
+          "#053692",
+          "#2657b6",
+          "#487cde",
+          "#689fff",
+          "#8dc6ff",
+          "#b2eeff"
+        ]
+      },
+      "faden-ende": {
+        "role": "primary",
+        "displayName": "Schrittfaden Ende",
+        "canonical": "rgba(44, 102, 214, 0)",
+        "tonalRamp": [
+          "#04004d",
+          "#00106f",
+          "#053692",
+          "#2657b6",
+          "#487cde",
+          "#689fff",
+          "#8dc6ff",
+          "#b2eeff"
+        ]
+      },
+      "auf-akzent": {
+        "role": "secondary",
+        "displayName": "Weiß auf Blau",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#808080",
+          "#a1a1a1",
+          "#c7c7c7",
+          "#eeeeee"
+        ],
+        "oklch": "oklch(100.0% 0.000 89.9)"
+      },
+      "band-text": {
+        "role": "secondary",
+        "displayName": "Bandschrift",
+        "canonical": "rgba(255, 255, 255, 0.9)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#808080",
+          "#a1a1a1",
+          "#c7c7c7",
+          "#eeeeee"
+        ]
+      },
+      "band-hover": {
+        "role": "secondary",
+        "displayName": "Bandhover",
+        "canonical": "rgba(255, 255, 255, 0.12)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#808080",
+          "#a1a1a1",
+          "#c7c7c7",
+          "#eeeeee"
+        ]
+      },
+      "wahl-grund": {
+        "role": "secondary",
+        "displayName": "Wahlgrund",
+        "canonical": "rgba(5, 15, 40, 0.28)",
+        "tonalRamp": [
+          "#020921",
+          "#16233e",
+          "#313f5c",
+          "#4e5e7c",
+          "#7080a1",
+          "#90a2c4",
+          "#b6c8eb",
+          "#dcefff"
+        ]
+      },
+      "grund": {
+        "role": "neutral",
+        "displayName": "Tischgrund",
+        "canonical": "#0b0c0f",
+        "tonalRamp": [
+          "#0a0b0e",
+          "#232427",
+          "#3e4043",
+          "#5c5d61",
+          "#7f8084",
+          "#a0a1a6",
+          "#c5c7cc",
+          "#edeef3"
+        ],
+        "oklch": "oklch(15.5% 0.007 271.0)"
+      },
+      "karton": {
+        "role": "neutral",
+        "displayName": "Karton",
+        "canonical": "#16181d",
+        "tonalRamp": [
+          "#090b10",
+          "#222429",
+          "#3d4045",
+          "#5b5d64",
+          "#7d8087",
+          "#9fa1a8",
+          "#c4c7ce",
+          "#ebeef6"
+        ],
+        "oklch": "oklch(20.9% 0.010 268.2)"
+      },
+      "karton-hoch": {
+        "role": "neutral",
+        "displayName": "Karton hoch",
+        "canonical": "#1c1f25",
+        "tonalRamp": [
+          "#090b10",
+          "#21242a",
+          "#3c4046",
+          "#5a5e65",
+          "#7c8088",
+          "#9ea2a9",
+          "#c3c7d0",
+          "#eaeff7"
+        ],
+        "oklch": "oklch(23.9% 0.012 264.3)"
+      },
+      "rueck": {
+        "role": "neutral",
+        "displayName": "Rückseitenkarton",
+        "canonical": "#111929",
+        "tonalRamp": [
+          "#050b19",
+          "#1b2435",
+          "#364052",
+          "#545e71",
+          "#768195",
+          "#97a2b7",
+          "#bcc8de",
+          "#e3efff"
+        ],
+        "oklch": "oklch(21.4% 0.034 263.5)"
+      },
+      "glanz-oben": {
+        "role": "neutral",
+        "displayName": "Laminatglanz oben",
+        "canonical": "rgba(255, 255, 255, 0.055)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#808080",
+          "#a1a1a1",
+          "#c7c7c7",
+          "#eeeeee"
+        ]
+      },
+      "glanz-mitte": {
+        "role": "neutral",
+        "displayName": "Laminatglanz Mitte",
+        "canonical": "rgba(255, 255, 255, 0.012)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#808080",
+          "#a1a1a1",
+          "#c7c7c7",
+          "#eeeeee"
+        ]
+      },
+      "glanz-ende": {
+        "role": "neutral",
+        "displayName": "Laminatglanz Ende",
+        "canonical": "rgba(255, 255, 255, 0)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#808080",
+          "#a1a1a1",
+          "#c7c7c7",
+          "#eeeeee"
+        ]
+      },
+      "kante-licht": {
+        "role": "neutral",
+        "displayName": "Lichtkante",
+        "canonical": "rgba(255, 255, 255, 0.06)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#808080",
+          "#a1a1a1",
+          "#c7c7c7",
+          "#eeeeee"
+        ]
+      },
+      "rueck-glanz": {
+        "role": "neutral",
+        "displayName": "Rückseitenglanz",
+        "canonical": "rgba(147, 179, 243, 0.07)",
+        "tonalRamp": [
+          "#000134",
+          "#091f53",
+          "#243d73",
+          "#405c95",
+          "#617fbc",
+          "#82a1e0",
+          "#a6c7ff",
+          "#cdefff"
+        ]
+      },
+      "rueck-glanz-ende": {
+        "role": "neutral",
+        "displayName": "Rückseitenglanz Ende",
+        "canonical": "rgba(147, 179, 243, 0)",
+        "tonalRamp": [
+          "#000134",
+          "#091f53",
+          "#243d73",
+          "#405c95",
+          "#617fbc",
+          "#82a1e0",
+          "#a6c7ff",
+          "#cdefff"
+        ]
+      },
+      "rueck-linie": {
+        "role": "neutral",
+        "displayName": "Rückseitenlinie",
+        "canonical": "rgba(147, 179, 243, 0.2)",
+        "tonalRamp": [
+          "#000134",
+          "#091f53",
+          "#243d73",
+          "#405c95",
+          "#617fbc",
+          "#82a1e0",
+          "#a6c7ff",
+          "#cdefff"
+        ]
+      },
+      "rueck-linie-leise": {
+        "role": "neutral",
+        "displayName": "Rückseitenlinie leise",
+        "canonical": "rgba(147, 179, 243, 0.08)",
+        "tonalRamp": [
+          "#000134",
+          "#091f53",
+          "#243d73",
+          "#405c95",
+          "#617fbc",
+          "#82a1e0",
+          "#a6c7ff",
+          "#cdefff"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Papierweiß",
+        "canonical": "#ece7dc",
+        "tonalRamp": [
+          "#0e0b05",
+          "#27241b",
+          "#433f36",
+          "#615d54",
+          "#848076",
+          "#a6a197",
+          "#ccc7bc",
+          "#f3eee3"
+        ],
+        "oklch": "oklch(92.9% 0.016 86.4)"
+      },
+      "text-2": {
+        "role": "neutral",
+        "displayName": "Bleistift",
+        "canonical": "#aca79c",
+        "tonalRamp": [
+          "#0e0b04",
+          "#28241b",
+          "#443f36",
+          "#625d53",
+          "#858075",
+          "#a6a196",
+          "#ccc7bb",
+          "#f3eee2"
+        ],
+        "oklch": "oklch(72.9% 0.017 86.4)"
+      },
+      "text-3": {
+        "role": "neutral",
+        "displayName": "Blasser Druck",
+        "canonical": "#8a867e",
+        "tonalRamp": [
+          "#0e0b06",
+          "#27241d",
+          "#433f38",
+          "#615d56",
+          "#848078",
+          "#a5a199",
+          "#cbc7be",
+          "#f2eee5"
+        ],
+        "oklch": "oklch(62.1% 0.013 84.6)"
+      },
+      "zebra": {
+        "role": "neutral",
+        "displayName": "Zebra",
+        "canonical": "rgba(236, 231, 220, 0.03)",
+        "tonalRamp": [
+          "#0e0b05",
+          "#27241b",
+          "#433f36",
+          "#615d54",
+          "#848076",
+          "#a6a197",
+          "#ccc7bc",
+          "#f3eee3"
+        ]
+      },
+      "hover": {
+        "role": "neutral",
+        "displayName": "Hover",
+        "canonical": "rgba(236, 231, 220, 0.045)",
+        "tonalRamp": [
+          "#0e0b05",
+          "#27241b",
+          "#433f36",
+          "#615d54",
+          "#848076",
+          "#a6a197",
+          "#ccc7bc",
+          "#f3eee3"
+        ]
+      },
+      "linie": {
+        "role": "neutral",
+        "displayName": "Linie",
+        "canonical": "rgba(236, 231, 220, 0.085)",
+        "tonalRamp": [
+          "#0e0b05",
+          "#27241b",
+          "#433f36",
+          "#615d54",
+          "#848076",
+          "#a6a197",
+          "#ccc7bc",
+          "#f3eee3"
+        ]
+      },
+      "linie-stark": {
+        "role": "neutral",
+        "displayName": "Linie stark",
+        "canonical": "rgba(236, 231, 220, 0.17)",
+        "tonalRamp": [
+          "#0e0b05",
+          "#27241b",
+          "#433f36",
+          "#615d54",
+          "#848076",
+          "#a6a197",
+          "#ccc7bc",
+          "#f3eee3"
+        ]
+      },
+      "feld-hover": {
+        "role": "neutral",
+        "displayName": "Feldhover",
+        "canonical": "rgba(236, 231, 220, 0.28)",
+        "tonalRamp": [
+          "#0e0b05",
+          "#27241b",
+          "#433f36",
+          "#615d54",
+          "#848076",
+          "#a6a197",
+          "#ccc7bc",
+          "#f3eee3"
+        ]
+      },
+      "fehler": {
+        "role": "neutral",
+        "displayName": "Fehlerrot",
+        "canonical": "#f1a194",
+        "tonalRamp": [
+          "#280000",
+          "#490603",
+          "#6a271f",
+          "#8c463c",
+          "#b3695d",
+          "#d88a7d",
+          "#ffafa2",
+          "#ffd6c8"
+        ],
+        "oklch": "oklch(78.4% 0.098 29.6)"
+      },
+      "schatten-karte": {
+        "role": "neutral",
+        "displayName": "Kartenschatten",
+        "canonical": "rgba(0, 0, 0, 0.5)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#808080",
+          "#a1a1a1",
+          "#c7c7c7",
+          "#eeeeee"
+        ]
+      },
+      "schatten-rueck": {
+        "role": "neutral",
+        "displayName": "Rückseitenschatten",
+        "canonical": "rgba(0, 0, 0, 0.45)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#808080",
+          "#a1a1a1",
+          "#c7c7c7",
+          "#eeeeee"
+        ]
+      },
+      "stroh": {
+        "role": "secondary",
+        "displayName": "Stroh",
+        "canonical": "#e8a33d",
+        "purpose": "Krempe und Krone des Sombreros, Favicon; nur die Marke.",
+        "tonalRamp": [
+          "#1e0100",
+          "#3f1700",
+          "#633200",
+          "#884e00",
+          "#ac6e00",
+          "#cb9241",
+          "#edba78",
+          "#ffe6b0"
+        ],
+        "oklch": "oklch(76.5% 0.140 72.9)"
+      },
+      "zebra-fest": {
+        "role": "neutral",
+        "displayName": "Zebra fest",
+        "canonical": "#1a1c21",
+        "purpose": "Deckendes Zebra für die klebende erste Spalte der Matrix.",
+        "tonalRamp": [
+          "#0a0b0e",
+          "#222428",
+          "#3e4044",
+          "#5b5d63",
+          "#7b7d83",
+          "#9c9ea4",
+          "#c2c4c9",
+          "#edeef3"
+        ],
+        "oklch": "oklch(22.7% 0.010 268.2)"
+      },
+      "band-offen": {
+        "role": "secondary",
+        "displayName": "Band offen",
+        "canonical": "rgba(255, 255, 255, 0.16)",
+        "purpose": "Quellenchip geöffnet, nur auf dem Band.",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#808080",
+          "#a1a1a1",
+          "#c7c7c7",
+          "#eeeeee"
+        ]
+      },
+      "zahl-schleier": {
+        "role": "neutral",
+        "displayName": "Zahlschleier",
+        "canonical": "rgba(0, 0, 0, 0.72)",
+        "purpose": "Grund der Stapelzahl über Kartenrückseiten im Replaybrett.",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#808080",
+          "#a1a1a1",
+          "#c7c7c7",
+          "#eeeeee"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "anmeldung": {
+        "displayName": "Anmeldung",
+        "purpose": "Überschrift der Anmeldung."
+      },
+      "kopf": {
+        "displayName": "Kopf",
+        "purpose": "Seitentitel jeder Ansicht (.vorspann h1); am Handy 21px."
+      },
+      "schrittnr": {
+        "displayName": "Schrittnr",
+        "purpose": "Ziffer im Nummernfeld der Guide Schritte, am Handy 18px; Name auf der Fehlerseite."
+      },
+      "titel": {
+        "displayName": "Titel",
+        "purpose": "Schrittüberschrift im Guide und Werte der Kennzeile; am Handy 17px."
+      },
+      "marke": {
+        "displayName": "Marke",
+        "purpose": "Name im Kopfband; am Handy 16px."
+      },
+      "stufe": {
+        "displayName": "Stufe",
+        "purpose": "Ziffer im Nummernfeld der Entscheidungen; dort 15px."
+      },
+      "lead": {
+        "displayName": "Lead",
+        "purpose": "Vorspann unter dem Seitentitel, höchstens 76ch; Sitzsatz im Matchup."
+      },
+      "satz": {
+        "displayName": "Satz",
+        "purpose": "Rat in Book, Plays, Urteilen und Lecks."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Grundtext und Eingabefelder."
+      },
+      "kette": {
+        "displayName": "Kette",
+        "purpose": "Linien X, dann Y; Gegnername in der Handytafel."
+      },
+      "zeile": {
+        "displayName": "Zeile",
+        "purpose": "Tabellen, Paare, Notizen."
+      },
+      "zahl": {
+        "displayName": "Zahl",
+        "purpose": "Jede echte Zahl in Saira mit Tabellenziffern."
+      },
+      "klein": {
+        "displayName": "Klein",
+        "purpose": "Belegzeilen, Lesart, Hinweise."
+      },
+      "abschnitt": {
+        "displayName": "Abschnitt",
+        "purpose": "Abschnittsüberschrift in Versalien mit auslaufender Linie; Zeilenlabels, Fußzeile."
+      },
+      "kartennr": {
+        "displayName": "Kartennr",
+        "purpose": "Kartennummer hinter dem Namen."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Spaltenköpfe, Feldbeschriftung, Kopf der Rückseite."
+      },
+      "labelklein": {
+        "displayName": "Labelklein",
+        "purpose": "Tabellenköpfe, Ausgang, Etikett Rückseite."
+      },
+      "etikett": {
+        "displayName": "Etikett",
+        "purpose": "Gerahmtes Etikett wie MIRROR."
+      },
+      "sitzhandy": {
+        "displayName": "Sitzhandy",
+        "purpose": "FIRST und SECOND über den Winrates der Handytafel, nur unter 760 px."
+      },
+      "etiketthandy": {
+        "displayName": "Etiketthandy",
+        "purpose": "Etikett neben dem Gegnernamen der Handytafel, nur unter 760 px; kein Rang für neue Elemente."
+      },
+      "genau": {
+        "displayName": "Genau",
+        "purpose": "Accuracy beider Spieler in Analyze my replay; am Handy 22px."
+      },
+      "wert": {
+        "displayName": "Wert",
+        "purpose": "Rating im Ranking, Datum der Chronik, Satz der Ablage."
+      },
+      "bounty": {
+        "displayName": "Bounty",
+        "purpose": "Bounty in der Ladder."
+      }
+    },
+    "shadows": [
+      {
+        "name": "blatt",
+        "value": "inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 24px 60px rgba(0, 0, 0, 0.5)",
+        "purpose": "Das eine Blatt der App und die Anmeldung; entfällt unter 760 px."
+      },
+      {
+        "name": "rueckseite",
+        "value": "0 10px 24px rgba(0, 0, 0, 0.45)",
+        "purpose": "Aufgeklappte Rückseite einer Zeile und die Quellentafel."
+      },
+      {
+        "name": "rahmenring",
+        "value": "0 0 0 1px rgba(236, 231, 220, 0.17)",
+        "purpose": "Rahmen um Kartenbilder."
+      }
+    ],
+    "gradients": [
+      {
+        "name": "laminatglanz",
+        "value": "linear-gradient(180deg, rgba(255, 255, 255, 0.055) 0, rgba(255, 255, 255, 0.012) 90px, rgba(255, 255, 255, 0) 180px)",
+        "purpose": "Glanz über dem oberen Rand des Blatts."
+      },
+      {
+        "name": "kopfband",
+        "value": "linear-gradient(180deg, #3170e0, #2c66d6)",
+        "purpose": "Band oben auf dem Blatt und als 4 px (Einlage 3 px) Streifen auf jeder Rückseite."
+      },
+      {
+        "name": "rueckseitenglanz",
+        "value": "linear-gradient(180deg, rgba(147, 179, 243, 0.07), rgba(147, 179, 243, 0) 70px)",
+        "purpose": "Glanz auf der Rückseite."
+      },
+      {
+        "name": "schrittfaden",
+        "value": "linear-gradient(180deg, rgba(44, 102, 214, 0.45), rgba(44, 102, 214, 0))",
+        "purpose": "Faden zwischen den Schrittnummern im Book."
+      }
+    ],
+    "motion": [
+      {
+        "name": "dauer",
+        "value": "260ms",
+        "purpose": "Umdrehen, Aufklappen der Rückseite, Drehen der Pfeile."
+      },
+      {
+        "name": "kurve",
+        "value": "cubic-bezier(0.2, 0.7, 0.2, 1)",
+        "purpose": "Kurve für Höhe und Versatz der Rückseite und die Pfeildrehung."
+      },
+      {
+        "name": "reduziert",
+        "value": "prefers-reduced-motion: reduce",
+        "purpose": "Übergänge und Versatz der Rückseite entfallen."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "seitenleiste",
+        "value": "960px",
+        "purpose": "Leaderleiste wird Knopf, Seitenleiste des Guide unter die Schritte."
+      },
+      {
+        "name": "handy",
+        "value": "760px",
+        "purpose": "Blatt randlos, Reiter in zwei Zeilen, Tafelzeilen über Rasterflächen umgeordnet."
+      },
+      {
+        "name": "brett-handy",
+        "value": "639px",
+        "purpose": "Replaybrett kompakt, Steuerknöpfe 44 px."
+      },
+      {
+        "name": "deckzeilen",
+        "value": "600px",
+        "purpose": "Decktabelle aus Metacoach wird zu Zeilen."
+      },
+      {
+        "name": "brett-breit",
+        "value": "1024px",
+        "purpose": "Replaybrett breit."
+      }
+    ],
+    "focus": {
+      "value": "2px solid #93b3f3, offset 2px (Felder 1px); im Band weiß",
+      "purpose": "Fokusring überall."
+    },
+    "notCanonized": [
+      "--stroh #e8a33d ist im :root von src/index.css deklariert, aber nirgends verwendet; der Sombrero nutzt die Konstante STROH in src/Sombrero.jsx.",
+      "Aus der Metacoach Kopie deklariert, in Fiesta nicht gerendert: akzent-tief #1d4aa6 (nur .wahl), band-trenner rgba(255, 255, 255, 0.35) (nur .marke span), schatten-einlage rgba(0, 0, 0, 0.35) und Kante 0 der großen Rückseite (.rueck.gross), Säulenrundung 2px 2px 0 0 (.verlauf).",
+      "Typostufen der Metacoach Kopie ohne Element in Fiesta: aussage 600 18px, listentitel 600 17px; dazu Einzelgrößen nur in ungenutzten Regeln (.wahl, .sitz-satz, .zugreihe, .ruhig, .plays, .partie, .zelle, .paare, .merkmale, .leck, .vergleich, .urteil, .beleg, .wr-text, .kette, .abschnitt .satz-lead, .abmelden, .dateiwahl, .vorschlaege, .schritte-lauf, .decktafel .c-zahl, .sitzwr).",
+      "Favicon in index.html mit Grund #14100e aus dem früheren Design; kein Wert der Spielhilfe."
+    ],
+    "basis": "~/Downloads/meta-coach/DESIGN.md und .impeccable/design.json (Spielhilfe, 22.10.2026)"
+  },
+  "components": [
+    {
+      "name": "Knopf voll",
+      "kind": "button",
+      "refersTo": "knopf-voll",
+      "description": "Hauptaktion wie Neu rechnen oder Anmelden.",
+      "html": "<button class=\"ds-knopf ds-voll\">Neu rechnen</button>",
+      "css": ".ds-knopf{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:0 14px;border-radius:10px;border:1px solid transparent;font:600 14px/1 \"Saira Semi Condensed\",ui-sans-serif,sans-serif;letter-spacing:.03em;cursor:pointer}.ds-voll{background:#2c66d6;color:#ffffff}.ds-voll:hover{background:#3170e0}.ds-knopf:focus-visible{outline:2px solid #93b3f3;outline-offset:2px}"
+    },
+    {
+      "name": "Knopf Rand",
+      "kind": "button",
+      "refersTo": "knopf-rand",
+      "description": "Nebenaktion auf dem Karton.",
+      "html": "<button class=\"ds-knopf ds-rand\">Neu rechnen …</button>",
+      "css": ".ds-knopf{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:10px;font:600 14px/1 \"Saira Semi Condensed\",ui-sans-serif,sans-serif;letter-spacing:.03em;cursor:pointer}.ds-rand{background:transparent;color:#ece7dc;border:1px solid rgba(236, 231, 220, 0.17)}.ds-rand:hover{border-color:#93b3f3}.ds-knopf:focus-visible{outline:2px solid #93b3f3;outline-offset:2px}"
+    },
+    {
+      "name": "Feld",
+      "kind": "input",
+      "refersTo": "feld",
+      "description": "Eingabe und Auswahl mit Label darüber.",
+      "html": "<label class=\"ds-fl\"><span>Gegner</span><input class=\"ds-feld\" placeholder=\"Kaido OP17-058\"></label>",
+      "css": ".ds-fl{display:grid;gap:5px}.ds-fl span{font:600 11.5px/1.2 \"Saira Semi Condensed\",ui-sans-serif,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#8a867e}.ds-feld{min-height:38px;padding:7px 11px;border-radius:10px;border:1px solid rgba(236, 231, 220, 0.17);background:#0b0c0f;color:#ece7dc;font:400 15px/1.45 \"Source Sans 3\",ui-sans-serif,sans-serif}.ds-feld::placeholder{color:#8a867e}.ds-feld:hover{border-color:rgba(236, 231, 220, 0.28)}.ds-feld:focus-visible{outline:2px solid #93b3f3;outline-offset:1px;border-color:#2c66d6}"
+    },
+    {
+      "name": "Kopfband mit Reitern",
+      "kind": "nav",
+      "refersTo": "band",
+      "description": "Blaues Band mit Marke und Quellenchip, darunter die Reiter.",
+      "html": "<div><div class=\"ds-band\"><b>Letacios Fiesta</b><button class=\"ds-chip\">OP14 Ready <span>1.284</span></button></div><nav class=\"ds-reiter\"><a aria-current=\"page\" href=\"#\">Decklists</a><a href=\"#\">Matchups</a><a href=\"#\">Matrix</a><a href=\"#\">Ladder</a></nav></div>",
+      "css": ".ds-band{display:flex;align-items:center;justify-content:space-between;padding:9px 16px 9px 18px;background:linear-gradient(180deg,#3170e0,#2c66d6);color:#ffffff;border-radius:10px 10px 0 0}.ds-band b{font:700 19px/1 \"Saira Semi Condensed\",sans-serif}.ds-reiter{display:flex;gap:2px;padding:0 12px;background:#16181d;border-bottom:1px solid rgba(236, 231, 220, 0.085)}.ds-reiter a{font:500 14px/1 \"Saira Semi Condensed\",sans-serif;color:#aca79c;text-decoration:none;padding:13px 11px 11px;border-bottom:2px solid transparent}.ds-reiter a:hover{color:#ece7dc}.ds-reiter a[aria-current=page]{color:#ece7dc;font-weight:600;border-bottom-color:#2c66d6} .ds-band { justify-content: space-between; } .ds-chip { border: 0; border-radius: 10px; padding: 7px 11px; background: rgba(5, 15, 40, 0.28); color: #fff; font: 600 13px/1 \"Saira Semi Condensed\", ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.02em; cursor: pointer; } .ds-chip span { font-weight: 500; color: rgba(255, 255, 255, 0.9); } .ds-chip:hover { background: rgba(255, 255, 255, 0.12); }"
+    },
+    {
+      "name": "Etikett",
+      "kind": "chip",
+      "refersTo": "etikett",
+      "description": "Gerahmtes Etikett neben einem Namen, Akzentvariante und offene Variante.",
+      "html": "<span><span class=\"ds-et ds-akz\">Mirror</span> <span class=\"ds-et\">nur lesend</span> <span class=\"ds-et ds-off\">offen</span></span>",
+      "css": ".ds-et{display:inline-block;padding:3px 6px 2px;border-radius:10px;font:600 10.5px/1.1 \"Saira Semi Condensed\",sans-serif;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(236, 231, 220, 0.17);color:#aca79c}.ds-akz{border-color:#2c66d6;color:#93b3f3}.ds-off{border-style:dotted;color:#8a867e}"
+    },
+    {
+      "name": "Segmentwahl Sitz",
+      "kind": "custom",
+      "refersTo": "sitzwahl-aktiv",
+      "description": "Wahl zwischen first und second.",
+      "html": "<div class=\"ds-sitz\" role=\"group\"><button>first</button><button aria-pressed=\"true\">second</button></div>",
+      "css": ".ds-sitz{display:inline-flex;padding:2px;border-radius:10px;border:1px solid rgba(236, 231, 220, 0.17)}.ds-sitz button{border:0;background:transparent;cursor:pointer;padding:7px 13px;border-radius:10px;font:600 13px/1 \"Saira Semi Condensed\",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#aca79c}.ds-sitz button[aria-pressed=true]{background:#2c66d6;color:#ffffff}.ds-sitz button:hover:not([aria-pressed=true]){color:#ece7dc}.ds-sitz button:focus-visible{outline:2px solid #93b3f3;outline-offset:2px}"
+    },
+    {
+      "name": "Tafelzeile mit Drehknopf",
+      "kind": "custom",
+      "refersTo": "dreh",
+      "description": "Nummerierte Zeile der Gegnertafel mit Anteil und Winrates; der Drehknopf klappt die Rückseite auf.",
+      "html": "<div class=\"ds-zeile\"><span class=\"ds-nr\">05</span><b>Kaido</b><span class=\"ds-bal\"><i style=\"width:40%\"></i></span><span class=\"ds-z\">8,2 %</span><span class=\"ds-z ds-gut\">57,7 %</span><button class=\"ds-dreh\" aria-expanded=\"true\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m6 9 6 6 6-6\"/></svg></button></div>",
+      "css": ".ds-zeile{display:grid;grid-template-columns:26px minmax(80px,1fr) 90px 52px 52px 30px;gap:0 14px;align-items:center;padding:6px 10px;background:rgba(44, 102, 214, 0.15);border-bottom:1px solid rgba(236, 231, 220, 0.085);color:#ece7dc;font:400 15px/1.45 \"Source Sans 3\",sans-serif}.ds-zeile:hover{background:rgba(236, 231, 220, 0.045)}.ds-nr{font:600 13.5px/1 \"Saira Semi Condensed\",sans-serif;font-variant-numeric:tabular-nums;color:#8a867e}.ds-bal{position:relative;height:5px;border-radius:10px;background:rgba(236, 231, 220, 0.085);overflow:hidden}.ds-bal i{position:absolute;inset:0 auto 0 0;background:#2c66d6;border-radius:10px}.ds-z{font:500 13.5px/1.2 \"Saira Semi Condensed\",sans-serif;font-variant-numeric:tabular-nums;text-align:right;color:#aca79c}.ds-gut{color:#ece7dc;font-weight:600}.ds-dreh{display:inline-grid;place-items:center;width:30px;height:30px;padding:0;border:1px solid rgba(236, 231, 220, 0.17);border-radius:10px;background:transparent;color:#aca79c;cursor:pointer}.ds-dreh:hover{color:#ece7dc;border-color:#93b3f3}.ds-dreh svg{transition:transform 260ms cubic-bezier(0.2,0.7,0.2,1)}.ds-dreh[aria-expanded=true]{color:#93b3f3;border-color:#2c66d6;background:rgba(44, 102, 214, 0.15)}.ds-dreh[aria-expanded=true] svg{transform:rotateY(180deg) rotate(180deg)}@media (prefers-reduced-motion:reduce){.ds-dreh svg{transition:none}}"
+    },
+    {
+      "name": "Rückseite",
+      "kind": "card",
+      "refersTo": "rueck-blatt",
+      "description": "Aufgeklappte Rückseite einer Zeile mit Etikett und Belegen.",
+      "html": "<div class=\"ds-rueck\"><div class=\"ds-marke\"><span class=\"ds-ret\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 12a9 9 0 0 1 15.5-6.2L21 8\"/><path d=\"M21 3v5h-5\"/><path d=\"M21 12a9 9 0 0 1-15.5 6.2L3 16\"/><path d=\"M3 21v-5h5\"/></svg>Rückseite</span><span>Belege</span></div><dl class=\"ds-paare\"><dt>Mit play</dt><dd>51,2 %</dd><dt>Ohne</dt><dd><i class=\"ds-sch\">41,5 %</i></dd></dl></div>",
+      "css": ".ds-rueck{position:relative;padding:16px 14px 13px;background:linear-gradient(180deg,#3170e0,#2c66d6) top/100% 4px no-repeat,linear-gradient(180deg,rgba(147, 179, 243, 0.07),rgba(147, 179, 243, 0) 70px),#111929;border:1px solid rgba(44, 102, 214, 0.55);border-radius:10px;box-shadow:0 10px 24px rgba(0, 0, 0, 0.45);color:#ece7dc;font:400 14px/1.4 \"Source Sans 3\",sans-serif}.ds-marke{display:flex;align-items:center;gap:6px 10px;margin-bottom:10px;font:600 11.5px/1.2 \"Saira Semi Condensed\",sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#93b3f3}.ds-ret{display:inline-flex;align-items:center;gap:5px;padding:4px 8px 3px;border-radius:10px;background:#2c66d6;color:#ffffff;font:600 11px/1 \"Saira Semi Condensed\",sans-serif;letter-spacing:.1em}.ds-paare{display:grid;grid-template-columns:max-content 1fr;gap:5px 16px;margin:0}.ds-paare dt{color:#8a867e}.ds-paare dd{margin:0}.ds-sch{font-style:italic;color:#aca79c}.ds-sch::before{content:\"\\25C6\";font-style:normal;font-size:.6em;color:#93b3f3;margin-right:.38em;position:relative;top:-.12em}"
+    },
+    {
+      "name": "Schritt",
+      "kind": "custom",
+      "refersTo": "schritt-nr",
+      "description": "Ein Zug im Book: Nummernfeld, Überschrift, Hilfezeile mit Piktogramm.",
+      "html": "<div class=\"ds-schritt\"><span class=\"ds-snr\">3</span><div><h3>Zug 3 <span>· 6 Don</span></h3><div class=\"ds-hz\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M14.5 17.5 3 6V3h3l11.5 11.5\"/><path d=\"m13 19 6-6\"/><path d=\"m16 16 4 4\"/><path d=\"m19 21 2-2\"/></svg><span class=\"ds-lab\">Angreifen</span><span>Liegt beim Gegner ein gerestet Character, eher den Leader angreifen.</span></div></div></div>",
+      "css": ".ds-schritt{display:grid;grid-template-columns:46px minmax(0,1fr);gap:0 14px;color:#ece7dc;font:400 15.5px/1.45 \"Source Sans 3\",sans-serif}.ds-snr{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;background:rgba(44, 102, 214, 0.15);border:1px solid rgba(44, 102, 214, 0.55);font:700 22px/1 \"Saira Semi Condensed\",sans-serif;color:#93b3f3;font-variant-numeric:tabular-nums}.ds-schritt h3{margin:8px 0 6px;font:600 19px/1.1 \"Saira Semi Condensed\",sans-serif}.ds-schritt h3 span{color:#aca79c;font-weight:500}.ds-hz{display:grid;grid-template-columns:22px 104px minmax(0,1fr);gap:0 10px;align-items:baseline;padding:7px 8px;border-radius:10px;background:rgba(236, 231, 220, 0.03)}.ds-hz svg{color:#aca79c;position:relative;top:3px}.ds-lab{font:600 12.5px/1.2 \"Saira Semi Condensed\",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#8a867e}"
+    },
+    {
+      "name": "Quellenchip",
+      "kind": "chip",
+      "refersTo": "quelle-chip",
+      "description": "Chip im Band mit Satz und Partienzahl; öffnet die Quellentafel.",
+      "html": "<div class=\"ds-band\"><button class=\"ds-quelle-chip\" aria-expanded=\"false\"><span>OP14 Ready</span> <span class=\"ds-z\">1.284</span></button> <button class=\"ds-quelle-chip\" aria-expanded=\"true\"><span>Date range</span> <span class=\"ds-z\">312</span></button></div>",
+      "css": ".ds-band { display: flex; gap: 10px; padding: 9px 16px; background: linear-gradient(180deg, var(--akzent-band, #3170e0), var(--akzent, #2c66d6)); border-radius: 10px; } .ds-quelle-chip { display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 10px; padding: 7px 11px; background: rgba(5, 15, 40, 0.28); color: #fff; cursor: pointer; font: 600 13px/1 \"Saira Semi Condensed\", ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.02em; white-space: nowrap; } .ds-quelle-chip .ds-z { font-weight: 500; color: rgba(255, 255, 255, 0.9); font-variant-numeric: tabular-nums; } .ds-quelle-chip:hover { background: rgba(255, 255, 255, 0.12); } .ds-quelle-chip[aria-expanded=\"true\"] { background: rgba(255, 255, 255, 0.16); } .ds-quelle-chip:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Kartenstreifen",
+      "kind": "custom",
+      "refersTo": "streifen-zahl",
+      "description": "Deckliste als Reihe kleiner Kartenbilder mit blauer Kopienzahl.",
+      "html": "<div class=\"ds-streifen\"><span class=\"ds-kk\"><i></i><b>4</b></span><span class=\"ds-kk\"><i></i><b>4</b></span><span class=\"ds-kk\"><i></i><b>2</b></span><span class=\"ds-kk\"><i></i><b>1</b></span></div>",
+      "css": ".ds-streifen { display: flex; flex-wrap: wrap; gap: 3px; padding: 8px; background: #16181d; } .ds-kk { position: relative; display: block; } .ds-kk i { display: block; width: 20px; height: 28px; border-radius: 3px; background: #1c1f25; box-shadow: 0 0 0 1px rgba(236, 231, 220, 0.17); } .ds-kk b { position: absolute; right: -3px; bottom: -3px; min-width: 13px; height: 13px; padding: 0 2px; display: grid; place-items: center; border-radius: 10px; background: #2c66d6; color: #fff; font: 600 9.5px/1 \"Saira Semi Condensed\", ui-sans-serif, system-ui, sans-serif; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Fehlendes Kartenbild",
+      "kind": "custom",
+      "refersTo": "kb-kaputt",
+      "description": "Platzhalter, wenn ein Kartenbild nicht lädt: gestrichelter Rand, Kartennummer als Etikett.",
+      "html": "<span class=\"ds-kb-kaputt\"><span>OP14</span><span>-041</span></span>",
+      "css": ".ds-kb-kaputt { display: grid; place-content: center; width: 36px; height: 50px; font: 600 10.5px/1.1 \"Saira Semi Condensed\", ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.02em; color: #8a867e; text-align: center; border: 1px dashed rgba(236, 231, 220, 0.17); border-radius: 3px; overflow: hidden; background: #16181d; } .ds-kb-kaputt span { display: block; white-space: nowrap; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Die laminierte Spielhilfe",
+    "overview": "Fiesta trägt seit dem 22.10.2026 das Design „Spielhilfe“ von Metacoach. Abgeleitet ist diese Datei aus dem, was gebaut ist: `src/index.css` beginnt mit der unveränderten CSS von `meta-coach/web/src/index.css` (Zeilen 1 bis 2367), darunter folgen die Ergänzungen aus der Vorschau (`.impeccable/vorschau/fiesta.css`) und die Teile, die nur Fiesta hat (Quelle im Band, Matchups, Ranking, Spielerseite, Changelog, Analyze, Replaybrett). Grundlage und Begründung der Regeln stehen in `~/Downloads/meta-coach/DESIGN.md`; die Token oben sind die Teilmenge davon, die Fiesta wirklich rendert, plus die Werte, die nur Fiesta hat.\n\nEin zentriertes Blatt (höchstens 1180 px) mit blauem Kopfband, darunter die neun Reiter, der Inhalt und eine Fußzeile mit Stand der Daten und der Lesart der Raute. Am Handy (unter 760 px) wird das Blatt randlos, die Reiter stehen in zwei Zeilen (fünf und vier) mit Kurznamen.",
+    "keyCharacteristics": [
+      "Nur dunkel, ein Kartonblatt mit Laminatglanz oben, sonst flach.",
+      "Eine Rundung für alles (10 px), Kartenbilder 3 px.",
+      "Eine Buntfarbe, Turn Order Blau; Stroh nur im Sombrero.",
+      "Saira Semi Condensed für Marke, Titel, Labels und jede Zahl; Source Sans 3 für Sätze.",
+      "Nummerierte Tafeln mit Zebra, Werte rechtsbündig in Tabellenziffern.",
+      "Details auf der Rückseite der Zeile statt in einer neuen Ansicht."
+    ],
+    "rules": [
+      {
+        "name": "The One Blue Rule",
+        "body": "Turn Order Blau ist die einzige Buntfarbe der Oberfläche; Stroh gehört nur dem Sombrero. Gut und schlecht stehen nie in Grün und Rot: eine Winrate ist fett in Papierweiß ab 55 %, normal in Bleistift dazwischen und blass unter 45 % (`wrKlasse` in `App.jsx`, Konstanten `GUT` und `SCHWACH`), das Rating im Ranking fett ab 8,5 und blass unter 7. Die Matrix hat keine Farbflächen, der Spiegel trägt einen Rahmenring; W ist ein blaues Etikett, L ein graues.",
+        "section": "colors"
+      },
+      {
+        "name": "The Band Tint Rule",
+        "body": "Weiße Tönungen mit Alpha und Wahlgrund gelten nur auf dem blauen Band. Auf dem Karton tönt man mit Papierweiß.",
+        "section": "colors"
+      },
+      {
+        "name": "The Printed Numbers Rule",
+        "body": "Jede echte Zahl steht in Saira mit Tabellenziffern und ist aufrecht; eine Schätzung steht kursiv in Bleistift hinter der hellblauen Raute.",
+        "section": "typography"
+      },
+      {
+        "name": "The Micro Size Rule",
+        "body": "10px und 9.5px sind Handyfassungen und Zählmarken, kein Rang für neue Elemente. Neue Labels beginnen bei 11px.",
+        "section": "typography"
+      },
+      {
+        "name": "The Two Sheets Rule",
+        "body": "Schatten gibt es nur für Blätter: das Blatt, seine Rückseiten und die Quellentafel, die wie eine Rückseite gebaut ist. Zeilen, Knöpfe und Felder bleiben flach.",
+        "section": "elevation"
+      },
+      {
+        "name": "The One Radius Rule",
+        "body": "10 px für alles, auch Quellenchip, Kopienzahl, Stapelzahl, Chronikzeilen, Pfad und Ablage. Ausnahmen sind dinghaft: Kartenbilder, Stapel und Lifekarten im Replay 3 px wie echte Karten; Lifestriche und Donplättchen 2 px; der Hantelpunkt rund; am Handy geht die Kante des Blatts auf 0. Ränder sind Haarlinien von 1 px, die Ablage in Analyze und ein fehlendes Kartenbild tragen einen gestrichelten Rand.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "**Do** jede neue Liste als nummerierte Tafel bauen und am Handy über Rasterflächen umordnen; Listen mit `truncate` brauchen `min-width: 0` auf Raster und Kindern.",
+      "**Do** Details auf die Rückseite der Zeile legen statt in eine neue Ansicht.",
+      "**Do** bei 390 px messen, dass keine Seite seitlich scrollt (`.impeccable/review/aufnahmen.py`).",
+      "**Do** Zahlen über Bildern auf Zahlschleier setzen und klebende Zellen deckend tönen (Zebra fest)."
+    ],
+    "donts": [
+      "**Don't** Grün und Rot einführen, auch nicht für Sieg und Niederlage.",
+      "**Don't** große Kartenbilder oder Kartenraster bauen; Kartenbilder bleiben 16 bis 36 px, nur das Replaybrett zeigt Karten groß, weil es ein Spieltisch ist.",
+      "**Don't** Klassen wie `.feld`, `.karte`, `.mitte`, `.don`, `.partien` oder `.laedt` für eigene Zwecke verwenden; sie gehören der Spielhilfe.",
+      "**Don't** Text unter 9.5px setzen.",
+      "**Don't** Art oder Zustand einer Zeile über einen farbigen Strich am linken Rand zeigen; dafür gibt es Etiketten."
+    ]
+  }
+}
