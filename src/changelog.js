@@ -6,6 +6,8 @@ export const CHANGELOG = [
   {
     tag: "2026-10-22",
     punkte: [
+      "New Book tab: pick a leader, an opponent and your seat, and see in plain sentences how to mulligan, what to play in turns 1 to 7, where to attack, when to counter, and what top players do differently.",
+      "New Analyze my replay tab: open the log of one of your own games from OPTCGSim and get the same analysis as on replays, with your accuracy, the win chance over the game and a grade at every decision. The log stays in your browser and is never uploaded.",
       "Replays now come with an analysis: accuracy for both players, the win chance over the whole game, and a grade at every attack, defense and mulligan. Jump straight to the previous or next mistake.",
       "The Analysis tab is now called Mulligan, and it now works by matchup: pick an opponent and a seat to see which opening cards to keep and which hands to mulligan, from real ladder results, for all players or only top players. Old links still work.",
       "New Changelog tab: what changed, one entry per day.",

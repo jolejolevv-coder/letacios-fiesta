@@ -1,0 +1,18 @@
+{
+ "passwort": "fiesta-test",
+ "salz": "bWV0YWNvYWNoLXByb2JlIQ==",
+ "runden": 200000,
+ "probe": "hCWJeoiVlvSKH2po09p4t+bKtzeD0L3DSdxPMzIBhmB6Pkpn2IsYnGepQA==",
+ "inhalt": {
+  "stand": "2026-10-22T07:50:21+00:00",
+  "leader": [
+   {
+    "leader": "OP17-039",
+    "partien": {
+     "first": 3,
+     "second": 4
+    }
+   }
+  ]
+ }
+}

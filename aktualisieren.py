@@ -377,6 +377,12 @@ def tage_laden(ziel: str, anzahl: int, modi: list, bereiche: list) -> list:
 
 NAMEN_QUELLE = ("https://raw.githubusercontent.com/buhbbl/punk-records/main/"
                 "english/index/cards_by_id.json")
+# Je Pack eine Datei mit dem Kartentext. Gebraucht nur fuer den Counter der Events, der
+# im Index fehlt (dort steht er nur bei Characters).
+PACK_QUELLE = ("https://raw.githubusercontent.com/buhbbl/punk-records/main/"
+               "english/data/{pack}.json")
+# Wie book.countertabelle in Metacoach: bei Events mit [Counter] die erste Powerzahl danach.
+EVENT_COUNTER = re.compile(r"\[Counter\][^+]*\+(\d{4,5})")
 
 
 # Kuerzel fuer die Farben, damit die Datei klein bleibt.
@@ -412,10 +418,57 @@ def namen_holen(ziel: str) -> int:
         art = k.get("category")
         if art and art != "Character":
             eintrag["a"] = art[:1].lower()   # l Leader, e Event, s Stage
+        counter = k.get("counter")
+        if isinstance(counter, int) and counter > 0:
+            eintrag["c"] = counter
         karten[kennung] = eintrag
+    events = event_counter_holen(roh)
+    for kennung, wert in events.items():
+        if kennung in karten:
+            karten[kennung]["c"] = wert
     groesse = schreiben(os.path.join(ziel, "karten.json.gz"), karten)
-    print(f"  karten.json.gz: {len(karten)} Karten, {groesse/1e3:.0f} KB")
+    print(f"  karten.json.gz: {len(karten)} Karten, {len(events)} Event Counter, {groesse/1e3:.0f} KB")
     return len(karten)
+
+
+def event_counter(effekt: str):
+    """Der Counter eines Events aus seinem Text, oder None."""
+    if "[Counter]" not in (effekt or ""):
+        return None
+    m = EVENT_COUNTER.search(effekt)
+    return int(m.group(1)) if m else None
+
+
+def event_counter_holen(index: dict) -> dict:
+    """Counter der Events mit dem Schluesselwort Counter, aus den Packdateien.
+
+    "Analyze my replay" braucht ihn, um zu sehen, ob die Hand einen Angriff halten konnte
+    (specs/features/eigenes-replay-analysieren.md). Faellt ein Pack aus, fehlen nur seine
+    Events; die Seite zaehlt sie dann mit 0, wie Metacoach eine unbekannte Karte.
+    """
+    packs = sorted({k.get("pack_id") for kennung, k in index.items()
+                    if k and "_" not in kennung and k.get("category") == "Event"
+                    and "Counter" in (k.get("keywords") or []) and k.get("pack_id")})
+
+    def ein_pack(pack):
+        try:
+            with urllib.request.urlopen(PACK_QUELLE.format(pack=pack), timeout=60) as antwort:
+                return json.loads(antwort.read().decode("utf-8"))
+        except (urllib.error.URLError, OSError, ValueError) as fehler:
+            print(f"  Pack {pack} fehlt: {fehler}")
+            return []
+
+    aus = {}
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        for karten in pool.map(ein_pack, packs):
+            for k in karten or []:
+                if not isinstance(k, dict) or k.get("category") != "Event":
+                    continue
+                wert = event_counter(k.get("effect"))
+                kennung = k.get("id") or ""
+                if wert and "_" not in kennung:
+                    aus[kennung] = wert
+    return aus
 
 
 # Eine Groesse je Karte. Die Rasteransicht zeigt 46 bis 54 Pixel breit, 120 deckt auch

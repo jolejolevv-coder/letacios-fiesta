@@ -1,6 +1,6 @@
 # Eigenes Replay analysieren ("Analyze my replay")
 
-Spec vom 22.10.2026, Entwurf. Wartet, bis das neue Design von Metacoach fertig ist.
+Spec vom 22.10.2026, freigegeben am selben Tag (Bau nach `book-auf-fiesta.md`).
 
 ## Goal
 
@@ -10,8 +10,9 @@ Siegchance wie im Replay Viewer, gerechnet im Browser.
 ## Entscheidungen vom 22.10.2026
 
 * **Im Browser rechnen** (Wahl des Nutzers): Fiesta lädt das Wertnetz (etwa 1 MB) und das Book
-  des Leaders (etwa 400 KB, verschlüsselt wie alle Daten) und liest das Log mit einem Leser in
-  JavaScript. Nichts verlässt den Browser, der Bazzite bleibt zu.
+  des Leaders (etwa 400 KB), beide verschlüsselt direkt von Metacoach unter `/fiesta/netz/…`
+  und `/fiesta/book/…` (siehe `book-auf-fiesta.md`), nicht aus dem Repo, und liest das Log mit
+  einem Leser in JavaScript. Das Log verlässt den Browser nie.
 * **Dem Nutzer sagen, woher das Log kommt**: das Log liegt im lokalen Client. Die Seite erklärt
   den Weg Schritt für Schritt, bevor sie nach der Datei fragt:
   * OPTCGSim speichert jede Partie selbst: am Mac unter
@@ -37,4 +38,4 @@ Siegchance wie im Replay Viewer, gerechnet im Browser.
 
 ## Open questions
 
-* Bestätigung des Windows Pfads an einem echten Windows Rechner.
+* Windows Pfad vom Nutzer am 22.10.2026 so akzeptiert.

@@ -20,3 +20,6 @@ public/replays/
 # Replay Analysen aus Metacoach: im Repo nur verschluesselt (der Bazzite pusht die .enc)
 public/analyse/*.json.gz
 public/mulligan/*.json.gz
+
+# Referenzdaten: Wertnetz und Book der Referenz nicht ins Repo (book-auf-fiesta.md)
+tests/referenz/eingaben/

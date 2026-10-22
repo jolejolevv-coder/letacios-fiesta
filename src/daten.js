@@ -158,6 +158,20 @@ export async function anmelden(passwort) {
 // Alles andere wird taeglich neu geschrieben und behaelt seinen Namen.
 const UNVERAENDERLICH = /^(replays|tage|saetze|analyse)\//;
 
+/** Entschluesselter oder roher Inhalt als JSON, gzip oder nicht. */
+async function auspacken(puffer) {
+  const kopf = new Uint8Array(puffer.slice(0, 2));
+  // Manche Server entpacken gzip bereits selbst. Dann fehlt die Signatur 1f 8b.
+  if (kopf[0] !== 0x1f || kopf[1] !== 0x8b) {
+    return JSON.parse(new TextDecoder().decode(puffer));
+  }
+  if (typeof DecompressionStream !== "function") {
+    throw new Error("Dieser Browser kann kein gzip entpacken.");
+  }
+  const strom = new Blob([puffer]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return JSON.parse(await new Response(strom).text());
+}
+
 /** Holt eine .json.gz Datei und entpackt sie. Ergebnisse bleiben im Speicher. */
 export async function holen(datei) {
   if (zwischenspeicher.has(datei)) return zwischenspeicher.get(datei);
@@ -176,18 +190,79 @@ export async function holen(datei) {
     if (verschluesselt) {
       puffer = (await entschluesseln(sitzungsSchluessel, new Uint8Array(puffer))).buffer;
     }
-    const kopf = new Uint8Array(puffer.slice(0, 2));
-    // Manche Server entpacken gzip bereits selbst. Dann fehlt die Signatur 1f 8b.
-    if (kopf[0] !== 0x1f || kopf[1] !== 0x8b) {
-      return JSON.parse(new TextDecoder().decode(puffer));
-    }
-    if (typeof DecompressionStream !== "function") {
-      throw new Error("Dieser Browser kann kein gzip entpacken.");
-    }
-    const strom = new Blob([puffer]).stream().pipeThrough(new DecompressionStream("gzip"));
-    return JSON.parse(await new Response(strom).text());
+    return auspacken(puffer);
   })();
   zwischenspeicher.set(datei, versprechen);
+  return versprechen;
+}
+
+/* ---------------------------------------------------------------------------
+   Metacoach als zweite Quelle (specs/features/book-auf-fiesta.md).
+
+   Book und Wertnetz liegen nicht im Repo von Fiesta, sondern kommen direkt vom Bazzite:
+   GET <Metacoach>/fiesta/<art>/<datei>.json.gz.enc, verschluesselt mit demselben Salz und
+   Passwort wie Fiesta (tools/fiesta_export.py dort). Die Route braucht keine Anmeldung,
+   weil sie nur Geheimtext ausliefert, und erlaubt CORS nur fuer Fiesta und den
+   Entwicklungsserver auf Port 5173. Ohne Sitzungsschluessel (Entwicklung ohne
+   schluessel.json) laesst sich nichts davon lesen; dann scheitert der Abruf, und die
+   Reiter zeigen ihren Hinweis.
+   --------------------------------------------------------------------------- */
+
+const METACOACH_STANDARD = "https://meta.nahobinoco.com";
+const METACOACH_ARTEN = new Set(["book", "netz"]);
+// Wie die Route in Metacoach: nur Kartennummern, _leader und wertnetz als Namen.
+const METACOACH_DATEI = /^(?:[A-Z0-9-]+|_leader|wertnetz)$/;
+const metacoachSpeicher = new Map();
+
+/** Basis von Metacoach; zum Pruefen mit Testdaten ueber VITE_METACOACH umzustellen. */
+export function metacoachBasis() {
+  const env = typeof import.meta !== "undefined" ? import.meta.env : undefined;
+  return String(env?.VITE_METACOACH || METACOACH_STANDARD).replace(/\/$/, "");
+}
+
+/** Fehler mit Grund, damit die Seite "nicht erreichbar" von "gibt es nicht" trennt. */
+export class MetacoachFehler extends Error {
+  constructor(grund, text) {
+    super(text);
+    this.grund = grund;           // "schluessel", "netz", "fehlt", "kaputt"
+  }
+}
+
+/**
+ * Holt eine Datei von Metacoach, etwa metacoachHolen("book", "OP17-039") oder
+ * metacoachHolen("netz", "wertnetz"). Entschluesselt mit dem Sitzungsschluessel und
+ * entpackt wie `holen`. Ergebnisse bleiben im Speicher; ein Fehlschlag wird vergessen,
+ * damit ein spaeterer Versuch neu fragt.
+ */
+export async function metacoachHolen(art, datei) {
+  if (!METACOACH_ARTEN.has(art) || !METACOACH_DATEI.test(datei)) {
+    throw new MetacoachFehler("fehlt", "unbekannte Datei " + art + "/" + datei);
+  }
+  const schluessel = art + "/" + datei;
+  if (metacoachSpeicher.has(schluessel)) return metacoachSpeicher.get(schluessel);
+  const versprechen = (async () => {
+    if (sitzungsSchluessel === null) {
+      throw new MetacoachFehler("schluessel", "kein Schluessel fuer Metacoach");
+    }
+    let antwort;
+    try {
+      antwort = await fetch(`${metacoachBasis()}/fiesta/${art}/${datei}.json.gz.enc`, { cache: "default" });
+    } catch (fehler) {
+      throw new MetacoachFehler("netz", "Metacoach nicht erreichbar: " + fehler.message);
+    }
+    if (antwort.status === 404) throw new MetacoachFehler("fehlt", schluessel + ": HTTP 404");
+    if (!antwort.ok) throw new MetacoachFehler("netz", schluessel + ": HTTP " + antwort.status);
+    let klar;
+    try {
+      klar = await entschluesseln(sitzungsSchluessel, new Uint8Array(await antwort.arrayBuffer()));
+    } catch {
+      // Neues Passwort bei Fiesta: Metacoach verschluesselt erst in der naechsten Nacht neu.
+      throw new MetacoachFehler("kaputt", schluessel + ": nicht zu entschluesseln");
+    }
+    return auspacken(klar.buffer);
+  })();
+  metacoachSpeicher.set(schluessel, versprechen);
+  versprechen.catch(() => metacoachSpeicher.delete(schluessel));
   return versprechen;
 }
 

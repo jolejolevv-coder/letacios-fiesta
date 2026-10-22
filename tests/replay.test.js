@@ -196,3 +196,28 @@ test("End Turn beendet einen Kampf ohne Ergebniszeile", () => {
   assert.ok(schritte[0].angriff);
   assert.equal(schritte[1].angriff, null);
 });
+
+// eindampfen: dasselbe wie replays_holen.eindampfen (am 22.10.2026 an allen 101 lokalen
+// Logs gegen Python verglichen, identisch).
+test("eindampfen: Klartext, Karten, Checkpoints, Spieler und Bewegungen", async () => {
+  const { eindampfen } = await import("../src/replay.js");
+  const log = [
+    "Version is 1.43a.1",
+    "[Nahobino​#2594] Leader is Rocks D. Xebec [<mark><link=\"OP17-039\">OP17-039</link></mark>]",
+    "RZ1|PLY|1|Nahobino​#2594|OP17-039",
+    "RZ1|1|1|OP17-054|0|9|1|0|0|0|1|0|0",
+    "RZ1|CHK|1|1|50|1|0|0|10|0|0|0|1|0",
+    "RZ1|CHK|2|1|50",
+    "   ",
+    "<b></b>",
+    "[A#1] Shiki [OP17-048] and Shiki [OP17-048] vs P-107",
+  ].join("\r\n");
+  assert.deepEqual(eindampfen(log), [
+    { t: "Version is 1.43a.1" },
+    { t: "[Nahobino#2594] Leader is Rocks D. Xebec [OP17-039]", k: ["OP17-039"] },
+    { p: [1, "Nahobino#2594", "OP17-039"] },
+    { m: [1, "OP17-054", 0, 9, 1, 0, 1] },
+    { c: [1, 50, 1, 0, 0, 10, 0, 0, 0, 0] },
+    { t: "[A#1] Shiki [OP17-048] and Shiki [OP17-048] vs P-107", k: ["OP17-048", "P-107"] },
+  ]);
+});

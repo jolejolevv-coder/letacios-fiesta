@@ -440,3 +440,76 @@ function platzNachId(s, id) {
   if (!id || !s) return -1;
   return s.board.indexOf(id);
 }
+
+/* --------------------------------------------------------------------------
+   Eindampfen im Browser
+
+   Dasselbe wie `eindampfen` in replays_holen.py, fuer "Analyze my replay": aus dem rohen
+   Log die Zeilen, die der Viewer zeigt. Klartext ohne Auszeichnung und ohne unsichtbare
+   Zeichen, je Zeile die erwaehnten Kartennummern, dazu Checkpoints (c), Spielerzeilen (p)
+   und Bewegungen (m). Das Log bleibt dabei im Speicher der Seite.
+   -------------------------------------------------------------------------- */
+
+const ROH_TAG = /<[^>]+>/g;
+const ROH_KARTE = /\b([A-Z]{2,4}\d{2}-\d{3}|P-\d{3}|ST\d{2}-\d{3})\b/g;
+const UNSICHTBAR = /[\u200b\u200c\u200d\ufeff]/g;
+// Pythons str.splitlines() trennt an mehr Zeichen als nur \n und \r.
+const ZEILENENDE = /\r\n|[\n\r\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029]/;
+const PY_LEER = "\\t\\n\\x0b\\x0c\\r\\x1c-\\x1f \\x85\\xa0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000";
+const PY_STRIP = new RegExp(`^[${PY_LEER}]+|[${PY_LEER}]+$`, "g");
+const GANZ = /^\s*[+-]?\d+\s*$/;
+
+const strip = (t) => t.replace(PY_STRIP, "");
+const zahlOderFehler = (t) => {
+  if (!GANZ.test(t ?? "")) throw new Error("keine Zahl");
+  return parseInt(t, 10);
+};
+
+export function eindampfen(text) {
+  const zeilen = [];
+  for (const zeile of String(text).split(ZEILENENDE)) {
+    const roh = strip(zeile);
+    if (!roh) continue;
+    if (roh.startsWith("RZ1|CHK|")) {
+      const f = roh.split("|");
+      if (f.length >= 14) {
+        try {
+          zeilen.push({ c: [3, 4, 5, 6, 7, 8, 9, 10, 11, 13].map((i) => zahlOderFehler(f[i])) });
+        } catch {
+          // Lieber ueberspringen als mit erfundenen Zaehlern weitermachen.
+        }
+      }
+      continue;
+    }
+    if (roh.startsWith("RZ1|PLY|")) {
+      const f = roh.split("|");
+      if (f.length >= 5) {
+        try {
+          zeilen.push({ p: [zahlOderFehler(f[2]), f[3].replace(UNSICHTBAR, ""), f[4]] });
+        } catch {
+          // wie oben
+        }
+      }
+      continue;
+    }
+    if (roh.startsWith("RZ1|")) {
+      const f = roh.split("|");
+      if (f.length >= 11 && /^\d+$/.test(f[1])) {
+        try {
+          zeilen.push({ m: [zahlOderFehler(f[2]), f[3], zahlOderFehler(f[4]), zahlOderFehler(f[5]),
+            zahlOderFehler(f[6]), zahlOderFehler(f[7]), zahlOderFehler(f[10])] });
+        } catch {
+          // wie in Python: eine kaputte Bewegung faellt weg
+        }
+      }
+      continue;
+    }
+    const karten = [...roh.matchAll(ROH_KARTE)].map((m) => m[1]);
+    const sauber = strip(roh.replace(ROH_TAG, "").replace(UNSICHTBAR, ""));
+    if (!sauber) continue;
+    const eintrag = { t: sauber };
+    if (karten.length) eintrag.k = [...new Set(karten)];
+    zeilen.push(eintrag);
+  }
+  return zeilen;
+}

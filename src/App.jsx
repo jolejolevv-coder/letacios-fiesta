@@ -9,12 +9,21 @@ import {
   holen,
   kartenLaden,
   kennung,
+  metacoachHolen,
   satzLaden,
   spielerJeListe,
   verschluesselung,
   zeitraumLaden,
 } from "./daten.js";
-import { schritteBauen } from "./replay.js";
+import { eindampfen, schritteBauen } from "./replay.js";
+import {
+  abwehrSatz, ALLE as BOOK_ALLE, angriffSatz, bookAusschnitt, gegnerListe, MIN_ZELLE as BOOK_MIN_ZELLE,
+  mulliganSatz, spielenSaetze, spitzeSatz, unterschiedeImZug, unterschiedeSonst, zahl as bookZahl, zuegeMitDaten,
+  zugDaten,
+} from "./book.js";
+import { eigeneNummer, partieLesen } from "./zuglager.js";
+import { netzBauen } from "./wertnetz.js";
+import { NOTENFOLGE, partieAnalysieren } from "./spielbewertung.js";
 import { CHANGELOG } from "./changelog.js";
 import { ankerBauen, fehlerSuchen, FEHLERNOTEN, kurveBauen, markenBauen, spielerZuordnen } from "./analyse.js";
 
@@ -1509,8 +1518,12 @@ function Kartenband({ karten, namen }) {
  *   Spielnamen, und die sind andere. FabaniniOvert heisst dort
  *   OvertimeChampanzini#2775. Ueber den Leader geht es zuverlaessig.
  */
-function Replay({ pfad, namen, eigenerLeader, zurueck }) {
-  const [zeilen, setZeilen] = useState(null);
+/* Der Viewer. Fuer "Analyze my replay" kommen Zeilen und Analyse direkt aus dem Speicher
+   der Seite (zeilenDirekt, analyseDirekt), statt sie zu holen; eigenerName legt dort die
+   eigene Seite fest, auch im Mirror. */
+function Replay({ pfad, namen, eigenerLeader, zurueck, zeilenDirekt, analyseDirekt, eigenerName }) {
+  const direkt = zeilenDirekt !== undefined;
+  const [zeilen, setZeilen] = useState(direkt ? zeilenDirekt : null);
   const [i, setI] = useState(0);
   const [zoom, setZoom] = useState(() =>
     typeof window !== "undefined" && window.innerWidth < 720 ? 0.7 : 1
@@ -1525,6 +1538,10 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
   /* Die Analyse aus Metacoach liegt neben dem Replay, wenn es eine gibt; sonst bleibt
      der Viewer wie er war. */
   useEffect(() => {
+    if (direkt) {
+      setAnalyse(analyseDirekt || null);
+      return undefined;
+    }
     let abgebrochen = false;
     setAnalyse(null);
     holen("analyse/" + dateiname(pfad))
@@ -1533,9 +1550,14 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
     return () => {
       abgebrochen = true;
     };
-  }, [pfad]);
+  }, [pfad, direkt, analyseDirekt]);
 
   useEffect(() => {
+    if (direkt) {
+      setZeilen(zeilenDirekt);
+      setI(0);
+      return undefined;
+    }
     let abgebrochen = false;
     setZeilen(null);
     setI(0);
@@ -1545,7 +1567,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
     return () => {
       abgebrochen = true;
     };
-  }, [pfad]);
+  }, [pfad, direkt, zeilenDirekt]);
 
   const { schritte, leader, zuege } = useMemo(
     () => (zeilen ? schritteBauen(zeilen) : { schritte: [], leader: {}, zuege: 0 }),
@@ -1602,7 +1624,9 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
 
   const nr = Math.min(i, schritte.length - 1);
   const jetzt = schritte[nr];
-  const spieler = Object.entries(leader).find(([, k]) => k === eigenerLeader)?.[0];
+  const spieler = eigenerName && Object.hasOwn(leader, eigenerName)
+    ? eigenerName
+    : Object.entries(leader).find(([, k]) => k === eigenerLeader)?.[0];
   const seiten = [...new Set(schritte.flatMap((s) => Object.keys(s.stand)))]
     .sort((a, b) => (a === spieler ? 1 : b === spieler ? -1 : 0));
 
@@ -2070,6 +2094,527 @@ function ReplayAnalyse({ analyse, schritte, leader, spieler, nr, setI, knopf, st
   );
 }
 
+/* --------------------------------------------------------------------------
+   Book aus Metacoach (specs/features/book-auf-fiesta.md)
+
+   Holt das Verzeichnis der Leader und das Book des gewaehlten Leaders direkt bei
+   Metacoach (metacoachHolen), nicht aus dem Repo. Die Saetze kommen aus src/book.js,
+   englisch, mit denselben Grenzen wie in Metacoach. Ist Metacoach nicht erreichbar,
+   steht nur ein Hinweis da; die anderen Reiter laufen unveraendert.
+   -------------------------------------------------------------------------- */
+
+const SITZ_KNOPF = [["first", "Going first"], ["second", "Going second"]];
+
+function wahlStil(an) {
+  return {
+    background: an ? "var(--akzentweich)" : "var(--flaeche2)",
+    borderColor: an ? "var(--akzent)" : "var(--linie)",
+    color: an ? "var(--akzent)" : "var(--leise)",
+  };
+}
+
+const WAHLFELD = "w-full min-w-0 max-w-full rounded-md border px-2.5 py-2 text-sm sm:w-auto sm:py-1.5";
+const WAHLFELD_STIL = { background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--text)" };
+
+/* Ein Hinweis, warum etwas von Metacoach fehlt, je nach Grund des Fehlers. */
+function MetacoachHinweis({ fehler, was }) {
+  const grund = fehler?.grund;
+  const text = grund === "kaputt"
+    ? `The ${was} could not be unlocked. After a password change Metacoach encrypts it again the following night.`
+    : `${was[0].toUpperCase() + was.slice(1)} currently unavailable: Metacoach, where it comes from, cannot be reached right now. Everything else on Fiesta works as usual.`;
+  return (
+    <p className="max-w-[74ch] rounded-lg border px-3 py-2 text-[13px]"
+       style={{ background: "var(--flaeche)", borderColor: "var(--linie)", color: "var(--leise)" }}>
+      {text}
+    </p>
+  );
+}
+
+/* Ein Satz mit seiner Zahl klein dahinter; Schaetzungen aus dem Wertnetz kursiv. */
+function BookSatz({ s }) {
+  return (
+    <span className="min-w-0 text-[14px] leading-snug">
+      {s.text}
+      {s.zahl || s.schaetzung ? (
+        <span className="zahl ml-1.5 whitespace-nowrap text-[11px]"
+              style={{ color: "var(--still)", fontStyle: s.schaetzung ? "italic" : "normal" }}>
+          {s.zahl || "estimate"}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function BookZeile({ etikett, saetze }) {
+  if (!saetze.length) return null;
+  return (
+    <li className="grid min-w-0 grid-cols-1 gap-x-3 gap-y-0.5 sm:grid-cols-[104px_minmax(0,1fr)]">
+      <span className="etikett pt-0.5" style={{ color: "var(--still)" }}>{etikett}</span>
+      <span className="grid min-w-0 grid-cols-1 gap-0.5">
+        {saetze.map((s, i) => <BookSatz key={i} s={s} />)}
+      </span>
+    </li>
+  );
+}
+
+function BookSchritt({ marke, titel, unter, children }) {
+  return (
+    <li className="flex min-w-0 gap-3 rounded-lg border px-3 py-2.5"
+        style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}>
+      <span className="zahl w-6 shrink-0 pt-0.5 text-center text-[15px] font-bold" style={{ color: "var(--akzent)" }}
+            aria-hidden="true">{marke}</span>
+      <div className="min-w-0 flex-1">
+        <h3 className="pb-1.5 text-[15px] font-semibold">
+          {titel}
+          {unter ? <span className="zahl ml-1.5 text-[12px] font-normal" style={{ color: "var(--still)" }}>{unter}</span> : null}
+        </h3>
+        <ul className="grid min-w-0 grid-cols-1 gap-1.5">{children}</ul>
+      </div>
+    </li>
+  );
+}
+
+function Book({ namen, startLeader }) {
+  const [liste, setListe] = useState(undefined);
+  const [listeFehler, setListeFehler] = useState(null);
+  const [leaderId, setLeaderId] = useState(null);
+  const [daten, setDaten] = useState(undefined);
+  const [datenFehler, setDatenFehler] = useState(null);
+  const [gegner, setGegner] = useState(BOOK_ALLE);
+  const [sitz, setSitz] = useState("first");
+
+  useEffect(() => {
+    let ab = false;
+    metacoachHolen("book", "_leader")
+      .then((d) => {
+        if (ab) return;
+        const l = (d.leader || []).filter((e) => e.leader !== "OP14-020");
+        setListe(l);
+        setLeaderId((alt) => alt || (l.some((e) => e.leader === startLeader) ? startLeader : l[0]?.leader || null));
+      })
+      .catch((f) => !ab && (setListe(null), setListeFehler(f)));
+    return () => { ab = true; };
+  }, [startLeader]);
+
+  useEffect(() => {
+    if (!leaderId) return undefined;
+    let ab = false;
+    setDaten(undefined);
+    setDatenFehler(null);
+    setGegner(BOOK_ALLE);
+    metacoachHolen("book", leaderId)
+      .then((d) => !ab && setDaten(d))
+      .catch((f) => !ab && (setDaten(null), setDatenFehler(f)));
+    return () => { ab = true; };
+  }, [leaderId]);
+
+  const name = (id) => (namen[id] || {}).n || id;
+  const kopf = (
+    <h2 className="pb-1 text-base font-semibold">Book</h2>
+  );
+  if (liste === undefined) {
+    return <section className="min-w-0">{kopf}<p className="py-4 text-sm" style={{ color: "var(--still)" }}>Loading the book ...</p></section>;
+  }
+  if (liste === null) return <section className="min-w-0">{kopf}<MetacoachHinweis fehler={listeFehler} was="book" /></section>;
+  if (!liste.length) {
+    return <section className="min-w-0">{kopf}<p className="py-4 text-[13px]" style={{ color: "var(--still)" }}>No leader has a book yet.</p></section>;
+  }
+
+  const b = daten ? bookAusschnitt(daten, gegner, sitz) : null;
+  const mindest = b?.grenzen?.min_zelle ?? BOOK_MIN_ZELLE;
+  const zuege = b ? zuegeMitDaten(b) : [];
+  const gegnerName = gegner === BOOK_ALLE ? "all opponents" : name(gegner);
+  const datum = (iso) => (iso ? new Date(String(iso).slice(0, 10) + "T12:00:00Z")
+    .toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "\u2013");
+
+  return (
+    <section className="min-w-0">
+      {kopf}
+      <p className="max-w-[74ch] pb-3 text-[13px]" style={{ color: "var(--still)" }}>
+        Turn by turn: what to play, where to attack and when to counter, from the ladder replays, computed by
+        Metacoach. Small numbers in italics are estimates from its model; upright numbers are real results.
+        Top players means both players at {fmtZahl(daten?.grenzen?.spitze_bounty ?? 2000)} bounty or more.
+      </p>
+      <div className="flex min-w-0 flex-wrap items-center gap-2 pb-3">
+        <select className={WAHLFELD} style={WAHLFELD_STIL} value={leaderId || ""} aria-label="Leader"
+                onChange={(e) => setLeaderId(e.target.value)}>
+          {liste.map((e) => (
+            <option key={e.leader} value={e.leader}>
+              {name(e.leader)} {e.leader} ({fmtZahl((e.partien?.first || 0) + (e.partien?.second || 0))} games)
+            </option>
+          ))}
+        </select>
+        {daten ? (
+          <select className={WAHLFELD} style={WAHLFELD_STIL} value={gegner} aria-label="Opponent"
+                  onChange={(e) => setGegner(e.target.value)}>
+            {gegnerListe(daten).map((g) => (
+              <option key={g.gegner} value={g.gegner}>
+                {g.gegner === BOOK_ALLE ? "All opponents" : name(g.gegner) + " " + g.gegner} ({fmtZahl((g.partien.first || 0) + (g.partien.second || 0))} games)
+              </option>
+            ))}
+          </select>
+        ) : null}
+        {SITZ_KNOPF.map(([k, t]) => (
+          <button key={k} type="button" className="rounded-md border px-2.5 py-1.5 text-sm font-semibold"
+                  style={wahlStil(sitz === k)} onClick={() => setSitz(k)}>{t}</button>
+        ))}
+      </div>
+
+      {daten === undefined ? (
+        <p className="py-4 text-sm" style={{ color: "var(--still)" }}>Loading the book ...</p>
+      ) : daten === null ? (
+        datenFehler?.grund === "fehlt"
+          ? <p className="py-2 text-[13px]" style={{ color: "var(--still)" }}>No book for this leader right now.</p>
+          : <MetacoachHinweis fehler={datenFehler} was="book" />
+      ) : !b ? (
+        <p className="py-2 text-[13px]" style={{ color: "var(--still)" }}>Not in the book.</p>
+      ) : (
+        <>
+          <p className="max-w-[74ch] pb-2 text-[13px]" style={{ color: "var(--still)" }}>
+            {name(b.leader)} against {gegnerName}, {sitz}: <span className="zahl">{fmtZahl(b.partien?.[sitz] || 0)}</span> games.
+            Model of {datum(b.modell)}, book of {datum(b.stand)}.
+          </p>
+          {b.rueckfall ? (
+            <p className="mb-2 max-w-[74ch] rounded-lg border px-3 py-2 text-[13px]"
+               style={{ background: "var(--akzentweich)", borderColor: "var(--akzent)", color: "var(--text)" }}>
+              Too few games against {gegnerName} on this seat, so this shows the numbers against all opponents.
+            </p>
+          ) : null}
+          <ol className="grid min-w-0 grid-cols-1 gap-2">
+            <BookSchritt marke={"\u2022"} titel="Mulligan" unter="before turn 1">
+              <BookZeile etikett="Opening hand" saetze={[mulliganSatz(b.feld ?? b.spitze, mindest, name)]} />
+            </BookSchritt>
+            {zuege.map((T) => {
+              const z = zugDaten(b, T);
+              const angriff = angriffSatz(T, b.spitze, b.feld);
+              const abwehr = abwehrSatz(T, b.spitze, b.feld);
+              return (
+                <BookSchritt key={T} marke={T} titel={"Turn " + T}
+                             unter={z && z.don !== null && z.don !== undefined ? "\u00b7 " + bookZahl(z.don) + " Don" : ""}>
+                  <BookZeile etikett="Play" saetze={spielenSaetze(T, b.spitze, b.feld, mindest, name)} />
+                  <BookZeile etikett="Attack" saetze={angriff ? [angriff] : []} />
+                  <BookZeile etikett="Defend" saetze={abwehr ? [abwehr] : []} />
+                  <BookZeile etikett="Top players" saetze={unterschiedeImZug(b.unterschiede, T).map((u) => spitzeSatz(u, name))} />
+                </BookSchritt>
+              );
+            })}
+          </ol>
+          {!zuege.length ? (
+            <p className="py-2 text-[13px]" style={{ color: "var(--still)" }}>Too few turns on this seat yet.</p>
+          ) : null}
+          {unterschiedeSonst(b.unterschiede).length ? (
+            <>
+              <h3 className="pb-1.5 pt-4 text-[15px] font-semibold">What top players do differently otherwise</h3>
+              <ul className="grid min-w-0 grid-cols-1 gap-1.5 rounded-lg border px-3 py-2.5"
+                  style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}>
+                <BookZeile etikett="Top players" saetze={unterschiedeSonst(b.unterschiede).map((u) => spitzeSatz(u, name))} />
+              </ul>
+            </>
+          ) : null}
+        </>
+      )}
+    </section>
+  );
+}
+
+/* --------------------------------------------------------------------------
+   Analyze my replay (specs/features/eigenes-replay-analysieren.md)
+
+   Das Log einer eigenen Partie wird im Browser gelesen (src/zuglager.js), mit dem
+   Wertnetz (src/wertnetz.js) und dem Book von Metacoach bewertet (src/spielbewertung.js)
+   und im Replay Viewer samt ReplayAnalyse gezeigt. Das Log verlaesst den Browser nie:
+   kein Upload, kein Speichern; es lebt nur im Zustand dieser Komponente.
+   -------------------------------------------------------------------------- */
+
+const LOG_PFAD_MAC = "~/Library/Application Support/com.Batsu.OPTCGSim/CombatLogs/AutoSaved/";
+const LOG_PFAD_WINDOWS = "C:\\Users\\<Name>\\AppData\\LocalLow\\Batsu\\OPTCGSim\\CombatLogs\\AutoSaved\\";
+const LOG_PFAD_EXPLORER = "%USERPROFILE%\\AppData\\LocalLow\\Batsu\\OPTCGSim\\CombatLogs";
+const LOG_GROESSE_MAX = 20 * 1024 * 1024;     // ein Log hat rund 100 KB; mehr ist keines
+const UNSICHTBAR_NAME = /[\u200b\u200c\u200d\ufeff]/g;
+
+const LESEGRUND = {
+  "keine zwei spieler": "it does not name two players. Is it an OPTCGSim combat log?",
+  "kein sieger": "the game has no winner yet (no concede and no lethal hit).",
+  "keine zuordnung": "the players could not be matched to the game state.",
+  "zu kurz": "the game is too short, fewer than four turns.",
+  "log kaputt": "it is damaged or cut off.",
+};
+
+function Pfad({ children }) {
+  return (
+    // Ohne die Klasse zahl: die setzt nowrap, und der lange Pfad schob am Handy die Seite breit.
+    <code className="block min-w-0 whitespace-normal break-all rounded-md border px-2 py-1 text-[12px]"
+          style={{ background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--text)",
+            fontFamily: "var(--font-zahl)" }}>
+      {children}
+    </code>
+  );
+}
+
+/* Kartentabellen aus karten.json: Events, Counter, Kosten (wie karten.tsv in Metacoach). */
+function kartenTabellen(namen) {
+  const events = new Set();
+  const counter = {};
+  const kosten = {};
+  for (const [id, k] of Object.entries(namen || {})) {
+    if (k.a === "e") events.add(id);
+    if (typeof k.c === "number") counter[id] = k.c;
+    if (typeof k.k === "number") kosten[id] = k.k;
+  }
+  return { events, counter, kosten };
+}
+
+function EigenesReplay({ namen }) {
+  const [text, setText] = useState(null);
+  const [eingefuegt, setEingefuegt] = useState("");
+  const [dateiName, setDateiName] = useState("");
+  const [leseFehler, setLeseFehler] = useState("");
+  const [wahl, setWahl] = useState(null);
+  const [netzJson, setNetzJson] = useState(undefined);
+  const [netzFehler, setNetzFehler] = useState(null);
+  const [books, setBooks] = useState(null);
+  const [ziehen, setZiehen] = useState(false);
+
+  const tabellen = useMemo(() => kartenTabellen(namen), [namen]);
+  const kartenDa = tabellen.counter && Object.keys(namen || {}).length > 0;
+
+  const gelesen = useMemo(() => {
+    if (text === null) return null;
+    const id = (dateiName || "pasted").replace(/\.(log|txt)$/i, "");
+    const [grund, zeilen] = partieLesen(text, { id, timestamp: id.slice(0, 10) }, tabellen.events);
+    return { grund, partie: zeilen[0] || null };
+  }, [text, dateiName, tabellen]);
+  const partie = gelesen?.partie || null;
+  const eigen = partie ? (wahl ?? eigeneNummer(partie)) : null;
+
+  /* Netz und Books erst holen, wenn ein lesbares Log da ist. */
+  useEffect(() => {
+    if (!partie) return undefined;
+    let ab = false;
+    setNetzFehler(null);
+    metacoachHolen("netz", "wertnetz")
+      .then((d) => !ab && setNetzJson(d))
+      .catch((f) => !ab && (setNetzJson(null), setNetzFehler(f)));
+    const leader = [...new Set([partie.leader["1"], partie.leader["2"]])];
+    Promise.all(leader.map((l) => metacoachHolen("book", l).then((d) => [l, d], (f) => [l, f.grund === "fehlt" ? null : f])))
+      .then((paare) => !ab && setBooks(Object.fromEntries(paare)));
+    return () => { ab = true; };
+  }, [partie]);
+
+  const netz = useMemo(() => {
+    if (!netzJson) return null;
+    try {
+      return netzBauen(netzJson);
+    } catch {
+      return null;
+    }
+  }, [netzJson]);
+
+  const nurBooks = useMemo(() => {
+    if (!books) return null;
+    return Object.fromEntries(Object.entries(books).filter(([, d]) => d && !(d instanceof Error)));
+  }, [books]);
+
+  const analyse = useMemo(() => {
+    if (!partie || !netz || !nurBooks) return null;
+    return partieAnalysieren(partie, netz, nurBooks, tabellen.counter, tabellen.kosten);
+  }, [partie, netz, nurBooks, tabellen]);
+
+  /* Zeilen fuer den Viewer. Das eigene Log nennt den Spieler einmal als "[You]" (etwa
+     "[You] Will select turn order"); der Viewer machte daraus eine dritte Seite. Gezeigt
+     werden deshalb nur Zeilen der beiden Spieler und solche ohne Sprecher. */
+  const zeilen = useMemo(() => {
+    if (text === null || !partie) return null;
+    const spieler = new Set(Object.values(partie.namen).map((n) => String(n).replace(UNSICHTBAR_NAME, "")));
+    return eindampfen(text).filter((z) => {
+      const m = z.t ? /^\[(.+?)\]/.exec(z.t) : null;
+      return !m || spieler.has(m[1]);
+    });
+  }, [text, partie]);
+
+  const neu = () => {
+    setText(null);
+    setEingefuegt("");
+    setDateiName("");
+    setWahl(null);
+    setLeseFehler("");
+  };
+
+  const dateiLesen = (datei) => {
+    if (!datei) return;
+    setLeseFehler("");
+    if (datei.size > LOG_GROESSE_MAX) {
+      setLeseFehler("This file is far too large for a combat log.");
+      return;
+    }
+    datei.text()
+      .then((t) => { setWahl(null); setDateiName(datei.name); setText(t); })
+      .catch(() => setLeseFehler("The file could not be read."));
+  };
+
+  const name = (id) => (namen[id] || {}).n || id;
+  const spielerName = (nr) => String(partie?.namen?.[nr] || "Player " + nr).replace(UNSICHTBAR_NAME, "");
+
+  if (text === null || !partie) {
+    return (
+      <section className="mx-auto grid min-w-0 max-w-3xl grid-cols-1 gap-4">
+        <div className="min-w-0">
+          <h2 className="pb-1 text-base font-semibold">Analyze my replay</h2>
+          <p className="max-w-[74ch] text-[13px]" style={{ color: "var(--still)" }}>
+            Open the log of one of your own games and get the same analysis as on the replays here: your accuracy,
+            the win chance over the game and a grade for every attack, defense and mulligan.
+          </p>
+        </div>
+
+        <ol className="grid min-w-0 grid-cols-1 gap-2">
+          <BookSchritt marke="1" titel="Find the log">
+            <li className="grid min-w-0 grid-cols-1 gap-1.5 text-[14px]">
+              <span>OPTCGSim saves every game by itself, one .log file per game, named by date and time.</span>
+              <span className="etikett pt-1" style={{ color: "var(--still)" }}>Mac</span>
+              <Pfad>{LOG_PFAD_MAC}</Pfad>
+              <span className="text-[13px]" style={{ color: "var(--leise)" }}>
+                In Finder use Go, then Go to Folder, and paste the path.
+              </span>
+              <span className="etikett pt-1" style={{ color: "var(--still)" }}>Windows</span>
+              <Pfad>{LOG_PFAD_WINDOWS}</Pfad>
+              <span className="text-[13px]" style={{ color: "var(--leise)" }}>
+                The AppData folder is hidden. Type this into the address bar of the File Explorer and press Enter:
+              </span>
+              <Pfad>{LOG_PFAD_EXPLORER}</Pfad>
+              <span className="text-[13px]" style={{ color: "var(--leise)" }}>
+                %USERPROFILE% stands for your own user folder, so you do not need to know your user name.
+                Then open AutoSaved.
+              </span>
+            </li>
+          </BookSchritt>
+          <BookSchritt marke="2" titel="Or save it from the game">
+            <li className="text-[14px]">After the game, press <b>Download Log</b> in the game and use that file.</li>
+          </BookSchritt>
+          <BookSchritt marke="3" titel="Open it here">
+            <li className="grid min-w-0 grid-cols-1 gap-2">
+              <label
+                className="grid min-w-0 cursor-pointer place-items-center rounded-lg border border-dashed px-3 py-6 text-center text-[14px]"
+                style={{ borderColor: ziehen ? "var(--akzent)" : "var(--linie)",
+                  background: ziehen ? "var(--akzentweich)" : "var(--flaeche2)" }}
+                onDragOver={(e) => { e.preventDefault(); setZiehen(true); }}
+                onDragLeave={() => setZiehen(false)}
+                onDrop={(e) => { e.preventDefault(); setZiehen(false); dateiLesen(e.dataTransfer.files?.[0]); }}
+              >
+                <span className="font-semibold">Choose a log file</span>
+                <span className="text-[12px]" style={{ color: "var(--still)" }}>or drop it here</span>
+                <input type="file" accept=".log,.txt,text/plain" className="sr-only"
+                       onChange={(e) => { dateiLesen(e.target.files?.[0]); e.target.value = ""; }} />
+              </label>
+              <textarea
+                className="min-h-[96px] w-full min-w-0 rounded-md border px-2.5 py-2 text-[12px]"
+                style={WAHLFELD_STIL} value={eingefuegt} placeholder="Or paste the whole log here"
+                aria-label="Paste the log" spellCheck={false}
+                onChange={(e) => setEingefuegt(e.target.value)}
+              />
+              <span>
+                <button type="button" className="rounded-md border px-3 py-1.5 text-sm font-semibold"
+                        style={wahlStil(Boolean(eingefuegt.trim()))} disabled={!eingefuegt.trim()}
+                        onClick={() => { setWahl(null); setDateiName(""); setText(eingefuegt); }}>
+                  Analyze pasted log
+                </button>
+              </span>
+              <span className="text-[12px]" style={{ color: "var(--still)" }}>
+                Your log never leaves this browser. It is read and analyzed right here; nothing is uploaded or saved,
+                and it is gone when you close the page.
+              </span>
+            </li>
+          </BookSchritt>
+        </ol>
+
+        {leseFehler ? <p className="text-[13px]" style={{ color: "var(--niederlage)" }}>{leseFehler}</p> : null}
+        {gelesen && !partie ? (
+          <p className="text-[13px]" style={{ color: "var(--niederlage)" }}>
+            This log could not be analyzed: {LESEGRUND[gelesen.grund] || gelesen.grund}
+          </p>
+        ) : null}
+        {!kartenDa ? (
+          <p className="text-[12px]" style={{ color: "var(--still)" }}>Card data is still loading.</p>
+        ) : null}
+      </section>
+    );
+  }
+
+  const ich = eigen ? String(eigen) : null;
+  const meinLeader = ich ? partie.leader[ich] : null;
+  const unbekannt = netz
+    ? [...new Set(partie.lagen.flatMap((l) => [...(l.b["1"] || []), ...(l.b["2"] || [])]))].filter((k) => !netz.kennt(k))
+    : [];
+  const leaderUnbekannt = netz ? [partie.leader["1"], partie.leader["2"]].filter((l) => !netz.kenntLeader(l)) : [];
+  const bookFehlt = books && meinLeader && books[meinLeader] === null;
+  const bookFehler = books && Object.values(books).find((d) => d instanceof Error);
+  const s = analyse && ich ? analyse.spieler[ich] : null;
+
+  return (
+    <section className="grid min-w-0 grid-cols-1 gap-3">
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h2 className="text-base font-semibold">Analyze my replay</h2>
+        <span className="min-w-0 truncate text-[13px]" style={{ color: "var(--still)" }}>
+          {dateiName || "pasted log"} &middot; {name(partie.leader["1"])} against {name(partie.leader["2"])}
+        </span>
+        <button type="button" className="ml-auto rounded-md border px-2.5 py-1.5 text-sm font-semibold"
+                style={wahlStil(false)} onClick={neu}>Analyze another log</button>
+      </div>
+
+      {!ich ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-2 text-[13px]">
+          <span>Which player were you?</span>
+          {["1", "2"].map((nr) => (
+            <button key={nr} type="button" className="rounded-md border px-2.5 py-1.5 text-sm font-semibold"
+                    style={wahlStil(false)} onClick={() => setWahl(Number(nr))}>
+              {spielerName(nr)} ({name(partie.leader[nr])})
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {netzJson === null || (netzJson && !netz) ? <MetacoachHinweis fehler={netzFehler} was="analysis" /> : null}
+      {bookFehler ? <MetacoachHinweis fehler={bookFehler} was="book" /> : null}
+      {bookFehlt ? (
+        <p className="max-w-[74ch] text-[13px]" style={{ color: "var(--leise)" }}>
+          There is no book for {name(meinLeader)} {meinLeader} yet, so your decisions get no grades.
+          The win chance over the game is still shown.
+        </p>
+      ) : null}
+      {leaderUnbekannt.length ? (
+        <p className="max-w-[74ch] text-[13px]" style={{ color: "var(--leise)" }}>
+          The model has no value of its own for {leaderUnbekannt.map((l) => name(l) + " " + l).join(" and ")} and counts it
+          as an other leader.
+        </p>
+      ) : null}
+      {unbekannt.length ? (
+        <p className="max-w-[74ch] text-[13px]" style={{ color: "var(--leise)" }}>
+          {unbekannt.length === 1 ? "One card" : unbekannt.length + " cards"} of this game {unbekannt.length === 1 ? "is" : "are"} not
+          known to the model and {unbekannt.length === 1 ? "counts" : "count"} as an empty slot
+          for the win chance: {unbekannt.map((k) => name(k) + " " + k).join(", ")}.
+        </p>
+      ) : null}
+      {s && s.noten ? (
+        <p className="text-[13px]" style={{ color: "var(--leise)" }}>
+          {NOTENFOLGE.filter((n) => s.noten[n]).map((n) => `${s.noten[n]} ${NOTE_TEXT[n].toLowerCase()}`).join(" \u00b7 ") || "No graded decisions."}
+        </p>
+      ) : null}
+
+      {netzJson === undefined || (partie && !books) ? (
+        <p className="py-2 text-sm" style={{ color: "var(--still)" }}>Loading the model ...</p>
+      ) : (
+        <Replay
+          key={(dateiName || "eingefuegt") + ":" + (ich || "")}
+          pfad={null}
+          namen={namen}
+          eigenerName={ich ? spielerName(ich) : undefined}
+          zeilenDirekt={zeilen || []}
+          analyseDirekt={analyse}
+        />
+      )}
+    </section>
+  );
+}
+
 function Partie({ p, namen, replayOeffnen }) {
   const [offen, setOffen] = useState(false);
   const karten = (p.deck || []).slice(1);
@@ -2300,6 +2845,8 @@ const PFADE = {
   spieler: "/player",
   replay: "/replay",
   analyse: "/mulligan",
+  book: "/book",
+  eigenes: "/analyze",
   changelog: "/changelog",
 };
 
@@ -2848,6 +3395,8 @@ export default function App() {
             ["rang", "Power rankings", "Ranking"],
             ["beste", "Leaderboard", "Ladder"],
             ["analyse", "Mulligan", "Mulligan"],
+            ["book", "Book", "Book"],
+            ["eigenes", "Analyze my replay", "Analyze"],
             ["changelog", "Changelog", "Changelog"],
           ].map(([k, lang, kurz]) => (
             <button
@@ -3328,6 +3877,10 @@ export default function App() {
                 </>
               ) : reiter === "analyse" ? (
                 <Analyse leader={leader} namen={namen} />
+              ) : reiter === "book" ? (
+                <Book namen={namen} startLeader={gewaehlt ? kennung(gewaehlt) : null} />
+              ) : reiter === "eigenes" ? (
+                <EigenesReplay namen={namen} />
               ) : reiter === "replay" ? (
                 <>
                   {replayPfad ? (
