@@ -35,6 +35,10 @@ colors:
   linie-stark: "rgba(236, 231, 220, 0.17)"
   feld-hover: "rgba(236, 231, 220, 0.28)"
   fehler: "#f1a194"
+  gewinnt: "#86e0c2"
+  verliert: "#f0917c"
+  gewinnt-ton: "#35b388"
+  verliert-ton: "#d65a44"
   stroh: "#e8a33d"
   zebra-fest: "#1a1c21"
   band-offen: "rgba(255, 255, 255, 0.16)"
@@ -53,9 +57,21 @@ typography:
     fontWeight: 600
     lineHeight: 1.15
     letterSpacing: "0.005em"
+  kopf-handy:
+    fontFamily: "Saira Semi Condensed, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "21px"
+    fontWeight: 600
+    lineHeight: 1.15
+    letterSpacing: "0.005em"
   schrittnr:
     fontFamily: "Saira Semi Condensed, ui-sans-serif, system-ui, sans-serif"
     fontSize: "22px"
+    fontWeight: 700
+    lineHeight: 1
+    fontFeature: "'tnum' 1"
+  schrittnr-handy:
+    fontFamily: "Saira Semi Condensed, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "18px"
     fontWeight: 700
     lineHeight: 1
     fontFeature: "'tnum' 1"
@@ -326,7 +342,7 @@ Ein zentriertes Blatt (höchstens 1180 px) mit blauem Kopfband, darunter die neu
 **Key Characteristics:**
 - Nur dunkel, ein Kartonblatt mit Laminatglanz oben, sonst flach.
 - Eine Rundung für alles (10 px), Kartenbilder 3 px.
-- Eine Buntfarbe, Turn Order Blau; Stroh nur im Sombrero.
+- Eine Buntfarbe für die Oberfläche, Turn Order Blau; Stroh nur im Sombrero; Seegrün und Ziegelrot nur als Signal für Winrates.
 - Saira Semi Condensed für Marke, Titel, Labels und jede Zahl; Source Sans 3 für Sätze.
 - Nummerierte Tafeln mit Zebra, Werte rechtsbündig in Tabellenziffern.
 - Details auf der Rückseite der Zeile statt in einer neuen Ansicht.
@@ -347,6 +363,13 @@ Papierweiß in drei Stufen auf fast schwarzem Karton, dazu Turn Order Blau mit s
 - **Bandschrift** (`band-text`), **Bandhover** (`band-hover`), **Band offen** (`band-offen`), **Wahlgrund** (`wahl-grund`): gelten nur auf dem blauen Band, am Quellenchip in Ruhe, unter der Maus und geöffnet.
 - **Stroh** (`stroh`): Krempe und Krone des Sombreros (`STROH` in `src/Sombrero.jsx`) und im Favicon. Die Marke erbt den Akzent bewusst nicht.
 
+### Signal
+Zwei gedämpfte Töne nur für die Lesart einer Winrate, nie für Flächen der Oberfläche, Knöpfe oder Auswahl. Sie stehen getrennt vom Akzent, damit Blau die einzige Farbe der Bedienung bleibt.
+- **Seegrün** (`gewinnt`, #86e0c2, oklch 84 % 0.097 171): gewinnt. Kontrast 11,4:1 auf Karton, 10,7:1 auf Zebra, 10,0:1 auf Blauer Fläche.
+- **Ziegelrot** (`verliert`, #f0917c, oklch 75 % 0.120 33): verliert. Kontrast 7,7:1 auf Karton, 7,2:1 auf Zebra, 6,7:1 auf Blauer Fläche. Wärmer und satter als Fehlerrot, damit eine schwache Winrate nicht wie ein Fehler aussieht.
+- Getrennt werden die beiden auch ohne Farbsehen: Seegrün ist um 9 Punkte heller (Leuchtdichte 0,62 gegen 0,40, untereinander 1,5:1) und hängt ins Blau, Ziegelrot ins Gelb. In der Simulation (Machado) bleibt der Abstand bei Deuteranopie 10,3, bei Protanopie 17,6 und bei Tritanopie 27 ΔE OK. Dazu bleibt gut fett.
+- **Tönung** einer Matrixzelle und einer Zahl im Fokus: die satteren Mitteltöne `gewinnt-ton` #35b388 und `verliert-ton` #d65a44 mit höchstens 28 % Deckung (`--ton-max`), Stärke linear mit dem Abstand von 50 %, voll ab 12 Punkten (`ton` in `src/winrate.js`). Der Mittelton statt der Schriftfarbe hält die Fläche kräftig, ohne die Schrift zu schlucken: in der stärksten Tönung bleibt Seegrün bei 7,0:1 auf Karton, 6,5:1 auf Zebra und 6,3:1 unter Hover, Ziegelrot bei 5,4:1, 5,1:1 und 4,9:1.
+
 ### Neutral
 - **Tischgrund** (`grund`), **Karton** (`karton`), **Karton hoch** (`karton-hoch`), **Rückseitenkarton** (`rueck`): Seitengrund und Felder, das Blatt, Grund hinter ladenden Kartenbildern, jede Rückseite und die Quellentafel.
 - **Laminatglanz** (`glanz-oben`, `glanz-mitte`, `glanz-ende`), **Lichtkante** (`kante-licht`), **Rückseitenglanz** (`rueck-glanz`, `rueck-glanz-ende`), **Rückseitenlinien** (`rueck-linie`, `rueck-linie-leise`): wie in Metacoach.
@@ -358,7 +381,9 @@ Papierweiß in drei Stufen auf fast schwarzem Karton, dazu Turn Order Blau mit s
 - **Schatten** (`schatten-karte`, `schatten-rueck`): siehe Elevation & Depth.
 
 ### Named Rules
-**The One Blue Rule.** Turn Order Blau ist die einzige Buntfarbe der Oberfläche; Stroh gehört nur dem Sombrero. Gut und schlecht stehen nie in Grün und Rot: eine Winrate ist fett in Papierweiß ab 55 %, normal in Bleistift dazwischen und blass unter 45 % (`wrKlasse` in `App.jsx`, Konstanten `GUT` und `SCHWACH`), das Rating im Ranking fett ab 8,5 und blass unter 7. Die Matrix hat keine Farbflächen, der Spiegel trägt einen Rahmenring; W ist ein blaues Etikett, L ein graues.
+**The One Blue Rule.** Turn Order Blau ist die einzige Buntfarbe der Bedienung; Stroh gehört nur dem Sombrero. Knöpfe, Auswahl, Fokus, Etiketten und Kurven bleiben blau oder Papierweiß. W ist ein blaues Etikett, L ein graues.
+
+**The Two Signals Rule.** Gut und schlecht einer Winrate stehen in Seegrün und Ziegelrot, sonst nirgends: ab 55 % fett in Seegrün, unter 45 % in Ziegelrot, dazwischen Bleistift (`wrKlasse` und `ton` in `src/winrate.js`, Konstanten `GUT` und `SCHWACH`). Ohne Wert steht Blasser Druck (`wr leer`), nie Rot. Die Matrix tönt jede Zelle in Richtung ihrer Seite, die Stärke wächst mit dem Abstand von 50 % und ist ab 12 Punkten voll; der Spiegel trägt einen Rahmenring. Das Rating im Ranking ist keine Winrate und bleibt fett ab 8,5 und blass unter 7.
 
 **The Band Tint Rule.** Weiße Tönungen mit Alpha und Wahlgrund gelten nur auf dem blauen Band. Auf dem Karton tönt man mit Papierweiß.
 
@@ -422,6 +447,9 @@ Nur in Fiesta:
 - **Chronik** (`.chronik`): Changelog mit Datum links in Wert und Hellem Blau, Einträge im Zebra.
 - **Ereignisliste im Replay** (`.ereignis`): die Art steht als Etikett vor dem Zug (combat akzent, start in Papierweiß, draw und info gepunktet), kein Seitenstrich.
 - **Fehlendes Kartenbild** (`.kb-kaputt`): gestrichelter Rand, Nummer in Etikett 10.5px; unter 30 px Breite nur die Kartennummer ohne Set (Container Query).
+- **Kartenvorschau** (`Kartenvorschau` in `App.jsx`, `.vorschau`): ein Tipp auf ein Kartenbild in einer offenen Deckliste, im Guide oder im Mulligan zeigt die Karte groß auf einem Schleier aus Tischgrund mit 92 % Deckung, am Schreibtisch 420 px breit, am Handy volle Breite mit 16 px Rand, Kante 3 px wie eine Karte. Das große Bild (600 px) kommt von Metacoach (`grossesBild` in `src/daten.js`); bis es da ist, steht das kleine vergrößert darunter, fällt Metacoach aus, bleibt es dabei mit einem Hinweis in Bleistift. Dialog mit `aria-modal`, Fokus gefangen und danach zurückgegeben, Esc, Tipp daneben und Close schließen; ohne Bewegung bei `prefers-reduced-motion`.
+- **Matrix im Fokus** (`.matrix-fokus`): ein Klick auf einen Leader im Zeilen oder Spaltenkopf zeigt nur seine Zeile als nummerierte Tafel je Gegner (Partien, Winrate, im Sitzmodus dazu First und Second, getönt wie die Zellen). Die Spaltenköpfe Games und Win rate sortieren, Win rate ein zweites Mal kehrt die Richtung um, mit `aria-sort`. Show all oder ein zweiter Klick auf den Leader zeigt die ganze Matrix; die Wahl steht als `?leader=` in der Adresse.
+- **Sortierung der Matrix**: Segmentwahl Sort mit Play rate und Win rate. Bei Win rate stehen die Top Leader nach ihrer Winrate gegen das Feld, Zeilen und Spalten in derselben Folge, damit die Diagonale der Spiegel bleibt (`matrixOrdnen` und `fokusOrdnen` in `src/winrate.js`). Die Wahl steht als `&sort=wr` oder `&sort=wr_auf` in der Adresse.
 - **Replaybrett**: Zonen mit Zonennamen, Stapel mit Zahl auf Zahlschleier, Life als hellblaue Striche, Angriffspfeil in Hellem Blau mit dunklem Saum, Pillen mit Rand Linie stark.
 
 ## Do's and Don'ts
@@ -433,8 +461,8 @@ Nur in Fiesta:
 - **Do** Zahlen über Bildern auf Zahlschleier setzen und klebende Zellen deckend tönen (Zebra fest).
 
 ### Don't:
-- **Don't** Grün und Rot einführen, auch nicht für Sieg und Niederlage.
-- **Don't** große Kartenbilder oder Kartenraster bauen; Kartenbilder bleiben 16 bis 36 px, nur das Replaybrett zeigt Karten groß, weil es ein Spieltisch ist.
+- **Don't** Seegrün und Ziegelrot für etwas anderes als eine Winrate nehmen, und keine grellen Ampelfarben einführen.
+- **Don't** große Kartenbilder oder Kartenraster in die Seite bauen; Kartenbilder bleiben 16 bis 36 px. Groß zeigen nur das Replaybrett, weil es ein Spieltisch ist, und die Kartenvorschau, die über der Seite liegt.
 - **Don't** Klassen wie `.feld`, `.karte`, `.mitte`, `.don`, `.partien` oder `.laedt` für eigene Zwecke verwenden; sie gehören der Spielhilfe.
 - **Don't** Text unter 9.5px setzen.
 - **Don't** Art oder Zustand einer Zeile über einen farbigen Strich am linken Rand zeigen; dafür gibt es Etiketten.

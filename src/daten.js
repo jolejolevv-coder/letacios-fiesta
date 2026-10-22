@@ -220,6 +220,19 @@ export function metacoachBasis() {
   return String(env?.VITE_METACOACH || METACOACH_STANDARD).replace(/\/$/, "");
 }
 
+/* Grosse Kartenbilder fuer die Kartenvorschau: GET <Metacoach>/fiesta/bilder/<nr>.jpg, ohne
+   Anmeldung, 600 px breit. Metacoach holt ein fehlendes Bild einmal ueber punk records und
+   behaelt es. Gleiche Form wie die Route dort: Grundnummer, dazu Drucke wie _p1 oder _r1. */
+const GROSSBILD_NR = /^[A-Z]{1,4}\d{0,2}-\d{3}(?:_[pr]\d{1,2})?$/;
+
+/** Adresse des grossen Bildes einer Karte oder null, wenn die Kennung keine Kartennummer ist. */
+export function grossesBild(id) {
+  const ohneX = /^X([A-Z]{2,4}\d{2}-\d{3})$/.exec(String(id ?? ""));
+  const nr = ohneX ? ohneX[1] : String(id ?? "");
+  if (!GROSSBILD_NR.test(nr)) return null;
+  return `${metacoachBasis()}/fiesta/bilder/${nr}.jpg`;
+}
+
 /** Fehler mit Grund, damit die Seite "nicht erreichbar" von "gibt es nicht" trennt. */
 export class MetacoachFehler extends Error {
   constructor(grund, text) {

@@ -511,6 +511,34 @@
         ],
         "oklch": "oklch(78.4% 0.098 29.6)"
       },
+      "gewinnt": {
+        "role": "semantic",
+        "displayName": "Seegrün",
+        "canonical": "#86e0c2",
+        "oklch": "oklch(84.2% 0.097 170.5)",
+        "purpose": "Winrate gewinnt: fett ab 55 %, Tönung der Matrixzelle. Kontrast 11,4:1 auf Karton. Nur für Winrates, getrennt vom Akzent."
+      },
+      "verliert": {
+        "role": "semantic",
+        "displayName": "Ziegelrot",
+        "canonical": "#f0917c",
+        "oklch": "oklch(75.1% 0.120 33.3)",
+        "purpose": "Winrate verliert: unter 45 %, Tönung der Matrixzelle. Kontrast 7,7:1 auf Karton, dunkler als Seegrün für Rotgrünschwäche."
+      },
+      "gewinnt-ton": {
+        "role": "semantic",
+        "displayName": "Seegrün Tönung",
+        "canonical": "#35b388",
+        "oklch": "oklch(68.8% 0.127 165.7)",
+        "purpose": "Nur als Tönung hinter einer gewinnenden Winrate, höchstens 28 % Deckung."
+      },
+      "verliert-ton": {
+        "role": "semantic",
+        "displayName": "Ziegelrot Tönung",
+        "canonical": "#d65a44",
+        "oklch": "oklch(62.2% 0.161 32.0)",
+        "purpose": "Nur als Tönung hinter einer verlierenden Winrate, höchstens 28 % Deckung."
+      },
       "schatten-karte": {
         "role": "neutral",
         "displayName": "Kartenschatten",
@@ -893,6 +921,22 @@
       "description": "Platzhalter, wenn ein Kartenbild nicht lädt: gestrichelter Rand, Kartennummer als Etikett.",
       "html": "<span class=\"ds-kb-kaputt\"><span>OP14</span><span>-041</span></span>",
       "css": ".ds-kb-kaputt { display: grid; place-content: center; width: 36px; height: 50px; font: 600 10.5px/1.1 \"Saira Semi Condensed\", ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.02em; color: #8a867e; text-align: center; border: 1px dashed rgba(236, 231, 220, 0.17); border-radius: 3px; overflow: hidden; background: #16181d; } .ds-kb-kaputt span { display: block; white-space: nowrap; }"
+    },
+    {
+      "name": "Winrate Signal",
+      "kind": "custom",
+      "refersTo": "wr gut, wr schwach, ton plus, ton minus",
+      "description": "Winrate in Seegrün fett ab 55 %, in Ziegelrot unter 45 %; Matrixzellen getönt, Stärke wächst mit dem Abstand von 50 %.",
+      "html": "<span class=\"ds-wr ds-gut\" style=\"--t:0.8\">62.3</span> <span class=\"ds-wr\">51.0</span> <span class=\"ds-wr ds-schwach\" style=\"--t:0.75\">38.5</span>",
+      "css": ".ds-wr { display: inline-block; min-width: 56px; padding: 6px 4px; text-align: center; font: 500 14px/1.1 \"Saira Semi Condensed\", ui-sans-serif, system-ui, sans-serif; font-variant-numeric: tabular-nums; color: #aca79c; background: #16181d; } .ds-gut { color: #86e0c2; font-weight: 700; background-image: linear-gradient(rgb(53 179 136 / calc(var(--t) * 0.28)), rgb(53 179 136 / calc(var(--t) * 0.28))); } .ds-schwach { color: #f0917c; background-image: linear-gradient(rgb(214 90 68 / calc(var(--t) * 0.28)), rgb(214 90 68 / calc(var(--t) * 0.28))); }"
+    },
+    {
+      "name": "Kartenvorschau",
+      "kind": "custom",
+      "refersTo": "vorschau",
+      "description": "Karte groß über der Seite: Schleier aus Tischgrund 92 %, 420 px am Schreibtisch, am Handy volle Breite mit 16 px Rand, Kante 3 px, Name und Close darunter. Bild von Metacoach, kleines Bild als Platzhalter.",
+      "html": "<div class=\"ds-vorschau\"><div class=\"ds-vorschau-bild\"></div><div class=\"ds-vorschau-fuss\"><b>Streusen</b><span>Close</span></div></div>",
+      "css": ".ds-vorschau { width: 220px; display: grid; gap: 10px; padding: 16px; background: rgba(5, 6, 8, 0.92); } .ds-vorschau-bild { aspect-ratio: 600 / 838; border-radius: 3px; background: #1c1f25; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5); } .ds-vorschau-fuss { display: flex; justify-content: space-between; align-items: center; font: 600 15px/1.15 \"Saira Semi Condensed\", ui-sans-serif, system-ui, sans-serif; color: #ece7dc; } .ds-vorschau-fuss span { padding: 6px 12px; border: 1px solid rgba(236, 231, 220, 0.17); border-radius: 10px; font-size: 13px; }"
     }
   ],
   "narrative": {
@@ -901,7 +945,7 @@
     "keyCharacteristics": [
       "Nur dunkel, ein Kartonblatt mit Laminatglanz oben, sonst flach.",
       "Eine Rundung für alles (10 px), Kartenbilder 3 px.",
-      "Eine Buntfarbe, Turn Order Blau; Stroh nur im Sombrero.",
+      "Eine Buntfarbe für die Oberfläche, Turn Order Blau; Stroh nur im Sombrero; Seegrün und Ziegelrot nur als Signal für Winrates.",
       "Saira Semi Condensed für Marke, Titel, Labels und jede Zahl; Source Sans 3 für Sätze.",
       "Nummerierte Tafeln mit Zebra, Werte rechtsbündig in Tabellenziffern.",
       "Details auf der Rückseite der Zeile statt in einer neuen Ansicht."
@@ -909,7 +953,12 @@
     "rules": [
       {
         "name": "The One Blue Rule",
-        "body": "Turn Order Blau ist die einzige Buntfarbe der Oberfläche; Stroh gehört nur dem Sombrero. Gut und schlecht stehen nie in Grün und Rot: eine Winrate ist fett in Papierweiß ab 55 %, normal in Bleistift dazwischen und blass unter 45 % (`wrKlasse` in `App.jsx`, Konstanten `GUT` und `SCHWACH`), das Rating im Ranking fett ab 8,5 und blass unter 7. Die Matrix hat keine Farbflächen, der Spiegel trägt einen Rahmenring; W ist ein blaues Etikett, L ein graues.",
+        "body": "Turn Order Blau ist die einzige Buntfarbe der Bedienung; Stroh gehört nur dem Sombrero. Knöpfe, Auswahl, Fokus, Etiketten und Kurven bleiben blau oder Papierweiß. W ist ein blaues Etikett, L ein graues.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Signals Rule",
+        "body": "Gut und schlecht einer Winrate stehen in Seegrün (#86e0c2) und Ziegelrot (#f0917c), sonst nirgends: ab 55 % fett in Seegrün, unter 45 % in Ziegelrot, dazwischen Bleistift (wrKlasse und ton in src/winrate.js). Ohne Wert Blasser Druck, nie Rot. Die Matrix tönt jede Zelle mit in den Mitteltönen #35b388 und #d65a44 mit höchstens 28 % Deckung, die Stärke wächst mit dem Abstand von 50 % und ist ab 12 Punkten voll; der Spiegel trägt einen Rahmenring. Das Rating im Ranking ist keine Winrate und bleibt fett ab 8,5 und blass unter 7.",
         "section": "colors"
       },
       {
@@ -945,8 +994,8 @@
       "**Do** Zahlen über Bildern auf Zahlschleier setzen und klebende Zellen deckend tönen (Zebra fest)."
     ],
     "donts": [
-      "**Don't** Grün und Rot einführen, auch nicht für Sieg und Niederlage.",
-      "**Don't** große Kartenbilder oder Kartenraster bauen; Kartenbilder bleiben 16 bis 36 px, nur das Replaybrett zeigt Karten groß, weil es ein Spieltisch ist.",
+      "**Don't** Seegrün und Ziegelrot für etwas anderes als eine Winrate nehmen, und keine grellen Ampelfarben einführen.",
+      "**Don't** große Kartenbilder oder Kartenraster in die Seite bauen; Kartenbilder bleiben 16 bis 36 px. Groß zeigen nur das Replaybrett und die Kartenvorschau, die über der Seite liegt.",
       "**Don't** Klassen wie `.feld`, `.karte`, `.mitte`, `.don`, `.partien` oder `.laedt` für eigene Zwecke verwenden; sie gehören der Spielhilfe.",
       "**Don't** Text unter 9.5px setzen.",
       "**Don't** Art oder Zustand einer Zeile über einen farbigen Strich am linken Rand zeigen; dafür gibt es Etiketten."

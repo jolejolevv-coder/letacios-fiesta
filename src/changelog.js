@@ -6,6 +6,9 @@ export const CHANGELOG = [
   {
     tag: "2026-10-22",
     punkte: [
+      "Tap a card in an open deck list, in the Guide or in the Mulligan tab to see it large and read its text.",
+      "The matrix shows win rates in color again, green for winning and red for losing, stronger the further from 50 %. Tap a leader to see only its matchups, and sort by win rate or games.",
+      "Guide: every turn and the mulligan can flip to show the evidence, with the next best play, the attack line and the defense by life.",
       "New look for every tab: Fiesta now reads like the quick reference card of Metacoach, with numbered rows, small card strips with the full list on the back, a calmer matrix, the top three leaders per player on the leaderboard and the Analyze tab leading with your win chance and decisions.",
       "New Guide tab: pick a leader, an opponent and your seat, and see in plain sentences how to mulligan, what to play in turns 1 to 7, where to attack, when to counter, and what top players do differently.",
       "New Analyze my replay tab: open the log of one of your own games from OPTCGSim and get the same analysis as on replays, with your accuracy, the win chance over the game and a grade at every decision. The log stays in your browser and is never uploaded.",

@@ -28,6 +28,13 @@
   --rueck-linie: rgba(147, 179, 243, 0.2);
   --rueck-linie-leise: rgba(147, 179, 243, 0.08);
   --fehler: #f1a194;
+  /* Zwei Signalfarben fuer Winrates (The Two Signals Rule), getrennt vom Akzent. */
+  --gewinnt: #86e0c2;
+  --verliert: #f0917c;
+  /* Toenung aus satteren Mitteltoenen derselben Farbe: kraeftiger, ohne die Schrift zu schlucken. */
+  --gewinnt-ton: 53 179 136;      /* #35b388 */
+  --verliert-ton: 214 90 68;      /* #d65a44 */
+  --ton-max: 0.28;
   --auf-akzent: #ffffff;
   --r: 10px;
   --kopf-font: "Saira Semi Condensed", ui-sans-serif, system-ui, sans-serif;
@@ -1016,10 +1023,13 @@ input[type="date"].feld {
   color: var(--text-2);
 }
 .wr.gut {
-  color: var(--text);
+  color: var(--gewinnt);
   font-weight: 600;
 }
 .wr.schwach {
+  color: var(--verliert);
+}
+.wr.leer {
   color: var(--text-3);
 }
 .tafel .rueck-blatt {
@@ -2411,11 +2421,11 @@ input[type="date"].feld {
   width: 66px; min-width: 66px; text-align: center; padding: 6px 4px; cursor: pointer;
   font: 500 14px/1.1 var(--kopf-font); color: var(--text-2);
 }
-.matrix td.gut { color: var(--text); font-weight: 700; }
-.matrix td.schwach { color: var(--text-3); }
+.matrix td.gut { color: var(--gewinnt); font-weight: 700; }
+.matrix td.schwach { color: var(--verliert); }
 .matrix td.leer { color: var(--text-3); opacity: 0.6; }
 .matrix td.spiegel { box-shadow: inset 0 0 0 1px var(--linie-stark); }
-.matrix td:hover { background: var(--hover) !important; color: var(--text); }
+.matrix td:hover { background-color: var(--hover) !important; }
 .matrix tbody tr:hover th { background: var(--karton-hoch); }
 
 /* ------------------------------------------------------------- Ladder */
@@ -2746,8 +2756,9 @@ button { color: inherit; }
 .matrix td .sitze-zelle { display: grid; gap: 2px; font-size: 12.5px; line-height: 1; }
 .matrix td .sitze-zelle span { white-space: nowrap; }
 .matrix td .sitze-zelle i { font-style: normal; color: var(--text-3); font-weight: 500; margin-right: 3px; }
-.matrix td .sitze-zelle .gut { color: var(--text); font-weight: 700; }
-.matrix td .sitze-zelle .schwach { color: var(--text-3); }
+.matrix td .sitze-zelle .gut { color: var(--gewinnt); font-weight: 700; }
+.matrix td .sitze-zelle .schwach { color: var(--verliert); }
+.matrix td .sitze-zelle .ton { padding: 2px 4px; border-radius: 3px; }
 
 /* ------------------------------------------------------------ Changelog */
 .chronik { list-style: none; margin: 0; padding: 0; max-width: 820px; }
@@ -3080,4 +3091,101 @@ button { color: inherit; }
 @media (max-width: 760px) {
   .tab .name .rolle { margin-left: 0; margin-top: 3px; display: table; }
   .tab .name small { margin-left: 6px; }
+}
+
+/* ------------------------------------------------ Signalfarben der Winrate
+   Toenung als Hintergrundbild, damit das Zebra darunter stehen bleibt. Staerke --t von 0
+   bis 1 aus src/winrate.js, hoechstens --ton-max (28 %) Deckung: so bleibt die Schrift in beiden
+   Farben auf Karton, Zebra und Hover bei mindestens 4.9:1 (WCAG AA). */
+.ton.plus { background-image: linear-gradient(rgb(var(--gewinnt-ton) / calc(var(--t, 0) * var(--ton-max))), rgb(var(--gewinnt-ton) / calc(var(--t, 0) * var(--ton-max)))); }
+.ton.minus { background-image: linear-gradient(rgb(var(--verliert-ton) / calc(var(--t, 0) * var(--ton-max))), rgb(var(--verliert-ton) / calc(var(--t, 0) * var(--ton-max)))); }
+
+/* ------------------------------------------------------- Matrix: Fokus */
+.matrix-leader {
+  all: unset; box-sizing: border-box; display: block; width: 100%; cursor: pointer; border-radius: var(--r);
+}
+.matrix-leader:hover .kopfname, .matrix-leader:hover b { color: var(--akzent-hell); }
+.matrix-leader:focus-visible { outline: 2px solid var(--akzent-hell); outline-offset: 2px; }
+.matrix-fokus { border-top: 1px solid var(--linie-stark); }
+.fokus-kopf {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px;
+  padding: 12px 10px; border-bottom: 1px solid var(--linie-stark);
+}
+.fokus-kopf .matrix-leader {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 0 12px; align-items: center;
+  width: auto; flex: 1 1 260px; min-width: 0;
+}
+.fokus-kopf .matrix-leader b { display: block; font: 600 17px/1.15 var(--kopf-font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fokus-kopf .matrix-leader small { display: block; margin-top: 3px; font: 500 12.5px/1.2 var(--kopf-font); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.fokus-kopf .matrix-leader small .wr { font-size: inherit; }
+.tafel-spalten.fokus, .fokus .vorn {
+  grid-template-columns: 26px 26px minmax(0, 1fr) 70px 84px;
+  gap: 0 14px;
+}
+.tafel-spalten.fokus.sitze, .fokus.sitze .vorn { grid-template-columns: 26px 26px minmax(0, 1fr) 70px 84px 84px 84px; }
+.tafel-spalten.fokus button {
+  all: unset; cursor: pointer; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit;
+}
+.tafel-spalten.fokus button:hover, .tafel-spalten.fokus button[data-sortiert] { color: var(--akzent-hell); }
+.tafel-spalten.fokus button:focus-visible { outline: 2px solid var(--akzent-hell); outline-offset: 2px; border-radius: 3px; }
+.tafel-spalten.fokus { margin-top: 10px; }
+.fokus .name { min-width: 0; }
+.fokus .name b { display: block; font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fokus .zahlzelle.z-wr, .fokus .zahlzelle.z-first, .fokus .zahlzelle.z-second {
+  font: 500 14.5px/1 var(--kopf-font); color: var(--text-2); padding: 6px 8px; border-radius: 3px;
+}
+.fokus .zahlzelle.gut { color: var(--gewinnt); font-weight: 700; }
+.fokus .zahlzelle.schwach { color: var(--verliert); }
+.fokus .zahlzelle.leer { color: var(--text-3); }
+.fokus .zeile.spiegel > .vorn { box-shadow: inset 0 0 0 1px var(--linie-stark); }
+@media (max-width: 760px) {
+  .tafel-spalten.fokus { display: grid; }
+  .tafel.fokus .vorn { grid-template-areas: none; }
+  .tafel.fokus .vorn > *, .tafel.fokus .vorn > .nr, .tafel.fokus .vorn > .kb-rahmen { grid-area: auto; grid-row: 1; align-self: center; padding-top: 0; }
+  .tafel-spalten.fokus, .fokus .vorn { grid-template-columns: 20px 26px minmax(0, 1fr) 52px 70px; gap: 0 8px; padding-left: 6px; padding-right: 6px; }
+  .tafel-spalten.fokus.sitze, .fokus.sitze .vorn { grid-template-columns: 20px 26px minmax(0, 1fr) 0 58px 58px 58px; gap: 0 6px; }
+  .fokus.sitze .vorn > .z-partien, .tafel-spalten.fokus.sitze > :nth-child(4) { visibility: hidden; overflow: hidden; }
+  .fokus .zahlzelle.z-partien { font-size: 12.5px; color: var(--text-3); }
+  .fokus .zahlzelle.z-wr, .fokus .zahlzelle.z-first, .fokus .zahlzelle.z-second { padding: 6px 5px; font-size: 13.5px; }
+}
+
+/* --------------------------------------------------------- Kartenvorschau
+   Ein Tipp auf ein Kartenbild zeigt die Karte gross: zentriert auf dunklem Schleier, am
+   Handy volle Breite mit 16 px Rand, am Schreibtisch 420 px. Das kleine Bild steht
+   vergroessert darunter, bis das grosse von Metacoach geladen ist. */
+.kb-knopf {
+  padding: 0; border: 0; background: none; cursor: zoom-in; position: relative; display: inline-block;
+  font: inherit; color: inherit;
+}
+.kb-knopf::after { content: ""; position: absolute; inset: -6px; }
+.kb-knopf:hover { box-shadow: 0 0 0 1px var(--akzent-hell); }
+.kb-knopf:focus-visible { outline: 2px solid var(--akzent-hell); outline-offset: 2px; }
+.vorschau-schleier {
+  position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px;
+  background: rgba(5, 6, 8, 0.92); animation: vorschau-auf var(--dauer) var(--kurve);
+}
+.vorschau {
+  width: min(420px, 100%, calc((100dvh - 120px) * 600 / 838)); min-width: min(260px, 100%);
+  display: grid; gap: 10px; animation: vorschau-heben var(--dauer) var(--kurve);
+}
+.vorschau-bild {
+  position: relative; aspect-ratio: 600 / 838; border-radius: 3px; overflow: hidden;
+  background: var(--karton); box-shadow: 0 18px 50px var(--schatten-karte, rgba(0, 0, 0, 0.5));
+}
+.vorschau-bild img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.vorschau-bild .platzhalter { image-rendering: auto; filter: blur(0.6px); }
+.vorschau-bild .gross { opacity: 0; transition: opacity var(--dauer) var(--kurve); }
+.vorschau-bild.da .gross { opacity: 1; }
+.vorschau-bild.fehlt .gross { display: none; }
+.vorschau-bild.fehlt .platzhalter { filter: none; }
+.vorschau-fuss { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.vorschau-name { min-width: 0; }
+.vorschau-name b { display: block; font: 600 17px/1.15 var(--kopf-font); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vorschau-name small { display: block; margin-top: 2px; font: 500 12.5px/1.2 var(--kopf-font); color: var(--text-3); letter-spacing: 0.02em; }
+.vorschau-hinweis { margin: 0; font-size: 13px; line-height: 1.4; color: var(--text-2); }
+@keyframes vorschau-auf { from { opacity: 0; } to { opacity: 1; } }
+@keyframes vorschau-heben { from { transform: translateY(8px) scale(0.98); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .vorschau-schleier, .vorschau { animation: none; }
+  .vorschau-bild .gross { transition: none; }
 }

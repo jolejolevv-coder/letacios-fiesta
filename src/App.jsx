@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import gsap from "gsap";
 import Sombrero from "./Sombrero.jsx";
 import {
@@ -6,8 +7,10 @@ import {
   anzahl,
   bildpfad,
   deckSchluessel,
+  grossesBild,
   holen,
   kartenLaden,
+  KARTE,
   kennung,
   metacoachHolen,
   satzLaden,
@@ -25,6 +28,7 @@ import { eigeneNummer, partieLesen } from "./zuglager.js";
 import { netzBauen } from "./wertnetz.js";
 import { NOTENFOLGE, partieAnalysieren } from "./spielbewertung.js";
 import { CHANGELOG } from "./changelog.js";
+import { fokusOrdnen, GUT, matrixOrdnen, SCHWACH, seite as wrSeite, sortAusText, ton as wrTon, wrKlasse } from "./winrate.js";
 import { ankerBauen, fehlerSuchen, FEHLERNOTEN, kurveBauen, markenBauen, spielerZuordnen } from "./analyse.js";
 
 /* --------------------------------------------------------------------------
@@ -32,7 +36,7 @@ import { ankerBauen, fehlerSuchen, FEHLERNOTEN, kurveBauen, markenBauen, spieler
 
    Gestaltet nach der Spielhilfe von Metacoach (DESIGN.md): nummerierte Zeilen mit
    Zebra, Zahlen rechtsbuendig in Saira, eine Akzentfarbe. Gut und schlecht stehen in
-   Gewicht und Helligkeit, nie in Gruen und Rot.
+   Gewicht und in zwei gedaempften Signalfarben, Seegruen und Ziegelrot (src/winrate.js).
    -------------------------------------------------------------------------- */
 
 const proz = (w, g) => (g > 0 ? (100 * w) / g : 0);
@@ -47,11 +51,8 @@ const datumKurz = (iso) => (iso ? new Date(String(iso).slice(0, 10) + "T12:00:00
 /** Standardfehler einer Winrate in Prozentpunkten. Ehrlicher als die blosse Zahl. */
 const fehler = (g) => (g > 0 ? 100 * Math.sqrt(0.25 / g) : 0);
 
-/* Fett ab 55 %, blass unter 45 % (The One Blue Rule). */
-const GUT = 55;
-const SCHWACH = 45;
-const wrKlasse = (wr) => (wr >= GUT ? "wr gut" : wr < SCHWACH ? "wr schwach" : "wr");
-const wrKlasseWG = (w, g) => (g > 0 ? wrKlasse(proz(w, g)) : "wr schwach");
+/* Fett und Seegruen ab 55 %, Ziegelrot unter 45 % (The Two Signals Rule, src/winrate.js). */
+const wrKlasseWG = (w, g) => (g > 0 ? wrKlasse(proz(w, g)) : "wr leer");
 
 /* Kartenbilder liegen 120 auf 167 Pixel vor. */
 const BILD_B = 120;
@@ -133,13 +134,125 @@ function Bild({ id, className = "", alt = "", breite, hoehe }) {
   );
 }
 
-/** Kartenbild klein im Rahmenring, wie das Kartensymbol auf einer Spielhilfe. */
-function Kartenbild({ id, breite = 26, alt = "" }) {
+/** Kartenbild klein im Rahmenring, wie das Kartensymbol auf einer Spielhilfe.
+ *  Mit `vorschau` ist es ein Knopf, der die Karte gross zeigt (Kartenvorschau). */
+function Kartenbild({ id, breite = 26, alt = "", vorschau = false, name = "" }) {
   const hoehe = Math.round((breite * BILD_H) / BILD_B);
+  const oeffnen = useContext(VorschauKontext);
+  if (vorschau && oeffnen && grossesBild(id)) {
+    return (
+      <button type="button" className="kb-rahmen kb-knopf" style={{ width: breite, height: hoehe }}
+              aria-label={"Show " + (name || id) + " large"} aria-haspopup="dialog"
+              onClick={(e) => { e.stopPropagation(); oeffnen(id, name || id, e.currentTarget); }}>
+        <Bild id={id} className="kb" breite={breite} hoehe={hoehe} />
+      </button>
+    );
+  }
   return (
     <span className="kb-rahmen" style={{ width: breite, height: hoehe }} aria-hidden={alt ? undefined : "true"}>
       <Bild id={id} className="kb" alt={alt} breite={breite} hoehe={hoehe} />
     </span>
+  );
+}
+
+/* --------------------------------------------------------------------------
+   Kartenvorschau: ein Tipp auf ein Kartenbild zeigt die Karte gross, damit man den Text
+   lesen kann. Das grosse Bild kommt von Metacoach (grossesBild in daten.js); bis es da ist,
+   steht das kleine Bild vergroessert als Platzhalter. Faellt Metacoach aus, bleibt es dabei.
+   -------------------------------------------------------------------------- */
+
+const VorschauKontext = createContext(null);
+const FOKUSSIERBAR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+function Kartenvorschau({ karte, schliessen }) {
+  const [zustand, setZustand] = useState("laedt");   // "laedt", "da", "fehlt"
+  const dialogRef = useRef(null);
+  const knopfRef = useRef(null);
+  const quelle = grossesBild(karte.id);
+
+  useEffect(() => {
+    setZustand("laedt");
+  }, [karte.id]);
+
+  useEffect(() => {
+    knopfRef.current?.focus();
+    const vorher = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const taste = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        schliessen();
+        return;
+      }
+      if (e.key !== "Tab" || !dialogRef.current) return;
+      // Fokus fangen: Tab und Umschalt+Tab bleiben im Dialog.
+      const ziele = [...dialogRef.current.querySelectorAll(FOKUSSIERBAR)];
+      if (!ziele.length) return;
+      const erstes = ziele[0];
+      const letztes = ziele[ziele.length - 1];
+      if (e.shiftKey && document.activeElement === erstes) {
+        e.preventDefault();
+        letztes.focus();
+      } else if (!e.shiftKey && document.activeElement === letztes) {
+        e.preventDefault();
+        erstes.focus();
+      } else if (!dialogRef.current.contains(document.activeElement)) {
+        e.preventDefault();
+        erstes.focus();
+      }
+    };
+    document.addEventListener("keydown", taste);
+    return () => {
+      document.removeEventListener("keydown", taste);
+      document.body.style.overflow = vorher;
+    };
+  }, [schliessen]);
+
+  return createPortal(
+    <div className="vorschau-schleier" onClick={(e) => { if (e.target === e.currentTarget) schliessen(); }}>
+      <div ref={dialogRef} className="vorschau" role="dialog" aria-modal="true" aria-labelledby="vorschau-titel">
+        <div className={"vorschau-bild " + zustand}>
+          <img className="platzhalter" src={bildpfad(karte.id)} alt="" aria-hidden="true" />
+          {quelle ? (
+            <img className="gross" src={quelle} alt={karte.name} decoding="async"
+                 onLoad={() => setZustand("da")} onError={() => setZustand("fehlt")} />
+          ) : null}
+        </div>
+        <div className="vorschau-fuss">
+          <span className="vorschau-name" id="vorschau-titel">
+            <b>{karte.name}</b>
+            {karte.name !== karte.id ? <small>{karte.id}</small> : null}
+          </span>
+          <button ref={knopfRef} type="button" className="knopf rand" onClick={schliessen}>Close</button>
+        </div>
+        {zustand === "fehlt" || !quelle ? (
+          <p className="vorschau-hinweis" role="status">Large image unavailable right now, showing the small one.</p>
+        ) : zustand === "laedt" ? <span className="nur-sr" role="status">Loading the large image</span> : null}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/** Haelt die offene Karte und gibt den Fokus nach dem Schliessen an den Ausloeser zurueck. */
+function VorschauBuehne({ children }) {
+  const [karte, setKarte] = useState(null);
+  const ausloeser = useRef(null);
+  const oeffnen = useCallback((id, name, element) => {
+    ausloeser.current = element || null;
+    setKarte({ id, name });
+  }, []);
+  const schliessen = useCallback(() => {
+    setKarte(null);
+    const ziel = ausloeser.current;
+    ausloeser.current = null;
+    if (ziel && document.contains(ziel)) requestAnimationFrame(() => ziel.focus());
+  }, []);
+  return (
+    <VorschauKontext.Provider value={oeffnen}>
+      {children}
+      {karte ? <Kartenvorschau karte={karte} schliessen={schliessen} /> : null}
+    </VorschauKontext.Provider>
   );
 }
 
@@ -304,7 +417,7 @@ function Decktabellen({ eintraege, namen }) {
         {stueck.map((t, i) => (
           <tr key={t.id + i}>
             <td className="anz">{t.n}</td>
-            <td className="bildzelle"><Kartenbild id={t.id} breite={24} /></td>
+            <td className="bildzelle"><Kartenbild id={t.id} breite={24} vorschau name={(namen[t.id] || {}).n || t.id} /></td>
             <td className="name"><b>{(namen[t.id] || {}).n || t.id}</b><small>{t.id}</small></td>
           </tr>
         ))}
@@ -470,7 +583,7 @@ function Deckzeile({ nr, liste, leaderId, spielerIndex, namen }) {
             const n = anzahl(e);
             return (
               <span key={id + i} className="karte-klein" title={(namen[id] || {}).n || id}>
-                <Kartenbild id={id} breite={20} />
+                <Kartenbild id={id} breite={20} vorschau={offen} name={(namen[id] || {}).n || id} />
                 {n > 1 ? <b>{n}</b> : null}
               </span>
             );
@@ -581,25 +694,128 @@ function Matchups({ leader, mindest, namen, sortiert, setSortiert }) {
 }
 
 /* --------------------------------------------------------------------------
-   Matchupmatrix: ohne Gruen und Rot, fett ab 55 %, blass unter 45 %, der Spiegel
-   mit Rahmen.
+   Matchupmatrix: Zellen in Seegruen und Ziegelrot getoent, die Staerke waechst mit dem
+   Abstand von 50 % (src/winrate.js); fett ab 55 %, der Spiegel mit Rahmen. Ein Klick auf
+   einen Leader im Kopf zeigt nur noch dessen Zeile als Liste je Gegner (Fokus).
    -------------------------------------------------------------------------- */
 
-function zellKlasse(wr) {
-  return wr >= GUT ? "gut" : wr < SCHWACH ? "schwach" : "";
+/** Klasse und Stil einer getoenten Zahl; `zusatz` sind weitere Klassen. */
+function getoent(wr, zusatz = "") {
+  const t = wrTon(wr);
+  const klasse = [zusatz, wrSeite(wr), t.richtung ? "ton " + t.richtung : ""].filter(Boolean).join(" ");
+  return { className: klasse, style: t.richtung ? { "--t": t.staerke } : undefined };
 }
 
-function Matrix({ satz, top, mindest, namen, sitzModus, setSitzModus }) {
+/** Name und Bild eines Leaders als Knopf, der die Matrix auf ihn stellt oder zurueck. */
+function MatrixLeader({ id, name, gewaehlt, waehlen, children }) {
+  return (
+    <button type="button" className="matrix-leader" aria-pressed={gewaehlt}
+            title={gewaehlt ? "Show all leaders" : "Show only " + name}
+            onClick={() => waehlen(gewaehlt ? null : id)}>
+      {children}
+    </button>
+  );
+}
+
+/* Spaltenkopf im Fokus, der die Sortierung umschaltet; aria-sort sagt die Richtung an. */
+function FokusKopf({ text, an, richtung, umschalten }) {
+  return (
+    <span className="rechts" role="columnheader" aria-sort={an ? richtung : "none"}>
+      <button type="button" data-sortiert={an ? (richtung === "descending" ? "ab" : "auf") : undefined}
+              onClick={umschalten}>
+        {text}
+      </button>
+    </span>
+  );
+}
+
+function MatrixFokus({ eintrag, satz, mindest, namen, sitzModus, setFokus, sort, setSort }) {
+  const id = kennung(eintrag.id);
+  const name = (k) => (namen[k] || {}).n || k;
+  const zeilen = useMemo(() => {
+    const r = (eintrag.gegner || [])
+      .map((g) => ({ ...g, id: kennung(g.id) }))
+      .filter((g) => g.m >= mindest && satz.leader.some((e) => kennung(e.id) === g.id));
+    return fokusOrdnen(r, sort);
+  }, [eintrag, satz, mindest, sort]);
+  const nachWr = sort === "wr" || sort === "wr_auf";
+  const g = eintrag.w + eintrag.l;
+  return (
+    <div className="matrix-fokus">
+      <div className="fokus-kopf">
+        <MatrixLeader id={id} name={name(id)} gewaehlt waehlen={setFokus}>
+          <Kartenbild id={id} breite={30} />
+          <span className="kn" style={{ minWidth: 0 }}>
+            <b>{name(id)}</b>
+            <small>{id} · {fmtZahl(g)} games · <span {...getoent(proz(eintrag.w, g), "wr")}>{fmtProz(eintrag.w, g)}</span></small>
+          </span>
+        </MatrixLeader>
+        <button type="button" className="knopf rand" onClick={() => setFokus(null)}>Show all</button>
+      </div>
+      {!zeilen.length ? <p className="leer-satz">No opponent reaches {mindest} games.</p> : (
+        <>
+          <div className={"tafel-spalten spalten fokus" + (sitzModus ? " sitze" : "")} role="row">
+            <span role="columnheader">Nr</span><span role="columnheader" /><span role="columnheader">Opponent</span>
+            <FokusKopf text="Games" an={!nachWr} richtung="descending" umschalten={() => setSort("partien")} />
+            <FokusKopf text="Win rate" an={nachWr} richtung={sort === "wr_auf" ? "ascending" : "descending"}
+                       umschalten={() => setSort(sort === "wr" ? "wr_auf" : "wr")} />
+            {sitzModus ? <><span className="rechts" role="columnheader">First</span><span className="rechts" role="columnheader">Second</span></> : null}
+          </div>
+          <ol className={"tafel fokus" + (sitzModus ? " sitze" : "")}>
+            {zeilen.map((r, i) => {
+              const spiegel = r.id === id;
+              const zahl = (w, n, k, label) => {
+                const ok = n > 0;
+                const t = ok ? getoent(proz(w, n), "z zahlzelle " + k) : { className: "z zahlzelle leer " + k };
+                return <span {...t} data-label={label}>{ok ? fmtProz(w, n) : "–"}</span>;
+              };
+              return (
+                <li key={r.id} className={"zeile" + (spiegel ? " spiegel" : "")}>
+                  <div className="vorn still">
+                    <span className="nr">{nr2(i + 1)}</span>
+                    <Kartenbild id={r.id} breite={26} />
+                    <span className="name gegner">
+                      <b>{name(r.id)}</b>
+                      <span className="kartennr">{r.id}{spiegel ? " · mirror" : ""}</span>
+                    </span>
+                    <span className="z zahlzelle z-partien" data-label="Games">{fmtZahl(r.m)}</span>
+                    {zahl(r.w, r.m, "z-wr", "Win rate")}
+                    {sitzModus ? (
+                      <>
+                        {zahl(r.fw, r.fw + r.fl, "z-first", "First")}
+                        {zahl(r.sw, r.sw + r.sl, "z-second", "Second")}
+                      </>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Matrix({ satz, top, mindest, namen, sitzModus, setSitzModus, fokus, setFokus, sort, setSort }) {
   const leader = useMemo(
-    () => satz.leader.filter((e) => e.listen.length > 0).slice(0, top),
-    [satz, top]
+    () => matrixOrdnen(satz.leader.filter((e) => e.listen.length > 0), top, sort),
+    [satz, top, sort]
   );
   const nachschlag = useMemo(() => {
     const m = new Map();
     for (const e of leader) m.set(e.id, new Map(e.gegner.map((g) => [g.id, g])));
     return m;
   }, [leader]);
+  const fokusEintrag = useMemo(
+    () => (fokus ? satz.leader.find((e) => kennung(e.id) === fokus) || null : null),
+    [satz, fokus]
+  );
 
+  if (fokusEintrag) {
+    return <MatrixFokus eintrag={fokusEintrag} satz={satz} mindest={mindest} namen={namen}
+                        sitzModus={sitzModus} setFokus={setFokus} sort={sort} setSort={setSort} />;
+  }
   if (!leader.length) {
     return <p className="leer-satz">No data in this range.</p>;
   }
@@ -614,8 +830,10 @@ function Matrix({ satz, top, mindest, namen, sitzModus, setSitzModus }) {
             <th className="ecke" scope="col"><span className="lang-ecke">Row beats column</span></th>
             {leader.map((e) => (
               <th key={e.id} scope="col" title={name(e.id)}>
-                <Kartenbild id={kennung(e.id)} breite={24} />
-                <span className="kopfname">{name(e.id).slice(0, 13)}</span>
+                <MatrixLeader id={kennung(e.id)} name={name(e.id)} gewaehlt={false} waehlen={setFokus}>
+                  <Kartenbild id={kennung(e.id)} breite={24} />
+                  <span className="kopfname">{name(e.id).slice(0, 13)}</span>
+                </MatrixLeader>
               </th>
             ))}
           </tr>
@@ -626,28 +844,30 @@ function Matrix({ satz, top, mindest, namen, sitzModus, setSitzModus }) {
             return (
               <tr key={zeile.id}>
                 <th scope="row">
-                  <span className="kopfzeile">
-                    <span className="nr">{nr2(i + 1)}</span>
-                    <Kartenbild id={kennung(zeile.id)} breite={26} />
-                    <span className="kn" style={{ minWidth: 0 }}>
-                      <b>{name(zeile.id)}</b>
-                      <small>{kennung(zeile.id)} · {fmtProz(zeile.w, g)}</small>
+                  <MatrixLeader id={kennung(zeile.id)} name={name(zeile.id)} gewaehlt={false} waehlen={setFokus}>
+                    <span className="kopfzeile">
+                      <span className="nr">{nr2(i + 1)}</span>
+                      <Kartenbild id={kennung(zeile.id)} breite={26} />
+                      <span className="kn" style={{ minWidth: 0 }}>
+                        <b>{name(zeile.id)}</b>
+                        <small>{kennung(zeile.id)} · {fmtProz(zeile.w, g)}</small>
+                      </span>
                     </span>
-                  </span>
+                  </MatrixLeader>
                 </th>
                 {leader.map((spalte) => {
                   const treffer = (nachschlag.get(zeile.id) || new Map()).get(spalte.id);
                   const partien = treffer ? treffer.m : 0;
                   const wr = treffer ? proz(treffer.w, treffer.m) : 0;
                   const genug = partien >= mindest;
-                  const spiegel = spalte.id === zeile.id ? " spiegel" : "";
+                  const spiegel = spalte.id === zeile.id ? "spiegel" : "";
                   const titel = genug
                     ? fmtZahl(partien) + " games. Click to switch the whole matrix " +
                       (sitzModus ? "back to the overall rate." : "to first and second.")
                     : "too few games";
                   if (!genug) {
                     return (
-                      <td key={spalte.id} className={"leer" + spiegel} title={titel}
+                      <td key={spalte.id} className={"leer " + spiegel} title={titel}
                           onClick={() => setSitzModus(!sitzModus)}>–</td>
                     );
                   }
@@ -655,17 +875,17 @@ function Matrix({ satz, top, mindest, namen, sitzModus, setSitzModus }) {
                     const f = proz(treffer.fw, treffer.fw + treffer.fl);
                     const s = proz(treffer.sw, treffer.sw + treffer.sl);
                     return (
-                      <td key={spalte.id} className={spiegel.trim()} title={titel}
+                      <td key={spalte.id} className={spiegel} title={titel}
                           onClick={() => setSitzModus(!sitzModus)}>
                         <span className="sitze-zelle">
-                          <span className={zellKlasse(f)}><i>1st</i>{f.toFixed(1)}</span>
-                          <span className={zellKlasse(s)}><i>2nd</i>{s.toFixed(1)}</span>
+                          <span {...getoent(f)}><i>1st</i>{f.toFixed(1)}</span>
+                          <span {...getoent(s)}><i>2nd</i>{s.toFixed(1)}</span>
                         </span>
                       </td>
                     );
                   }
                   return (
-                    <td key={spalte.id} className={zellKlasse(wr) + spiegel} title={titel}
+                    <td key={spalte.id} {...getoent(wr, spiegel)} title={titel}
                         onClick={() => setSitzModus(!sitzModus)}>
                       {wr.toFixed(1)}
                     </td>
@@ -787,8 +1007,8 @@ function Rangliste({ satz, namen }) {
         </ol>
         <p className="lesart">
           The rating follows the published power rankings: mostly how often a leader is played, a little its win
-          rate. <b>Bold</b> rating from {RATING_STARK}, pale under {RATING_MITTEL}; bold win rate from {GUT} %,
-          pale under {SCHWACH} %. The bar shows the share against the most played leader.
+          rate. <b>Bold</b> rating from {RATING_STARK}, pale under {RATING_MITTEL}; win rate in{" "}
+          <span className="wr gut">green and bold</span> from {GUT} %, <span className="wr schwach">red</span> under {SCHWACH} %. The bar shows the share against the most played leader.
         </p>
       </Abschnitt>
     </>
@@ -895,7 +1115,7 @@ function Bestenliste({ daten, namen, oeffnen }) {
                     <>
                       <Zelle k="z-partien" label="Games" wert={e.partien == null ? "–" : fmtZahl(e.partien)} />
                       <Zelle k="z-wr" label="Win rate" wert={e.partien ? e.wr.toFixed(1) + " %" : "–"}
-                             klasse={e.partien ? wrKlasse(e.wr) : "wr schwach"} />
+                             klasse={e.partien ? wrKlasse(e.wr) : "wr leer"} />
                       <Zelle k="z-zeit" label="Time" wert={e.partien == null ? "–" : stunden(e.spielzeit || 0)} />
                     </>
                   ) : null}
@@ -907,7 +1127,7 @@ function Bestenliste({ daten, namen, oeffnen }) {
                         <span key={l.leader + j} className={"eintrag" + (j ? " neben" : "")} title={nm}>
                           <Kartenbild id={l.leader} breite={24} />
                           {j === 0 ? <b>{nm}</b> : null}
-                          <span className={"z " + (wr == null ? "wr" : wrKlasse(wr))}>
+                          <span className={"z " + wrKlasse(wr)}>
                             {wr == null ? "" : wr.toFixed(1) + " %"}
                           </span>
                         </span>
@@ -1739,12 +1959,12 @@ function MulliganJeGegner({ leaderId, namen }) {
             {karten.map((k, i) => {
               const keep = k.abstand !== null && k.abstand >= MULLIGAN_ABSTAND;
               const mull = k.abstand !== null && k.abstand <= -MULLIGAN_ABSTAND;
-              const kl = (an) => (k.abstand === null ? "wr schwach" : an ? "wr gut" : "wr");
+              const kl = (an) => (k.abstand === null ? "wr leer" : an ? "wr gut" : "wr");
               return (
                 <li key={k.karte} className={"zeile" + (keep || mull ? " rat" : "")}>
                   <div className="vorn">
                     <span className="nr">{nr2(i + 1)}</span>
-                    <Kartenbild id={k.karte} breite={26} />
+                    <Kartenbild id={k.karte} breite={26} vorschau name={nameK(k.karte)} />
                     <span className="name gegner"><b>{nameK(k.karte)}</b><span className="kartennr">{k.karte}</span></span>
                     <span className="z zahlzelle z-b">{fmtZahl(k.behalten)}</span>
                     <span className={"z zahlzelle z-wrb " + kl(keep)} data-label="Kept">{wr(k.wr_behalten, k.behalten)}</span>
@@ -2039,7 +2259,7 @@ function ZugBelege({ b, T, mindest, name }) {
               <tbody>
                 {k.karten.map((x) => (
                   <tr key={x.karte} className={x.rolle ? "markiert" : undefined}>
-                    <td className="bildzelle"><Kartenbild id={x.karte} breite={24} /></td>
+                    <td className="bildzelle"><Kartenbild id={x.karte} breite={24} vorschau name={name(x.karte)} /></td>
                     <td className="name">
                       <b>{name(x.karte)}</b><small>{x.karte}</small>
                       <RollenEtikett rolle={x.rolle} schaetzung={x.rolle === "zweit" && k.zweit.schaetzung} />
@@ -2169,7 +2389,7 @@ function MulliganBelege({ a, mindest, name }) {
             <tbody>
               {m.karten.map((k) => (
                 <tr key={k.karte}>
-                  <td className="bildzelle"><Kartenbild id={k.karte} breite={24} /></td>
+                  <td className="bildzelle"><Kartenbild id={k.karte} breite={24} vorschau name={name(k.karte)} /></td>
                   <td className="name"><b>{name(k.karte)}</b><small>{k.karte}</small></td>
                   <td className="rechts z">{fmtZahl(k.behalten)}</td>
                   <td className="rechts z">{prozentOder(k.wr_behalten)}</td>
@@ -2873,7 +3093,7 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen }) {
                   {l.partien == null ? (
                     <>
                       <Zelle k="z-a" label="Win rate" wert={l.winrate == null ? "unreadable" : l.winrate.toFixed(1) + " %"}
-                             klasse={l.winrate == null ? "wr schwach" : wrKlasse(l.winrate)} />
+                             klasse={wrKlasse(l.winrate)} />
                       <span className="z-b" /><span className="z-c" />
                     </>
                   ) : (
@@ -2946,7 +3166,20 @@ function reiterAusPfad(pfad) {
   return treffer ? treffer[0] : "decks";
 }
 
-function adresseSetzen(reiter, leader, ersetzen, spielerId, replayPfad) {
+/** Fokus der Matrix aus ?leader=, nur auf /matrix und nur in der Form einer Kartennummer. */
+function fokusAusAdresse() {
+  if (typeof window === "undefined" || reiterAusPfad(window.location.pathname) !== "matrix") return null;
+  const wunsch = new URLSearchParams(window.location.search).get("leader");
+  return wunsch && KARTE.test(wunsch) ? kennung(wunsch) : null;
+}
+
+/** Sortwahl der Matrix aus &sort=, nur auf /matrix. */
+function matrixSortAusAdresse() {
+  if (typeof window === "undefined" || reiterAusPfad(window.location.pathname) !== "matrix") return "partien";
+  return sortAusText(new URLSearchParams(window.location.search).get("sort"));
+}
+
+function adresseSetzen(reiter, leader, ersetzen, spielerId, replayPfad, sort) {
   // Die Spielerseite haengt an einer user_id, die Replayseite am Storagepfad,
   // alle anderen Reiter am Leader.
   const abfrage =
@@ -2961,7 +3194,10 @@ function adresseSetzen(reiter, leader, ersetzen, spielerId, replayPfad) {
       : leader
         ? "?leader=" + encodeURIComponent(kennung(leader))
         : "";
-  const ziel = PFADE[reiter] + abfrage;
+  const mitSort = reiter === "matrix" && sort && sort !== "partien"
+    ? (abfrage ? abfrage + "&" : "?") + "sort=" + encodeURIComponent(sort)
+    : abfrage;
+  const ziel = PFADE[reiter] + mitSort;
   if (window.location.pathname + window.location.search === ziel) return;
   window.history[ersetzen ? "replaceState" : "pushState"]({}, "", ziel);
 }
@@ -3096,6 +3332,10 @@ export default function App() {
   const [matrixTop, setMatrixTop] = useState(12);
   const [matrixMindest, setMatrixMindest] = useState(50);
   const [sitzModus, setSitzModus] = useState(false);
+  // Fokus der Matrix: nur dieser Leader, als Liste je Gegner. Steht als ?leader= in der Adresse.
+  const [matrixFokus, setMatrixFokus] = useState(() => fokusAusAdresse());
+  // Sortierung der Matrix und des Fokus: "partien", "wr" oder "wr_auf" (src/winrate.js).
+  const [matrixSort, setMatrixSort] = useState(() => matrixSortAusAdresse());
   // Am Handy zeigt die Matrix zuerst die Top 8; ein Knopf holt alle gewaehlten dazu.
   const [matrixAlle, setMatrixAlle] = useState(false);
   const schmal = useSchmal(760);
@@ -3341,11 +3581,21 @@ export default function App() {
     return r;
   }, [leader, mindest, sortListen, karteFilter]);
 
-  /* Adresse mitfuehren, sobald Reiter oder Leader stehen. */
+  /* Adresse mitfuehren, sobald Reiter oder Leader stehen. In der Matrix steht dort der
+     Fokus, nicht der gewaehlte Leader: /matrix ohne Abfrage ist die ganze Matrix. */
   useEffect(() => {
     if (entsperrt !== true || !gewaehlt) return;
-    adresseSetzen(reiter, gewaehlt, false);
-  }, [reiter, gewaehlt, entsperrt]);
+    adresseSetzen(reiter, reiter === "matrix" ? matrixFokus : gewaehlt, false, null, null, matrixSort);
+  }, [reiter, gewaehlt, entsperrt, matrixFokus, matrixSort]);
+
+  /* Fokus setzen; der fokussierte Leader wird auch der gewaehlte fuer die anderen Reiter. */
+  const fokusSetzen = useCallback((id) => {
+    setMatrixFokus(id);
+    if (id && satz) {
+      const treffer = satz.leader.find((e) => kennung(e.id) === id);
+      if (treffer) setGewaehlt(treffer.id);
+    }
+  }, [satz]);
 
   /* Vor und Zurueck im Browser */
   useEffect(() => {
@@ -3353,6 +3603,8 @@ export default function App() {
       setReiter(reiterAusPfad(window.location.pathname));
       setSpielerId(new URLSearchParams(window.location.search).get("id") || null);
       setReplayPfad(new URLSearchParams(window.location.search).get("p") || null);
+      setMatrixFokus(fokusAusAdresse());
+      setMatrixSort(matrixSortAusAdresse());
       const wunsch = new URLSearchParams(window.location.search).get("leader");
       if (wunsch && satz) {
         const treffer = satz.leader.find((e) => kennung(e.id) === wunsch);
@@ -3516,7 +3768,9 @@ export default function App() {
             </div>
           ) : null}
           <p className="lesart">
-            <b>Bold</b> from {GUT} % win rate, pale under {SCHWACH} %. A tap on a row turns it over and shows the list by name.
+            Win rate in <span className="wr gut">green and bold</span> from {GUT} %, <span className="wr schwach">red</span> under{" "}
+            {SCHWACH} %. A tap on a row turns it over and shows the list by name; in an open list a tap on a card
+            image shows the card large.
           </p>
         </Abschnitt>
       </>
@@ -3546,7 +3800,8 @@ export default function App() {
                     sortiert={muSortiert} setSortiert={setMuSortiert} />
           <p className="lesart">
             These are the matchups of {leaderName} alone, the leader selected on the left. For every leader against
-            every other one, open the matchup matrix. <b>Bold</b> from {GUT} %, pale under {SCHWACH} %.
+            every other one, open the matchup matrix. <span className="wr gut">Green and bold</span> from {GUT} %,{" "}
+            <span className="wr schwach">red</span> under {SCHWACH} %.
           </p>
         </Abschnitt>
       </>
@@ -3571,14 +3826,21 @@ export default function App() {
             <input id="matrixMindest" type="number" min="0" max="500" className="feld" value={matrixMindest}
                    onChange={zahlFeld(setMatrixMindest, 500)} />
           </label>
+          {!matrixFokus ? (
+            <div className="fl eng"><span>Sort</span>
+              <Schalter paare={[["partien", "Play rate"], ["wr", "Win rate"]]} label="Sort the matrix"
+                        wert={matrixSort === "partien" ? "partien" : "wr"} setzen={setMatrixSort} />
+            </div>
+          ) : null}
           <button type="button" className="knopf rand" aria-pressed={sitzModus} onClick={() => setSitzModus(!sitzModus)}>
             {sitzModus ? "Showing first and second" : "Show first and second"}
           </button>
         </div>
         <Abschnitt titel={sitzModus ? "Row beats column, first and second in %" : "Row beats column, win rate in %"}>
           <Matrix satz={satz} top={matrixZahl} mindest={matrixMindest} namen={namen}
-                  sitzModus={sitzModus} setSitzModus={setSitzModus} />
-          {schmal && matrixTop > MATRIX_HANDY_TOP ? (
+                  sitzModus={sitzModus} setSitzModus={setSitzModus}
+                  fokus={matrixFokus} setFokus={fokusSetzen} sort={matrixSort} setSort={setMatrixSort} />
+          {schmal && matrixTop > MATRIX_HANDY_TOP && !matrixFokus ? (
             <div className="mehr">
               <button type="button" className="knopf rand" onClick={() => setMatrixAlle((a) => !a)}>
                 {matrixAlle ? "Show top " + MATRIX_HANDY_TOP : "Show all " + matrixTop}
@@ -3586,9 +3848,22 @@ export default function App() {
             </div>
           ) : null}
           <p className="lesart">
-            Win rate of the row leader against the column leader. <b>Bold</b> from {GUT} %, pale under {SCHWACH} %,
-            a dash means fewer than {matrixMindest} games, the framed cell is the mirror. Click a cell to switch the
-            whole matrix {sitzModus ? "back to the overall rate" : "to first and second"}.
+            {matrixFokus ? (
+              <>
+                Win rate of the chosen leader against every opponent with at least {matrixMindest} games.{" "}
+                <span className="wr gut">Green and bold</span> from {GUT} %, <span className="wr schwach">red</span> under{" "}
+                {SCHWACH} %, the tint grows with the distance from 50 %. Tap Games or Win rate to sort, tap Win rate again to
+                turn the order. Click the leader or Show all for the whole matrix.
+              </>
+            ) : (
+              <>
+                Win rate of the row leader against the column leader. <span className="wr gut">Green and bold</span> from{" "}
+                {GUT} %, <span className="wr schwach">red</span> under {SCHWACH} %, the tint grows with the distance from
+                50 %. {matrixSort === "partien" ? "Leaders stand by games played" : "Leaders stand by win rate against the field"}, rows
+                and columns in the same order. A dash means fewer than {matrixMindest} games, the framed cell is the mirror. Click a leader to see
+                only that leader, click a cell to switch the whole matrix {sitzModus ? "back to the overall rate" : "to first and second"}.
+              </>
+            )}
           </p>
         </Abschnitt>
       </>
@@ -3658,6 +3933,7 @@ export default function App() {
   );
 
   return (
+    <VorschauBuehne>
     <div className="blatt">
       <div className="karte">
         <header ref={kopfRef} className="band">
@@ -3716,5 +3992,6 @@ export default function App() {
         </footer>
       </div>
     </div>
+    </VorschauBuehne>
   );
 }
