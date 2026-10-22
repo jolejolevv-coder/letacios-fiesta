@@ -111,6 +111,8 @@ function Zeichen({ name, groesse = 18 }) {
 
 function Bild({ id, className = "", alt = "", breite, hoehe }) {
   const [kaputt, setKaputt] = useState(false);
+  // Ohne Kennung (etwa ein unbekannter Leader in einer Partie) steht ein leerer Platzhalter.
+  if (!id) return <span className={className + " kb-kaputt"} aria-hidden="true" />;
   if (kaputt) {
     const strich = id.lastIndexOf("-");
     return (
