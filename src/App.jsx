@@ -2113,10 +2113,15 @@ const PFADE = {
   beste: "/leaderboard",
   spieler: "/player",
   replay: "/replay",
-  analyse: "/analysis",
+  analyse: "/mulligan",
 };
 
+// Der Reiter hiess bis zum 22.10.2026 "Analysis" unter /analysis; alte Links fuehren weiter hin.
+const ALTE_PFADE = { "/analysis": "analyse" };
+
 function reiterAusPfad(pfad) {
+  const alt = ALTE_PFADE[pfad.replace(/\/$/, "")];
+  if (alt) return alt;
   const treffer = Object.entries(PFADE).find(([, p]) => p === pfad.replace(/\/$/, ""));
   return treffer ? treffer[0] : "decks";
 }
@@ -2835,7 +2840,7 @@ export default function App() {
             ["matrix", "Matchup matrix", "Matrix"],
             ["rang", "Power rankings", "Ranking"],
             ["beste", "Leaderboard", "Ladder"],
-            ["analyse", "Analysis", "Analysis"],
+            ["analyse", "Mulligan", "Mulligan"],
           ].map(([k, lang, kurz]) => (
             <button
               key={k}
