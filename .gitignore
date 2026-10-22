@@ -16,3 +16,6 @@ public/replays/*.json.gz
 public/spieler.json.gz.enc
 public/replays/
 .claude/launch.json
+
+# Replay Analysen aus Metacoach: im Repo nur verschluesselt (der Bazzite pusht die .enc)
+public/analyse/*.json.gz

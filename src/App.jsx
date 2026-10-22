@@ -15,6 +15,7 @@ import {
   zeitraumLaden,
 } from "./daten.js";
 import { schritteBauen } from "./replay.js";
+import { ankerBauen, fehlerSuchen, FEHLERNOTEN, kurveBauen, markenBauen, spielerZuordnen } from "./analyse.js";
 
 /* --------------------------------------------------------------------------
    Kleine Helfer
@@ -1516,8 +1517,22 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
   const [tempo, setTempo] = useState(1);
   const [laeuft, setLaeuft] = useState(false);
   const [logOffen, setLogOffen] = useState(false);
+  const [analyse, setAnalyse] = useState(null);
   const listeRef = useRef(null);
   const ebeneRef = useRef(null);
+
+  /* Die Analyse aus Metacoach liegt neben dem Replay, wenn es eine gibt; sonst bleibt
+     der Viewer wie er war. */
+  useEffect(() => {
+    let abgebrochen = false;
+    setAnalyse(null);
+    holen("analyse/" + dateiname(pfad))
+      .then((a) => !abgebrochen && setAnalyse(a))
+      .catch(() => !abgebrochen && setAnalyse(null));
+    return () => {
+      abgebrochen = true;
+    };
+  }, [pfad]);
 
   useEffect(() => {
     let abgebrochen = false;
@@ -1684,6 +1699,11 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
         </button>
       </div>
 
+      {analyse ? (
+        <ReplayAnalyse analyse={analyse} schritte={schritte} leader={leader} spieler={spieler}
+                 nr={nr} setI={setI} knopf={knopf} stufe={stufe} />
+      ) : null}
+
       {/* Die laufende Zeile steht immer da, auch wenn die Liste zu ist. */}
       <div className="mb-3 rounded-lg border px-3 py-2"
            style={{ borderColor: "var(--linie)", background: "var(--flaeche)" }}>
@@ -1766,6 +1786,100 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
           <Angriffspfeil angriff={jetzt.angriff} ebeneRef={ebeneRef} zoom={zoom} schritt={nr} />
         </div>
       </div>
+    </div>
+  );
+}
+
+/* Die Analyse aus Metacoach ueber dem Brett: Siegchance ueber die Partie, Accuracy beider
+   Spieler, die Note am laufenden Schritt und ein Sprung zum naechsten Fehler. Alles ist
+   eine Schaetzung aus dem Wertnetz von Metacoach, ausser beim Mulligan (echte Winrate). */
+const NOTE_TEXT = {
+  best: "Best", excellent: "Excellent", good: "Good",
+  inaccuracy: "Inaccuracy", mistake: "Mistake", blunder: "Blunder",
+};
+const WAHL_TEXT = {
+  leader: "attacked the leader", character: "attacked the character", nehmen: "took the damage",
+  countern: "countered", blocken: "blocked", behalten: "kept the hand", weggemischt: "mulliganed",
+};
+const BESSER_TEXT = {
+  leader: "attack the leader", character: "attack the character", nehmen: "take the damage",
+  countern: "counter", blocken: "block", behalten: "keep", weggemischt: "mulligan",
+};
+const ART_TEXT = { angriff: "Attack", abwehr: "Defense", mulligan: "Mulligan" };
+
+function ReplayAnalyse({ analyse, schritte, leader, spieler, nr, setI, knopf, stufe }) {
+  const anker = useMemo(() => ankerBauen(schritte), [schritte]);
+  const namen = useMemo(() => spielerZuordnen(analyse, leader, anker.erster), [analyse, leader, anker]);
+  const marken = useMemo(() => markenBauen(analyse, anker), [analyse, anker]);
+  const eigen = Object.keys(namen).find((k) => namen[k] === spieler) || "1";
+  const kurve = useMemo(() => kurveBauen(analyse, anker, eigen), [analyse, anker, eigen]);
+  const hier = marken.filter((m) => m.schritt === nr);
+  const max = Math.max(1, schritte.length - 1);
+  const zurueck = fehlerSuchen(marken, nr, -1);
+  const vor = fehlerSuchen(marken, nr, 1);
+  const punkte = kurve.map((k) => `${(100 * k.schritt) / max},${100 - k.wert}`).join(" ");
+
+  return (
+    <div className="mb-3 rounded-lg border px-3 py-2"
+         style={{ borderColor: "var(--linie)", background: "var(--flaeche)" }}>
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[13px]">
+        <span className="font-semibold">Analysis</span>
+        {["1", "2"].map((k) => {
+          const s = analyse.spieler?.[k];
+          if (!s || !namen[k]) return null;
+          const fehler = s.noten ? FEHLERNOTEN.reduce((n, x) => n + (s.noten[x] || 0), 0) : null;
+          return (
+            <span key={k} style={{ color: namen[k] === spieler ? "var(--akzent)" : "var(--leise)" }}>
+              {namen[k].split("#")[0]}: accuracy{" "}
+              <span className="zahl font-semibold">{s.accuracy === null ? "\u2013" : s.accuracy.toFixed(1)}</span>
+              {fehler !== null ? (
+                <span style={{ color: "var(--still)" }}>
+                  {" "}&middot; {fehler} {fehler === 1 ? "flagged decision" : "flagged decisions"}
+                </span>
+              ) : null}
+            </span>
+          );
+        })}
+        <span className="ml-auto flex gap-1">
+          <button type="button" className={knopf} style={stufe(false)} disabled={zurueck === null}
+                  onClick={() => zurueck !== null && setI(zurueck)}>Previous mistake</button>
+          <button type="button" className={knopf} style={stufe(false)} disabled={vor === null}
+                  onClick={() => vor !== null && setI(vor)}>Next mistake</button>
+        </span>
+      </div>
+
+      {kurve.length > 1 ? (
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="mt-2 block h-16 w-full"
+             role="img" aria-label="Win chance over the game">
+          <line x1="0" y1="50" x2="100" y2="50" stroke="var(--linie)" strokeWidth="0.6"
+                vectorEffect="non-scaling-stroke" />
+          <polyline points={punkte} fill="none" stroke="var(--akzent)" strokeWidth="1.5"
+                    vectorEffect="non-scaling-stroke" />
+          {marken.filter((m) => FEHLERNOTEN.includes(m.note)).map((m, j) => (
+            <line key={j} x1={(100 * m.schritt) / max} x2={(100 * m.schritt) / max} y1="92" y2="100"
+                  stroke={String(m.wer) === eigen ? "var(--akzent)" : "var(--leise)"} strokeWidth="1.5"
+                  vectorEffect="non-scaling-stroke" />
+          ))}
+          <line x1={(100 * nr) / max} x2={(100 * nr) / max} y1="0" y2="100" stroke="var(--text)"
+                strokeWidth="1" vectorEffect="non-scaling-stroke" />
+        </svg>
+      ) : null}
+      <p className="text-[11px]" style={{ color: "var(--still)" }}>
+        {spieler ? spieler.split("#")[0] + "'s" : "Player"} win chance after each turn, estimated by the Metacoach
+        model of {String(analyse.modell || "").slice(0, 10)}. Ticks mark inaccuracies, mistakes and blunders.
+      </p>
+
+      {hier.map((m, j) => (
+        <p key={j} className="mt-1 text-[13px]">
+          <span className="font-semibold" style={{ color: FEHLERNOTEN.includes(m.note) ? "var(--akzent)" : "var(--leise)" }}>
+            {NOTE_TEXT[m.note]}
+          </span>{" "}
+          {namen[String(m.wer)] ? namen[String(m.wer)].split("#")[0] + " " : ""}
+          {WAHL_TEXT[m.wahl] || m.wahl}
+          {m.note !== "best" ? <> &middot; better: {BESSER_TEXT[m.beste] || m.beste}, {m.verlust.toFixed(1)} points</> : null}
+          <span style={{ color: "var(--still)" }}> &middot; {ART_TEXT[m.art]}, {m.lage}</span>
+        </p>
+      ))}
     </div>
   );
 }

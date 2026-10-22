@@ -156,7 +156,7 @@ export async function anmelden(passwort) {
 // Dateien, deren Inhalt sich unter demselben Namen nie mehr aendert: ein Replay,
 // ein Tagesausschnitt, ein fertiger Satz. Sie tragen Datum oder Partie im Namen.
 // Alles andere wird taeglich neu geschrieben und behaelt seinen Namen.
-const UNVERAENDERLICH = /^(replays|tage|saetze)\//;
+const UNVERAENDERLICH = /^(replays|tage|saetze|analyse)\//;
 
 /** Holt eine .json.gz Datei und entpackt sie. Ergebnisse bleiben im Speicher. */
 export async function holen(datei) {
