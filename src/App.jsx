@@ -1795,6 +1795,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
    gewaehlten Leader, Gegner und Sitz behaltene gegen gemischte Haende und je Karte der
    Starthand die echte Winrate. "Top players" heisst beide Spieler ab 2000 Bounty. */
 const MULLIGAN_ABSTAND = 3;
+const HAND_AUSREISSER = 0.005;
 
 function MulliganJeGegner({ leaderId, namen }) {
   const [daten, setDaten] = useState(undefined);
@@ -2423,7 +2424,14 @@ function Analyse({ leader, namen }) {
       });
     const wr = (z) => proz(z.first.siege + z.second.siege, z.first.spiele + z.second.spiele);
     const genug = (z) => z.first.spiele + z.second.spiele >= ANALYSE_MINDEST;
-    return zeilen.sort((a, b) => (genug(b) - genug(a)) || wr(b) - wr(a));
+    // In den oeffentlichen Zahlen stehen Ausreisser: bei Xebec etwa Ohm oder Franky in ein
+    // bis drei von rund 9000 Haenden, Karten, die gar nicht ins Deck passen (22.10.2026).
+    // Was in weniger als einem halben Prozent der Haende vorkommt, wird ausgeblendet.
+    const haende = (z) => z.first.haende + z.second.haende;
+    const grenze = Math.max(...zeilen.map(haende), 0) * HAND_AUSREISSER;
+    const behalten = zeilen.filter((z) => haende(z) >= grenze);
+    behalten.ausgeblendet = zeilen.length - behalten.length;
+    return behalten.sort((a, b) => (genug(b) - genug(a)) || wr(b) - wr(a));
   }, [leader, eigen]);
 
   const kopien = useMemo(() => {
@@ -2535,6 +2543,12 @@ function Analyse({ leader, namen }) {
         </table>
       </div>
 
+      {hand.ausgeblendet ? (
+        <p className="pt-2 text-[12px]" style={{ color: "var(--still)" }}>
+          {hand.ausgeblendet} more cards appear in fewer than 0.5 % of opening hands, mostly cards
+          that do not fit this deck; they are hidden.
+        </p>
+      ) : null}
       <button type="button" onClick={() => setKopienOffen((v) => !v)}
               className="mt-5 text-base font-semibold" aria-expanded={kopienOffen}>
         {kopienOffen ? "▾" : "▸"} Copies
@@ -3006,7 +3020,7 @@ export default function App() {
             ["rang", "Power rankings", "Ranking"],
             ["beste", "Leaderboard", "Ladder"],
             ["analyse", "Mulligan", "Mulligan"],
-            ["changelog", "Changelog", "News"],
+            ["changelog", "Changelog", "Changelog"],
           ].map(([k, lang, kurz]) => (
             <button
               key={k}
