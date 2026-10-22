@@ -233,7 +233,7 @@ const LAGE_EN = [
   [/^Gegner mit gerestet Character$/, "opponent has a rested character"],
   [/^(\d+) Life, (\d+) Counter nötig, Hand reicht$/, "$1 life, $2 counter needed and in hand"],
   [/^Gegnerzug (\d+), (\d+) Life$/, "opponent turn $1, $2 life"],
-  [/^(\d+) Karten der Starthand im Book$/, "$1 opening cards in the book"],
+  [/^(\d+) Karten der Starthand im Book$/, "$1 opening cards in the guide"],
 ];
 
 export function lageEnglisch(lage) {

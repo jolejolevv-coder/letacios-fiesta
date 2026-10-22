@@ -2210,12 +2210,12 @@ function Book({ namen, startLeader }) {
 
   const name = (id) => (namen[id] || {}).n || id;
   const kopf = (
-    <h2 className="pb-1 text-base font-semibold">Book</h2>
+    <h2 className="pb-1 text-base font-semibold">Guide</h2>
   );
   if (liste === undefined) {
-    return <section className="min-w-0">{kopf}<p className="py-4 text-sm" style={{ color: "var(--still)" }}>Loading the book ...</p></section>;
+    return <section className="min-w-0">{kopf}<p className="py-4 text-sm" style={{ color: "var(--still)" }}>Loading the guide ...</p></section>;
   }
-  if (liste === null) return <section className="min-w-0">{kopf}<MetacoachHinweis fehler={listeFehler} was="book" /></section>;
+  if (liste === null) return <section className="min-w-0">{kopf}<MetacoachHinweis fehler={listeFehler} was="guide" /></section>;
   if (!liste.length) {
     return <section className="min-w-0">{kopf}<p className="py-4 text-[13px]" style={{ color: "var(--still)" }}>No leader has a book yet.</p></section>;
   }
@@ -2261,13 +2261,13 @@ function Book({ namen, startLeader }) {
       </div>
 
       {daten === undefined ? (
-        <p className="py-4 text-sm" style={{ color: "var(--still)" }}>Loading the book ...</p>
+        <p className="py-4 text-sm" style={{ color: "var(--still)" }}>Loading the guide ...</p>
       ) : daten === null ? (
         datenFehler?.grund === "fehlt"
-          ? <p className="py-2 text-[13px]" style={{ color: "var(--still)" }}>No book for this leader right now.</p>
-          : <MetacoachHinweis fehler={datenFehler} was="book" />
+          ? <p className="py-2 text-[13px]" style={{ color: "var(--still)" }}>No guide for this leader right now.</p>
+          : <MetacoachHinweis fehler={datenFehler} was="guide" />
       ) : !b ? (
-        <p className="py-2 text-[13px]" style={{ color: "var(--still)" }}>Not in the book.</p>
+        <p className="py-2 text-[13px]" style={{ color: "var(--still)" }}>Not in the guide.</p>
       ) : (
         <>
           <p className="max-w-[74ch] pb-2 text-[13px]" style={{ color: "var(--still)" }}>
@@ -2573,10 +2573,10 @@ function EigenesReplay({ namen }) {
       ) : null}
 
       {netzJson === null || (netzJson && !netz) ? <MetacoachHinweis fehler={netzFehler} was="analysis" /> : null}
-      {bookFehler ? <MetacoachHinweis fehler={bookFehler} was="book" /> : null}
+      {bookFehler ? <MetacoachHinweis fehler={bookFehler} was="guide" /> : null}
       {bookFehlt ? (
         <p className="max-w-[74ch] text-[13px]" style={{ color: "var(--leise)" }}>
-          There is no book for {name(meinLeader)} {meinLeader} yet, so your decisions get no grades.
+          There is no guide for {name(meinLeader)} {meinLeader} yet, so your decisions get no grades.
           The win chance over the game is still shown.
         </p>
       ) : null}
@@ -2845,13 +2845,13 @@ const PFADE = {
   spieler: "/player",
   replay: "/replay",
   analyse: "/mulligan",
-  book: "/book",
+  book: "/guide",
   eigenes: "/analyze",
   changelog: "/changelog",
 };
 
 // Der Reiter hiess bis zum 22.10.2026 "Analysis" unter /analysis; alte Links fuehren weiter hin.
-const ALTE_PFADE = { "/analysis": "analyse" };
+const ALTE_PFADE = { "/analysis": "analyse", "/book": "book" };
 
 function reiterAusPfad(pfad) {
   const alt = ALTE_PFADE[pfad.replace(/\/$/, "")];
@@ -3395,7 +3395,7 @@ export default function App() {
             ["rang", "Power rankings", "Ranking"],
             ["beste", "Leaderboard", "Ladder"],
             ["analyse", "Mulligan", "Mulligan"],
-            ["book", "Book", "Book"],
+            ["book", "Guide", "Guide"],
             ["eigenes", "Analyze my replay", "Analyze"],
             ["changelog", "Changelog", "Changelog"],
           ].map(([k, lang, kurz]) => (
