@@ -1884,9 +1884,9 @@ function MulliganJeGegner({ leaderId, namen }) {
           </p>
           {/* Am Telefon eine Liste statt der Tabelle: je Karte eine Zeile mit den zwei
               Winrates nebeneinander, ohne seitliches Scrollen. */}
-          <ul className="grid gap-1.5 sm:hidden">
+          <ul className="grid min-w-0 grid-cols-1 gap-1.5 sm:hidden">
             {karten.map((k) => (
-              <li key={k.karte} className="flex items-center gap-2 rounded-lg border px-2.5 py-2"
+              <li key={k.karte} className="flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-2"
                   style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}>
                 <Bild id={k.karte} breite={120} hoehe={168}
                       className="h-[34px] w-[24px] shrink-0 rounded-[3px] object-cover" />
