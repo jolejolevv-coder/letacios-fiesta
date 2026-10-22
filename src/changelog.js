@@ -10,6 +10,7 @@ export const CHANGELOG = [
       "The Analysis tab is now called Mulligan, and it now works by matchup: pick an opponent and a seat to see which opening cards to keep and which hands to mulligan, from real ladder results, for all players or only top players. Old links still work.",
       "New Changelog tab: what changed, one entry per day.",
       "The Mulligan tab now shows only the matchup view; the older all opponents table from OPBounty's public numbers is gone.",
+      "The Mulligan tab works on phones: cards as a list with both win rates side by side, no sideways scrolling.",
     ],
   },
   {

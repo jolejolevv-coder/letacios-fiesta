@@ -1844,10 +1844,10 @@ function MulliganJeGegner({ leaderId, namen }) {
   const zelle = "zahl whitespace-nowrap border-b px-2 py-1.5 text-right sm:px-3";
 
   return (
-    <section>
+    <section className="min-w-0">
       <h2 className="pb-2 text-base font-semibold">Mulligan by matchup</h2>
       <div className="flex flex-wrap items-center gap-2 pb-3">
-        <select className="rounded-md border px-2.5 py-1.5 text-sm" value={gegner}
+        <select className="w-full min-w-0 max-w-full rounded-md border px-2.5 py-2 text-sm sm:w-auto sm:py-1.5" value={gegner}
                 style={{ background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--text)" }}
                 onChange={(e) => setGegner(e.target.value)} aria-label="Opponent">
           {liste.map(([g, e]) => (
@@ -1882,7 +1882,34 @@ function MulliganJeGegner({ leaderId, namen }) {
             Mulliganed: {fmtZahl(m.weg)} games, win rate {wr(m.wr_weg, m.weg)}.
             Real results from the ladder replays, computed by Metacoach; a dash means fewer than {mindest} games.
           </p>
-          <div className="tabellenhuelle overflow-x-auto rounded-lg border"
+          {/* Am Telefon eine Liste statt der Tabelle: je Karte eine Zeile mit den zwei
+              Winrates nebeneinander, ohne seitliches Scrollen. */}
+          <ul className="grid gap-1.5 sm:hidden">
+            {karten.map((k) => (
+              <li key={k.karte} className="flex items-center gap-2 rounded-lg border px-2.5 py-2"
+                  style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}>
+                <Bild id={k.karte} breite={120} hoehe={168}
+                      className="h-[34px] w-[24px] shrink-0 rounded-[3px] object-cover" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-semibold">{nameK(k.karte)}</span>
+                  <span className="zahl block text-[11px]" style={{ color: "var(--still)" }}>
+                    kept {fmtZahl(k.behalten)} &middot; mulliganed {fmtZahl(k.weg)}
+                  </span>
+                </span>
+                <span className="zahl shrink-0 text-right text-[13px] leading-tight">
+                  <span className="block" style={{
+                    color: k.abstand === null ? "var(--still)" : k.abstand >= MULLIGAN_ABSTAND ? "var(--sieg)" : "var(--text)" }}>
+                    {wr(k.wr_behalten, k.behalten)} <span style={{ color: "var(--still)" }}>kept</span>
+                  </span>
+                  <span className="block" style={{
+                    color: k.abstand === null ? "var(--still)" : k.abstand <= -MULLIGAN_ABSTAND ? "var(--niederlage)" : "var(--text)" }}>
+                    {wr(k.wr_weg, k.weg)} <span style={{ color: "var(--still)" }}>mull.</span>
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="tabellenhuelle hidden overflow-x-auto rounded-lg border sm:block"
                style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}>
             <table className="w-full min-w-[480px] border-collapse">
               <thead>
