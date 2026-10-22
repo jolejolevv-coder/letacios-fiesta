@@ -15,6 +15,7 @@ import {
   zeitraumLaden,
 } from "./daten.js";
 import { schritteBauen } from "./replay.js";
+import { CHANGELOG } from "./changelog.js";
 import { ankerBauen, fehlerSuchen, FEHLERNOTEN, kurveBauen, markenBauen, spielerZuordnen } from "./analyse.js";
 
 /* --------------------------------------------------------------------------
@@ -1790,6 +1791,164 @@ function Replay({ pfad, namen, eigenerLeader, zurueck }) {
   );
 }
 
+/* Mulligan je Gegner aus Metacoach (vom Bazzite nach public/mulligan/ gepusht): fuer den
+   gewaehlten Leader, Gegner und Sitz behaltene gegen gemischte Haende und je Karte der
+   Starthand die echte Winrate. "Top players" heisst beide Spieler ab 2000 Bounty. */
+const MULLIGAN_ABSTAND = 3;
+
+function MulliganJeGegner({ leaderId, namen }) {
+  const [daten, setDaten] = useState(undefined);
+  const [gegner, setGegner] = useState("alle");
+  const [sitz, setSitz] = useState("first");
+  const [stufe, setStufe] = useState("feld");
+
+  useEffect(() => {
+    let ab = false;
+    setDaten(undefined);
+    setGegner("alle");
+    holen("mulligan/" + leaderId + ".json.gz")
+      .then((d) => !ab && setDaten(d))
+      .catch(() => !ab && setDaten(null));
+    return () => { ab = true; };
+  }, [leaderId]);
+
+  if (daten === undefined) return <p className="py-4 text-sm" style={{ color: "var(--still)" }}>Loading mulligan data ...</p>;
+  if (daten === null) {
+    return (
+      <p className="py-4 text-[13px]" style={{ color: "var(--still)" }}>
+        No per matchup mulligan data for this leader yet.
+      </p>
+    );
+  }
+  const mindest = daten.grenzen?.min_zelle ?? 30;
+  const name = (id) => (id === "alle" ? "All opponents" : (namen[id] || {}).n || id);
+  const liste = Object.entries(daten.gegner)
+    .filter(([g, e]) => g === "alle" || e.first || e.second)
+    .sort(([a, x], [b, y]) => (a === "alle" ? -1 : b === "alle" ? 1 :
+      (y.partien.first + y.partien.second) - (x.partien.first + x.partien.second)));
+  const eintrag = daten.gegner[gegner] || daten.gegner.alle;
+  const m = eintrag?.[sitz]?.[stufe] || (stufe === "spitze" ? null : eintrag?.[sitz]?.feld);
+  const wr = (w, n) => (n >= mindest && w !== null ? w.toFixed(1) + " %" : "\u2013");
+  const karten = (m?.karten || [])
+    .map((k) => ({ ...k, abstand: k.behalten >= mindest && k.weg >= mindest ? k.wr_behalten - k.wr_weg : null }))
+    .sort((a, b) => (b.abstand ?? -99) - (a.abstand ?? -99));
+  const gut = karten.filter((k) => k.abstand !== null && k.abstand >= MULLIGAN_ABSTAND).slice(0, 3);
+  const schlecht = karten.filter((k) => k.abstand !== null && k.abstand <= -MULLIGAN_ABSTAND).slice(-3).reverse();
+  const nameK = (id) => (namen[id] || {}).n || id;
+  const und = (l) => l.length <= 1 ? l.join("") : l.slice(0, -1).join(", ") + " or " + l[l.length - 1];
+  const knopf = (an) => ({
+    background: an ? "var(--akzentweich)" : "var(--flaeche2)",
+    borderColor: an ? "var(--akzent)" : "var(--linie)",
+    color: an ? "var(--akzent)" : "var(--leise)",
+  });
+  const zelle = "zahl whitespace-nowrap border-b px-2 py-1.5 text-right sm:px-3";
+
+  return (
+    <section>
+      <h2 className="pb-2 text-base font-semibold">Mulligan by matchup</h2>
+      <div className="flex flex-wrap items-center gap-2 pb-3">
+        <select className="rounded-md border px-2.5 py-1.5 text-sm" value={gegner}
+                style={{ background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--text)" }}
+                onChange={(e) => setGegner(e.target.value)} aria-label="Opponent">
+          {liste.map(([g, e]) => (
+            <option key={g} value={g}>
+              {name(g)}{g !== "alle" ? " " + g : ""} ({fmtZahl((e.partien.first || 0) + (e.partien.second || 0))} games)
+            </option>
+          ))}
+        </select>
+        {[["first", "Going first"], ["second", "Going second"]].map(([k, t]) => (
+          <button key={k} type="button" className="rounded-md border px-2.5 py-1.5 text-sm font-semibold"
+                  style={knopf(sitz === k)} onClick={() => setSitz(k)}>{t}</button>
+        ))}
+        {[["feld", "All players"], ["spitze", "Top players"]].map(([k, t]) => (
+          <button key={k} type="button" className="rounded-md border px-2.5 py-1.5 text-sm font-semibold"
+                  style={knopf(stufe === k)} onClick={() => setStufe(k)}>{t}</button>
+        ))}
+      </div>
+
+      {!m ? (
+        <p className="py-2 text-[13px]" style={{ color: "var(--still)" }}>
+          Not enough games for this matchup, seat and group. Try All players or All opponents.
+        </p>
+      ) : (
+        <>
+          <p className="max-w-[74ch] pb-1 text-[15px]">
+            {gut.length ? <>Keep hands with <b>{und(gut.map((k) => nameK(k.karte)))}</b>. </> : null}
+            {schlecht.length ? <>With <b>{und(schlecht.map((k) => nameK(k.karte)))}</b>, mulligan more often. </> : null}
+            {!gut.length && !schlecht.length ? "No card makes a clear difference here." : null}
+          </p>
+          <p className="max-w-[74ch] pb-3 text-[13px]" style={{ color: "var(--still)" }}>
+            Kept the opening hand: {fmtZahl(m.behalten)} games, win rate {wr(m.wr_behalten, m.behalten)}.
+            Mulliganed: {fmtZahl(m.weg)} games, win rate {wr(m.wr_weg, m.weg)}.
+            Real results from the ladder replays, computed by Metacoach; a dash means fewer than {mindest} games.
+          </p>
+          <div className="tabellenhuelle overflow-x-auto rounded-lg border"
+               style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}>
+            <table className="w-full min-w-[480px] border-collapse">
+              <thead>
+                <tr>
+                  {["Card in opening hand", "Kept", "Win rate kept", "Mulliganed", "Win rate mulligan"].map((h, i) => (
+                    <th key={h} scope="col" className={"whitespace-nowrap border-b px-2 py-2 etikett sm:px-3 " + (i ? "text-right" : "text-left")}
+                        style={{ background: "var(--flaeche)", borderColor: "var(--linie)", color: "var(--still)" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {karten.map((k) => (
+                  <tr key={k.karte}>
+                    <td className="border-b px-2 py-1.5 sm:px-3" style={{ borderColor: "var(--linie)" }}>
+                      <span className="flex items-center gap-2">
+                        <Bild id={k.karte} breite={120} hoehe={168}
+                              className="h-[38px] w-[27px] shrink-0 rounded-[3px] object-cover" />
+                        <span className="min-w-0">
+                          <span className="block truncate text-[13px] font-semibold">{nameK(k.karte)}</span>
+                          <span className="zahl block text-[11px]" style={{ color: "var(--still)" }}>{k.karte}</span>
+                        </span>
+                      </span>
+                    </td>
+                    <td className={zelle} style={{ borderColor: "var(--linie)" }}>{fmtZahl(k.behalten)}</td>
+                    <td className={zelle} style={{ borderColor: "var(--linie)",
+                        color: k.abstand === null ? "var(--still)" : k.abstand >= MULLIGAN_ABSTAND ? "var(--sieg)" : "var(--text)" }}>
+                      {wr(k.wr_behalten, k.behalten)}
+                    </td>
+                    <td className={zelle} style={{ borderColor: "var(--linie)" }}>{fmtZahl(k.weg)}</td>
+                    <td className={zelle} style={{ borderColor: "var(--linie)",
+                        color: k.abstand === null ? "var(--still)" : k.abstand <= -MULLIGAN_ABSTAND ? "var(--niederlage)" : "var(--text)" }}>
+                      {wr(k.wr_weg, k.weg)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+/* Was neu ist: ein Eintrag je Tag aus src/changelog.js, neueste oben. */
+function Changelog() {
+  const datum = (iso) =>
+    new Date(iso + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  return (
+    <div className="mx-auto grid max-w-3xl gap-6 py-2">
+      {CHANGELOG.map((e) => (
+        <section key={e.tag}>
+          <h2 className="mb-2 text-lg font-bold" style={{ fontFamily: "var(--font-anzeige)" }}>
+            {datum(e.tag)}
+          </h2>
+          <ul className="grid gap-1.5 pl-5" style={{ listStyle: "disc", color: "var(--text)" }}>
+            {e.punkte.map((p, i) => (
+              <li key={i} className="text-[15px] leading-relaxed">{p}</li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 /* Die Analyse aus Metacoach ueber dem Brett: Siegchance ueber die Partie, Accuracy beider
    Spieler, die Note am laufenden Schritt und ein Sprung zum naechsten Fehler. Alles ist
    eine Schaetzung aus dem Wertnetz von Metacoach, ausser beim Mulligan (echte Winrate). */
@@ -2114,6 +2273,7 @@ const PFADE = {
   spieler: "/player",
   replay: "/replay",
   analyse: "/mulligan",
+  changelog: "/changelog",
 };
 
 // Der Reiter hiess bis zum 22.10.2026 "Analysis" unter /analysis; alte Links fuehren weiter hin.
@@ -2314,15 +2474,20 @@ function Analyse({ leader, namen }) {
 
   if (!hand.length) {
     return (
-      <p className="py-10 text-center" style={{ color: "var(--still)" }}>
-        No card data for this leader in the selected period yet. The daily files carry it
-        since 20 October 2026.
-      </p>
+      <>
+        <MulliganJeGegner leaderId={eigen} namen={namen} />
+        <p className="py-10 text-center" style={{ color: "var(--still)" }}>
+          No public OPBounty card data for this leader in the selected period yet. The daily
+          files carry it since 20 October 2026.
+        </p>
+      </>
     );
   }
 
   return (
     <>
+      <MulliganJeGegner leaderId={eigen} namen={namen} />
+      <h2 className="pb-2 pt-6 text-base font-semibold">All opponents, from OPBounty's public statistics</h2>
       <p className="max-w-[74ch] pb-3 text-[13px]" style={{ color: "var(--still)" }}>
         From OPBounty's public statistics for {(namen[eigen] || {}).n || eigen}, against all
         opponents. <b>Keep</b> is the share of opening hands with this card that were kept;
@@ -2841,6 +3006,7 @@ export default function App() {
             ["rang", "Power rankings", "Ranking"],
             ["beste", "Leaderboard", "Ladder"],
             ["analyse", "Mulligan", "Mulligan"],
+            ["changelog", "Changelog", "News"],
           ].map(([k, lang, kurz]) => (
             <button
               key={k}
@@ -3088,7 +3254,9 @@ export default function App() {
               </section>
               ) : null}
 
-              {reiter === "decks" ? (
+              {reiter === "changelog" ? (
+                <Changelog />
+              ) : reiter === "decks" ? (
                 <>
                   {/* Nur auf dem Telefon: eine Zeile statt drei. Der Punkt zeigt, dass ein
                       Filter vom Standard abweicht, sonst waere eingeklappt nicht zu sehen,

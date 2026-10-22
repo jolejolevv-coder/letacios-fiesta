@@ -19,3 +19,4 @@ public/replays/
 
 # Replay Analysen aus Metacoach: im Repo nur verschluesselt (der Bazzite pusht die .enc)
 public/analyse/*.json.gz
+public/mulligan/*.json.gz
