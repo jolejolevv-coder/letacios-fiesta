@@ -1,5 +1,5 @@
 /**
- * Die Marke. Ein Sombrero, flach und geometrisch, keine Illustration.
+ * Die Marke. Ihr Stroh ist die einzige zweite Farbe neben dem Blau der Spielhilfe. Ein Sombrero, flach und geometrisch, keine Illustration.
  *
  * Gezeichnet aus vier Formen: Krempe, Unterschatten, Krone und Hutband. Die Proportion
  * traegt das Ganze, eine sehr breite Krempe gegen eine schmale Krone.
@@ -21,8 +21,8 @@ export default function Sombrero({ groesse = 34, className = "" }) {
       {/* Unterschatten der Krempe, gibt dem Hut Auflage */}
       <path
         d="M2 27 Q32 37 62 27 Q32 41 2 27 Z"
-        fill="var(--text)"
-        opacity="0.22"
+        fill="var(--grund)"
+        opacity="0.28"
       />
       {/* Krempe */}
       <ellipse cx="32" cy="26.5" rx="30" ry="9" fill={STROH} />

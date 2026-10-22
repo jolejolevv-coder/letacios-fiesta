@@ -1,0 +1,515 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Letacios Fiesta.
+
+   Die Seite ist bewusst nur dunkel. Kartenbilder sind bunt und kontrastreich; auf
+   einem hellen Grund konkurrieren sie mit der Flaeche statt auf ihr zu liegen. Ein
+   zweiter heller Satz waere Pflege ohne Gegenwert.
+
+   Die Gestalt folgt Apple. Drei Dinge machen sie aus, nicht nur die Farben:
+
+   1. Der Systemschriftstapel. Auf einem Mac oder iPhone ist das die echte SF Pro,
+      keine Nachbildung. Auf allem anderen faellt es sauber auf Segoe und Roboto
+      zurueck. Deshalb laedt die Seite auch keine Schrift von aussen.
+   2. Weiche Kanten, 14 Pixel Radius, halbtransparente Trennlinien statt eigener
+      Linienfarbe.
+   3. Beschriftungen in normaler Schreibweise und kleinem Grau, keine gesperrten
+      Versalien. Das ist der groesste einzelne Unterschied zum Terminallook.
+   --------------------------------------------------------------------------- */
+
+@theme {
+  --font-anzeige: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --font-zahl: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --radius: 14px;
+}
+
+:root {
+  color-scheme: dark;
+
+  --font-anzeige: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --font-zahl: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+
+  --grund: #000000;
+  --flaeche: #1c1c1e;
+  --flaeche2: #2c2c2e;
+  --linie: rgba(255, 255, 255, 0.12);
+  --liniestark: rgba(255, 255, 255, 0.28);
+  --text: #f5f5f7;
+  --leise: #aeaeb2;
+  --still: #8e8e93;
+  --akzent: #0a84ff;
+  --akzentweich: rgba(10, 132, 255, 0.18);
+  --sieg: #30d158;
+  --niederlage: #ff453a;
+  --siegweich: rgba(48, 209, 88, 0.16);
+  --niederlageweich: rgba(255, 69, 58, 0.14);
+  /* Angriffspfeil im Replay. Eigenes Orange: Blau ist der eigene Spieler, Rot die
+     Niederlage. */
+  --angriff: #ff9f0a;
+  --schatten: 0 1px 2px rgba(0, 0, 0, 0.6), 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+html, body, #wurzel { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--grund);
+  color: var(--text);
+  font-family: var(--font-text);
+  font-size: 15px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+}
+
+#wurzel { position: relative; z-index: 1; }
+
+/* Tabellenziffern, damit Spalten stehen.
+
+   `white-space: nowrap` ist hier kein Feinschliff: auf schmalen Schirmen brach
+   sonst "53.3 %" in zwei Zeilen um, die Prozentzeichen standen allein darunter und
+   die Zeilenhoehen sprangen. Zahlen umbrechen nie, sie rollen lieber seitlich mit
+   ihrer Tabelle. */
+.zahl {
+  font-family: var(--font-zahl);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+/* Dasselbe fuer Spaltenkoepfe: "Win rate" auf zwei Zeilen kostet mehr Hoehe, als
+   der Umbruch an Breite spart. */
+th.etikett { white-space: nowrap; }
+
+/* Beschriftungen klein und grau, normal geschrieben. */
+.etikett {
+  font-family: var(--font-text);
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--still);
+}
+
+/* Bleibt als Haken fuer die grossen Kennzahlen, die Breitenachse braucht es hier
+   nicht mehr. */
+.breit { letter-spacing: -0.02em; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--linie); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--liniestark); }
+
+:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+
+/* Weiche Kanten. Tailwind setzt die Radien als einzelne Klassen. */
+.rounded-lg { border-radius: 14px; }
+.rounded-md { border-radius: 10px; }
+.rounded { border-radius: 10px; }
+
+/* Kopfzeile mit Vibrancy statt blosser Unschaerfe. */
+header {
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+/* Ladeband unter der Kopfzeile */
+@keyframes lauf {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+/* Waagerecht scrollbare Leisten ohne sichtbaren Balken, etwa die Reiterzeile
+   auf dem Telefon.
+
+   `overflow-y: hidden` ist hier kein Beiwerk: wer nur `overflow-x: auto` setzt,
+   bekommt laut CSS-Regel auf der anderen Achse ebenfalls `auto`. Die Reiterzeile
+   liess sich dadurch auf dem Telefon um ein bis zwei Pixel hoch und runter
+   ziehen und wirkte wackelig. `overscroll-behavior` haelt zusaetzlich das
+   Gummiband am Ende der Leiste davon ab, die ganze Seite mitzunehmen. */
+.hide-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+}
+.hide-scroll::-webkit-scrollbar { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Der teuerste Teil der Seite ist der Decklistenreiter: jede Liste traegt zwanzig bis
+   fuenfundzwanzig Kartenfelder, und es stehen Dutzende untereinander. `content-visibility`
+   laesst den Browser alles ueberspringen, was gerade nicht im Bild ist, Layout und
+   Zeichnen inklusive. `contain-intrinsic-size` gibt ihm dabei eine Hoehe zum Rechnen,
+   damit der Rollbalken nicht springt. */
+.liste {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 250px;
+}
+
+/* Dasselbe fuer die langen Tabellen und die Matrix. */
+.tabellenhuelle {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 600px;
+  overscroll-behavior-x: contain;
+}
+
+/* Die Matrix auf schmalen Schirmen. Zeilenkopf und Spalten schrumpfen, sonst passen
+   nicht einmal zwei Gegner ins Bild. Ab 640 Pixel gelten wieder die vollen Masse. */
+.matrix { min-width: max-content; }
+.matrix th:first-child, .matrix td:first-child { min-width: 46px; width: 46px; }
+.matrix td { min-width: 54px; }
+@media (min-width: 640px) {
+  .matrix th:first-child, .matrix td:first-child { min-width: 150px; width: auto; }
+  .matrix td { min-width: 86px; }
+}
+
+/* Hinweis, dass seitlich mehr steht: eine weiche Kante am rechten Rand. */
+.tabellenhuelle, .matrixhuelle {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+@media (min-width: 900px) {
+  .tabellenhuelle, .matrixhuelle { -webkit-mask-image: none; mask-image: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   Replaybrett
+
+   Uebernommen aus dem Viewer des Simulators (src/replay.py), damit beide Ansichten
+   dasselbe Bild zeigen. Das Raster ist der Kern: die untere Seite liegt normal, die
+   obere um 180 Grad gedreht, damit sich die beiden Spieler gegenueberliegen wie am
+   Tisch. Gedreht wird ausschliesslich ueber die grid-template-areas, die Karten
+   selbst bleiben aufrecht und lesbar.
+
+   `--sk` skaliert das ganze Brett. Alle Kartenmasse haengen daran, damit die
+   Zoomstufen eine einzige Zahl aendern statt zwanzig Regeln.
+   --------------------------------------------------------------------------- */
+
+.brett { --sk: 1; }
+
+.mat {
+  display: grid;
+  align-items: start;
+  margin-top: 4px;
+  gap: 8px calc(10px * var(--sk));
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "life chars chars"
+    "life mid   deck"
+    "dond cost  trash";
+}
+.mat.gedreht {
+  grid-template-areas:
+    "trash cost  dond"
+    "deck  mid   life"
+    "chars chars life";
+}
+.z-chars { grid-area: chars; }
+.z-mid   { grid-area: mid; }
+.z-deck  { grid-area: deck; }
+.z-dond  { grid-area: dond; }
+.z-cost  { grid-area: cost; }
+.z-trash { grid-area: trash; }
+.z-life  { grid-area: life; align-self: center; }
+
+.seite {
+  border: 1px solid var(--linie);
+  border-radius: 10px;
+  padding: 12px;
+  background: linear-gradient(180deg, var(--flaeche), var(--flaeche2));
+}
+.seite.amzug { border-color: var(--akzent); box-shadow: 0 0 0 1px var(--akzentweich); }
+
+/* Deck, Trash und Don-Deck bekommen bewusst keinen Rahmen: dort liegt eine Karte,
+   kein Bereich. */
+.feld {
+  border: 1px solid var(--linie);
+  border-radius: 10px;
+  background: var(--flaeche2);
+  padding: 7px 10px 9px;
+}
+.mitte { display: flex; gap: calc(14px * var(--sk)); align-items: flex-start; }
+.z-deck, .z-trash, .z-dond { padding-bottom: 12px; }
+.zonenpaar { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.zonenpaar .zonenname { text-align: center; padding-bottom: 3px; }
+
+.zonenname {
+  color: var(--still);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 0 5px;
+}
+
+.karten {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: calc(74px * var(--sk));
+  align-items: flex-start;
+}
+.brett .hand { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+.brettleer { color: var(--still); font-size: 12px; padding: 22px 4px; }
+
+.bkarte { width: calc(52px * var(--sk)); border-radius: 5px; overflow: hidden; display: block; }
+.bkarte.leader { width: calc(62px * var(--sk)); }
+
+/* Gerestet: die Karte liegt quer, wie auf dem Tisch.
+   Gedreht wird mit transform, und transform aendert das Layout nicht: die Karte ragt
+   also links und rechts ueber ihren Platz hinaus, bei einem Seitenverhaeltnis von 1,4
+   um je 20 Prozent der Kartenbreite. Frueher stand hier ein scale(0.82), das die Karte
+   kleiner machte, damit sie in die Spur passt. Seit dem 21.09.2026 behaelt sie ihre
+   Groesse, und stattdessen bekommt der Platz die Breite, die eine liegende Karte
+   braucht. Nur der Platz mit der gedrehten Karte wird breiter, die Reihe bleibt ruhig. */
+.bkarte.gerestet {
+  transform: rotate(90deg);
+  transform-origin: center;
+  transition: transform 180ms ease;
+}
+.platz:has(.bkarte.gerestet) { width: calc(52px * var(--sk) * 1.4); }
+.platz:has(.bkarte.leader.gerestet) { width: calc(62px * var(--sk) * 1.4); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bkarte.gerestet { transition: none; }
+}
+.brett .hand .bkarte { width: calc(44px * var(--sk)); }
+
+/* Verdeckter Stapel mit der echten Kartenrueckseite und der Zahl darauf. Die
+   beiden Bilder stammen aus dem Simulator und liegen verkleinert im Repo. */
+.stapel {
+  width: calc(46px * var(--sk));
+  height: calc(64px * var(--sk));
+  border: 1px solid var(--linie);
+  border-radius: 5px;
+  background: var(--grund) center / cover no-repeat;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 3px;
+}
+.stapel .zahl {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: 4px;
+  padding: 0 5px;
+}
+.stapel.karte { background-image: url("/rueckseiten/karte.jpg"); }
+.stapel.don { background-image: url("/rueckseiten/don.jpg"); }
+.stapel.leer {
+  background-image: none;
+  align-items: center;
+  padding-bottom: 0;
+  color: var(--still);
+  font-size: 11px;
+}
+
+/* Cost Area: quadratische Kacheln, damit ein gerasteter Don beim Drehen nicht
+   ueber seine Nachbarn laeuft. */
+.donzone {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: calc(46px * var(--sk));
+}
+.donzone span {
+  width: calc(46px * var(--sk));
+  height: calc(46px * var(--sk));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.donzone i {
+  width: calc(31px * var(--sk));
+  height: calc(43px * var(--sk));
+  border-radius: 3px;
+  display: block;
+  background: url("/rueckseiten/don.jpg") center / cover no-repeat;
+}
+.donzone span.rest i { transform: rotate(90deg); opacity: 0.55; }
+.donzone .leer { color: var(--still); font-size: 12px; width: auto; }
+
+/* Lifekarten als verdeckter Stapel, leicht ueberlappend. */
+.lifestapel { display: flex; flex-direction: column; align-items: center; }
+.lifestapel .lk {
+  width: calc(40px * var(--sk));
+  height: calc(56px * var(--sk));
+  border-radius: 4px;
+  border: 1px solid var(--linie);
+  background: url("/rueckseiten/karte.jpg") center / cover no-repeat;
+  margin-top: calc(-42px * var(--sk));
+}
+.lifestapel .lk:first-child { margin-top: 0; }
+.lifestapel.aus { color: var(--niederlage); font-weight: 700; font-size: 12px; padding: 6px 0; }
+
+/* Kopfzeile eines Spielers */
+.kopf { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+.pille {
+  background: var(--grund);
+  border: 1px solid var(--linie);
+  border-radius: 20px;
+  padding: 2px 10px;
+  color: var(--still);
+  font-size: 12px;
+}
+.pille b { color: var(--text); }
+.lifeleiste { display: flex; gap: 3px; }
+.lifeleiste i {
+  width: 9px;
+  height: 14px;
+  background: var(--niederlage);
+  border-radius: 2px;
+  display: block;
+}
+
+/* Ereignisliste links */
+.ereignis { border-left: 2px solid var(--linie); padding: 3px 0 3px 8px; }
+.ereignis .art {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--still);
+}
+.ereignis.draw   { border-left-color: var(--still); }
+.ereignis.effect { border-left-color: var(--akzent); }
+.ereignis.combat { border-left-color: var(--niederlage); }
+.ereignis.info   { border-left-color: var(--linie); }
+.ereignis.start  { border-left-color: var(--sieg); }
+
+/* Auf dem Telefon ist die Hoehe knapp, nicht die Breite. Das dreispaltige Raster
+   des Tisches reisst dort auseinander, deshalb ein gestapeltes: Leader mit Life,
+   darunter die Charaktere, die Kostenzone und zuletzt die drei Stapel in einer
+   Reihe. Gespiegelt wird auf dem Telefon nicht; oben und unten reicht als
+   Unterscheidung, und ein gedrehtes Raster kostet nur Orientierung. */
+@media (max-width: 639px) {
+  .mat,
+  .mat.gedreht {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "mid   mid  life"
+      "chars chars chars"
+      "cost  cost cost"
+      "deck  dond trash";
+    gap: 8px;
+  }
+  .z-deck, .z-dond, .z-trash { padding-bottom: 0; }
+  .seite { padding: 10px; }
+  .kopf { gap: 6px; }
+}
+
+/* Angelegtes Don haengt unter seiner Karte, nicht darin: bei einer gerasteten
+   Karte soll es waagerecht lesbar bleiben. */
+.platz { display: flex; flex-direction: column; align-items: center; gap: 0; }
+.dons {
+  display: flex;
+  gap: 1px;
+  justify-content: center;
+  flex-wrap: wrap;
+  max-width: calc(58px * var(--sk));
+  margin-top: 3px;
+  min-height: calc(10px * var(--sk));
+}
+.dons i {
+  width: calc(15px * var(--sk));
+  height: calc(21px * var(--sk));
+  border-radius: 2px;
+  display: block;
+  background: url("/rueckseiten/don.jpg") center / cover no-repeat;
+}
+
+@media (max-width: 639px) {
+  /* Die Statuspillen belegten zwei Zeilen. Enger gesetzt passen sie in eine. */
+  .kopf { gap: 4px; }
+  .pille { padding: 1px 7px; font-size: 11px; }
+  .lifeleiste i { width: 7px; height: 12px; }
+}
+
+/* ---------------------------------------------------------------------------
+   Telefon: beide Bretter auf einen Schirm
+
+   Das Zonenraster des Tisches braucht Hoehe, die ein Telefon nicht hat. Ein
+   einzelnes Brett fuellte den Schirm, man sah nie beide Spieler zugleich.
+
+   Der Ausweg ist keine Verkleinerung, sondern eine Auswahl: Deck, Don-Deck und
+   Trash verschwinden als Stapel, weil ihre Zahlen schon in den Pillen der
+   Kopfzeile stehen. Die Cost Area wird zur Zahl in derselben Zeile. Uebrig
+   bleiben die drei Dinge, die man wirklich sehen will: Leader, Charaktere, Hand.
+   --------------------------------------------------------------------------- */
+@media (max-width: 639px) {
+  .mat,
+  .mat.gedreht {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "mid  chars"
+      "cost cost";
+    gap: 6px;
+  }
+  /* Was die Kopfzeile schon als Zahl fuehrt, braucht kein eigenes Feld. Das Don
+     bleibt aber sichtbar: wie viel offen liegt und wie viel gerestet ist, liest
+     man am Bild schneller als an einer Zahl. */
+  .z-deck, .z-dond, .z-trash, .z-life { display: none; }
+
+  /* Die Cost Area wird zum schmalen Band ohne Kasten und ohne Beschriftung. */
+  .z-cost { border: 0; background: none; padding: 0; }
+  .z-cost .zonenname { display: none; }
+  .donzone { min-height: 0; gap: 1px; }
+  .donzone span {
+    width: calc(19px * var(--sk));
+    height: calc(25px * var(--sk));
+  }
+  .donzone i {
+    width: calc(18px * var(--sk));
+    height: calc(25px * var(--sk));
+  }
+  .donzone span.rest i { transform: rotate(90deg) scale(0.9); }
+
+  .seite { padding: 7px; }
+  .feld { padding: 4px 6px 5px; }
+  .zonenname { font-size: 9px; padding: 0 0 2px; }
+  .mitte { gap: 6px; }
+
+  .karten { min-height: calc(52px * var(--sk)); gap: 4px; }
+  .brett .hand { gap: 3px; margin-top: 4px; }
+  .brettleer { padding: 8px 4px; font-size: 11px; }
+
+  /* Charaktere und Hand rollen waagerecht, statt in zweite Zeilen zu brechen. */
+  .karten, .brett .hand {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .karten::-webkit-scrollbar, .brett .hand::-webkit-scrollbar { display: none; }
+  .karten > *, .brett .hand > * { flex: 0 0 auto; }
+
+  .bkarte { width: calc(44px * var(--sk)); }
+  .bkarte.leader { width: calc(50px * var(--sk)); }
+  .platz:has(.bkarte.gerestet) { width: calc(44px * var(--sk) * 1.4); }
+  .platz:has(.bkarte.leader.gerestet) { width: calc(50px * var(--sk) * 1.4); }
+  .brett .hand .bkarte { width: calc(34px * var(--sk)); }
+  .dons { max-width: calc(48px * var(--sk)); }
+  .dons i { width: calc(11px * var(--sk)); height: calc(15px * var(--sk)); }
+}
+
+/* Angriffspfeil im Replay: eine Ebene ueber beiden Brettern, die Klicks durchlaesst. */
+.angriffspfeil {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 5;
+}
+
+/* Im laufenden Kampf zerstoert: die Karte bleibt verblasst stehen, bis er endet. */
+.platz.geist { opacity: 0.45; filter: grayscale(0.6); }

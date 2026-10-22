@@ -29,6 +29,10 @@ import { ankerBauen, fehlerSuchen, FEHLERNOTEN, kurveBauen, markenBauen, spieler
 
 /* --------------------------------------------------------------------------
    Kleine Helfer
+
+   Gestaltet nach der Spielhilfe von Metacoach (DESIGN.md): nummerierte Zeilen mit
+   Zebra, Zahlen rechtsbuendig in Saira, eine Akzentfarbe. Gut und schlecht stehen in
+   Gewicht und Helligkeit, nie in Gruen und Rot.
    -------------------------------------------------------------------------- */
 
 const proz = (w, g) => (g > 0 ? (100 * w) / g : 0);
@@ -36,52 +40,78 @@ const fmtProz = (w, g) => (g > 0 ? proz(w, g).toFixed(1) + " %" : "–");
 const fmtZahl = (n) => (n || 0).toLocaleString("en-US");
 const fmtDauer = (s) =>
   s ? Math.floor(s / 60) + ":" + String(Math.round(s % 60)).padStart(2, "0") : "–";
+const nr2 = (n) => String(n).padStart(2, "0");
+const datumKurz = (iso) => (iso ? new Date(String(iso).slice(0, 10) + "T12:00:00Z")
+  .toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "–");
 
 /** Standardfehler einer Winrate in Prozentpunkten. Ehrlicher als die blosse Zahl. */
 const fehler = (g) => (g > 0 ? 100 * Math.sqrt(0.25 / g) : 0);
 
-function farbe(w, g) {
-  return proz(w, g) >= 50 ? "var(--sieg)" : "var(--niederlage)";
+/* Fett ab 55 %, blass unter 45 % (The One Blue Rule). */
+const GUT = 55;
+const SCHWACH = 45;
+const wrKlasse = (wr) => (wr >= GUT ? "wr gut" : wr < SCHWACH ? "wr schwach" : "wr");
+const wrKlasseWG = (w, g) => (g > 0 ? wrKlasse(proz(w, g)) : "wr schwach");
+
+/* Kartenbilder liegen 120 auf 167 Pixel vor. */
+const BILD_B = 120;
+const BILD_H = 167;
+
+/** Ist der Schirm schmal? Fuer die wenigen Stellen, an denen das Handy anders rechnet. */
+function useSchmal(grenze) {
+  const abfrage = `(max-width: ${grenze}px)`;
+  const [schmal, setSchmal] = useState(
+    () => typeof window !== "undefined" && window.matchMedia(abfrage).matches
+  );
+  useEffect(() => {
+    const m = window.matchMedia(abfrage);
+    const pruefen = () => setSchmal(m.matches);
+    pruefen();
+    m.addEventListener("change", pruefen);
+    return () => m.removeEventListener("change", pruefen);
+  }, [abfrage]);
+  return schmal;
 }
 
-/* Die sechs Kartenfarben des Spiels. Sie sind echte Information aus dem Kartensatz und
-   tragen die Seite optisch, ohne dass ich mir eine Dekoration ausdenken muss. */
-const FARBEN = {
-  r: "#d1495b", g: "#3f8f6b", b: "#3a6ea5",
-  p: "#8b6bb1", s: "#70707c", y: "#d9b13d",
-};
+/* --------------------------------------------------------------------------
+   Zeichen: SVG Striche wie in Metacoach (meta-coach/web/src/teile.tsx). Hand spielen,
+   Schwert angreifen, Schild verteidigen, Krone Top players, Karte Starthand, dazu
+   Umdrehen, Pfeil und Rueckseite.
+   -------------------------------------------------------------------------- */
 
-/** Verlauf ueber die Farben eines Leaders, fuer den Streifen an der Zeile. */
-function farbverlauf(kuerzel) {
-  const teile = String(kuerzel || "").split("").map((k) => FARBEN[k]).filter(Boolean);
-  if (!teile.length) return "var(--liniestark)";
-  if (teile.length === 1) return teile[0];
-  return "linear-gradient(180deg, " + teile.join(", ") + ")";
+const ZEICHEN = {
+  hand: ["M18 11V6a2 2 0 0 0-4 0", "M14 10V4a2 2 0 0 0-4 0v2", "M10 10.5V6a2 2 0 0 0-4 0v8",
+         "M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-6-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"],
+  schwert: ["M14.5 17.5 3 6V3h3l11.5 11.5", "m13 19 6-6", "m16 16 4 4", "m19 21 2-2"],
+  schild: ["M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"],
+  krone: ["M11.56 3.27a.5.5 0 0 1 .88 0l2.95 5.6a1 1 0 0 0 1.52.3l4.27-3.67a.5.5 0 0 1 .8.52l-2.84 10.25a1 1 0 0 1-.96.73H5.81a1 1 0 0 1-.96-.73L2.02 6.02a.5.5 0 0 1 .8-.52l4.27 3.67a1 1 0 0 0 1.52-.3z", "M5 21h14"],
+  karte: ["M8.5 21.5h9a1.6 1.6 0 0 0 1.6-1.6V7.5", "M7.5 7.5h4", "M5.6 2.5h7.8a1.6 1.6 0 0 1 1.6 1.6v12.3a1.6 1.6 0 0 1-1.6 1.6H5.6A1.6 1.6 0 0 1 4 16.4V4.1a1.6 1.6 0 0 1 1.6-1.6z"],
+  dreh: ["m6 9 6 6 6-6"],
+  rueck: ["M3 12a9 9 0 0 1 15.5-6.2L21 8", "M21 3v5h-5", "M21 12a9 9 0 0 1-15.5 6.2L3 16", "M3 21v-5h5"],
+  rechts: ["m9 6 6 6-6 6"],
+  links: ["m15 6-6 6 6 6"],
+};
+// Pfeile etwas kraeftiger als die Bildzeichen, wie in Metacoach.
+const STRICH = { dreh: 1.9, rueck: 1.9, rechts: 1.9, links: 1.9 };
+
+function Zeichen({ name, groesse = 18 }) {
+  return (
+    <svg width={groesse} height={groesse} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         strokeWidth={STRICH[name] ?? 1.7} strokeLinecap="round" strokeLinejoin="round"
+         aria-hidden="true" focusable="false">
+      {ZEICHEN[name].map((d) => <path key={d} d={d} />)}
+    </svg>
+  );
 }
 
 /* --------------------------------------------------------------------------
    Bausteine
    -------------------------------------------------------------------------- */
 
-function Bild({ id, className, alt = "", breite, hoehe }) {
+function Bild({ id, className = "", alt = "", breite, hoehe }) {
   const [kaputt, setKaputt] = useState(false);
   if (kaputt) {
-    return (
-      <span
-        className={
-          className +
-          " grid place-items-center text-[7px] leading-none zahl text-center px-[2px]"
-        }
-        style={{
-          background: "var(--flaeche2)",
-          border: "1px dashed var(--liniestark)",
-          color: "var(--still)",
-        }}
-        title={id}
-      >
-        {id}
-      </span>
-    );
+    return <span className={className + " kb-kaputt"} title={id}>{id}</span>;
   }
   return (
     <img
@@ -92,45 +122,17 @@ function Bild({ id, className, alt = "", breite, hoehe }) {
       loading="lazy"
       decoding="async"
       className={className}
-      style={{ background: "var(--flaeche2)" }}
       onError={() => setKaputt(true)}
     />
   );
 }
 
-/** Name gross, Seriennummer klein darunter. Faellt auf die Nummer zurueck. */
-function LeaderName({ id, namen, klein = false }) {
-  const nummer = kennung(id);
-  const name = (namen[nummer] || {}).n;
+/** Kartenbild klein im Rahmenring, wie das Kartensymbol auf einer Spielhilfe. */
+function Kartenbild({ id, breite = 26, alt = "" }) {
+  const hoehe = Math.round((breite * BILD_H) / BILD_B);
   return (
-    <span className="min-w-0">
-      <span
-        className={
-          "block truncate font-semibold " + (klein ? "text-[13px]" : "text-sm")
-        }
-      >
-        {name || nummer}
-      </span>
-      {name ? (
-        <span className="zahl block text-[11px] leading-tight" style={{ color: "var(--still)" }}>
-          {nummer}
-        </span>
-      ) : null}
-    </span>
-  );
-}
-
-function Balken({ w, g, schmal = false }) {
-  return (
-    <span
-      className={"relative block overflow-hidden rounded-full " + (schmal ? "h-1.5" : "h-2")}
-      style={{ background: "var(--niederlageweich)" }}
-      aria-hidden="true"
-    >
-      <i
-        className="absolute inset-y-0 left-0 block rounded-full"
-        style={{ width: proz(w, g).toFixed(1) + "%", background: g < 30 ? "var(--liniestark)" : "var(--sieg)" }}
-      />
+    <span className="kb-rahmen" style={{ width: breite, height: hoehe }} aria-hidden={alt ? undefined : "true"}>
+      <Bild id={id} className="kb" alt={alt} breite={breite} hoehe={hoehe} />
     </span>
   );
 }
@@ -158,24 +160,142 @@ function Zaehler({ wert, nachkomma = 0, suffix = "" }) {
     });
     return () => anim.kill();
   }, [wert, nachkomma, suffix]);
-  return <span ref={knoten} className="zahl">0{suffix}</span>;
+  return <span ref={knoten} className="z">0{suffix}</span>;
 }
 
+/** Ein Paar aus Label und Wert in der Kennzeile unter dem Titel. */
 function Kennzahl({ etikett, kind, unter, nurGross = false }) {
   return (
-    <div className={"grid gap-0.5" + (nurGross ? " hidden sm:grid" : "")}>
-      <div className="etikett">{etikett}</div>
-      <div
-        className="breit text-[19px] font-bold leading-tight sm:text-[27px]"
-        style={{ fontFamily: "var(--font-anzeige)", fontVariantNumeric: "tabular-nums" }}
-      >
+    <div className={nurGross ? "nur-gross" : undefined}>
+      <dt>{etikett}</dt>
+      <dd>
         {kind}
-        {unter ? (
-          <small className="ml-1.5 text-xs font-medium" style={{ color: "var(--still)" }}>
-            {unter}
-          </small>
-        ) : null}
+        {unter ? <small>{unter}</small> : null}
+      </dd>
+    </div>
+  );
+}
+
+/** Umschalter in normaler Schreibung, etwa Games, Win rate, Lists. */
+function Schalter({ paare, wert, setzen, label }) {
+  return (
+    <div className="schalter" role="radiogroup" aria-label={label}>
+      {paare.map(([k, t]) => (
+        <button key={k} type="button" role="radio" aria-checked={wert === k} onClick={() => setzen(k)}>
+          {t}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const SITZ_KNOPF = [["first", "Going first"], ["second", "Going second"]];
+
+/** Sitzwahl in Versalien, das aktive Segment blau gefuellt. */
+function Sitzwahl({ wert, setzen, paare = SITZ_KNOPF, label = "Seat" }) {
+  return (
+    <div className="sitzwahl" role="group" aria-label={label}>
+      {paare.map(([k, t]) => (
+        <button key={k} type="button" aria-pressed={wert === k} onClick={() => setzen(k)}>{t}</button>
+      ))}
+    </div>
+  );
+}
+
+/** Abschnitt mit Ueberschrift in hellem Blau und auslaufender Haarlinie. */
+function Abschnitt({ titel, children, className = "" }) {
+  return (
+    <section className={"abschnitt " + className}>
+      <h2>{titel}</h2>
+      {children}
+    </section>
+  );
+}
+
+/** Der Drehknopf rechts in einer Zeile. Der Klick landet auf der Zeile selbst. */
+function DrehKnopf({ offen, label }) {
+  return (
+    <button type="button" className="dreh" aria-expanded={offen}
+            aria-label={(offen ? "Close: " : "Open: ") + label}>
+      <Zeichen name="dreh" groesse={15} />
+    </button>
+  );
+}
+
+/**
+ * Die Rueckseite einer Zeile. Sie klappt ueber grid-template-rows auf; der Inhalt wird
+ * erst beim ersten Aufklappen gebaut, damit die vielen Zeilen leicht bleiben.
+ */
+function Rueckseite({ offen, children }) {
+  const [gesehen, setGesehen] = useState(offen);
+  useEffect(() => {
+    if (offen) setGesehen(true);
+  }, [offen]);
+  return (
+    <div className={"rueck" + (offen ? " offen" : "")} inert={offen ? undefined : ""}>
+      <div className="rueck-innen">
+        {gesehen || offen ? <div className="rueck-blatt">{children}</div> : null}
       </div>
+    </div>
+  );
+}
+
+function RueckMarke({ children }) {
+  return (
+    <div className="rueck-marke">
+      <span className="rueck-etikett"><Zeichen name="rueck" groesse={12} />Back</span>
+      <span>{children}</span>
+    </div>
+  );
+}
+
+/** Spaltenkopf, der die Tafel sortiert. */
+function SortKopf({ text, schluessel, sortiert, setSortiert, rechts = true, absteigendZuerst = true }) {
+  const aktiv = sortiert.nach === schluessel;
+  return (
+    <span className={rechts ? "rechts" : undefined}>
+      <button
+        type="button"
+        data-sortiert={aktiv ? (sortiert.ab ? "ab" : "auf") : undefined}
+        aria-label={"Sort by " + text.toLowerCase()}
+        onClick={() =>
+          setSortiert((v) => (v.nach === schluessel
+            ? { nach: schluessel, ab: !v.ab }
+            : { nach: schluessel, ab: absteigendZuerst }))
+        }
+      >
+        {text}
+      </button>
+    </span>
+  );
+}
+
+/** Zahl in einer Tafelzelle. data-label traegt am Handy die Beschriftung. */
+function Zelle({ k, label, wert, klasse = "" }) {
+  return <span className={"z zahlzelle " + k + " " + klasse} data-label={label}>{wert}</span>;
+}
+
+/* Eine Deckliste als Tabelle nach Namen, fuer Rueckseiten. */
+function Decktabellen({ eintraege, namen }) {
+  const teile = eintraege.map((e) => ({ id: kennung(e), n: anzahl(e) }));
+  const haelfte = Math.ceil(teile.length / 2);
+  const tabelle = (stueck) => (
+    <table className="tab">
+      <tbody>
+        {stueck.map((t, i) => (
+          <tr key={t.id + i}>
+            <td className="anz">{t.n}</td>
+            <td className="bildzelle"><Kartenbild id={t.id} breite={24} /></td>
+            <td className="name"><b>{(namen[t.id] || {}).n || t.id}</b><small>{t.id}</small></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+  return (
+    <div className="deckteile">
+      {tabelle(teile.slice(0, haelfte))}
+      {tabelle(teile.slice(haelfte))}
     </div>
   );
 }
@@ -195,11 +315,6 @@ function Quelle({ verzeichnis, wahl, setWahl, laedt }) {
   const ersterTag = tageDesModus[0];
   const letzterTag = tageDesModus[tageDesModus.length - 1];
 
-  const knopf =
-    "px-3 py-1.5 rounded-md text-sm font-semibold transition-colors border";
-  const aktiv = { background: "var(--akzentweich)", borderColor: "var(--akzent)", color: "var(--akzent)" };
-  const ruhend = { background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--leise)" };
-
   function preset(n) {
     if (!letzterTag) return;
     const ende = new Date(letzterTag + "T00:00:00Z");
@@ -214,142 +329,94 @@ function Quelle({ verzeichnis, wahl, setWahl, laedt }) {
   }
 
   return (
-    <div className="p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="etikett mr-1">Source</span>
-        <button
-          type="button"
-          className={knopf}
-          style={wahl.art === "satz" ? aktiv : ruhend}
-          onClick={() => setWahl({ ...wahl, art: "satz" })}
-        >
-          Ready sets
-        </button>
-        <button
-          type="button"
-          className={knopf}
-          style={wahl.art === "zeitraum" ? aktiv : ruhend}
-          onClick={() => setWahl({ ...wahl, art: "zeitraum" })}
-        >
-          Date range
-        </button>
-        {laedt ? (
-          <span className="etikett ml-2" style={{ color: "var(--akzent)" }}>
-            loading ...
-          </span>
-        ) : null}
+    <div>
+      <div className="rueck-marke">
+        <span>Source</span>
+        {laedt ? <span className="blass">loading ...</span> : null}
       </div>
+      <Sitzwahl
+        wert={wahl.art}
+        setzen={(art) => setWahl({ ...wahl, art })}
+        paare={[["satz", "Ready sets"], ["zeitraum", "Date range"]]}
+        label="Source"
+      />
 
       {wahl.art === "satz" ? (
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <label className="etikett" htmlFor="satzWahl">
-            Data set
+        <div className="steuer">
+          <label className="fl eng wahlfeld">
+            <span>Data set</span>
+            <select
+              className="feld"
+              value={wahl.satz}
+              onChange={(e) => setWahl({ ...wahl, satz: e.target.value })}
+            >
+              {(verzeichnis.saetze || []).map((s) => (
+                <option key={s.schluessel} value={s.schluessel}>
+                  {s.name} ({fmtZahl(s.partien)} games)
+                </option>
+              ))}
+            </select>
           </label>
-          <select
-            id="satzWahl"
-            className="rounded-md border px-2.5 py-1.5 text-sm"
-            style={{ background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--text)" }}
-            value={wahl.satz}
-            onChange={(e) => setWahl({ ...wahl, satz: e.target.value })}
-          >
-            {(verzeichnis.saetze || []).map((s) => (
-              <option key={s.schluessel} value={s.schluessel}>
-                {s.name} ({fmtZahl(s.partien)} games)
-              </option>
-            ))}
-          </select>
         </div>
       ) : (
-        <div className="mt-3 grid gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="etikett" htmlFor="von">
-              from
+        <>
+          <div className="steuer">
+            <label className="fl eng">
+              <span>From</span>
+              <input type="date" className="feld" value={wahl.von} min={ersterTag} max={wahl.bis}
+                     onChange={(e) => setWahl({ ...wahl, von: e.target.value })} />
             </label>
-            <input
-              id="von"
-              type="date"
-              className="rounded-md border px-2.5 py-1.5 text-sm zahl"
-              style={{ background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--text)" }}
-              value={wahl.von}
-              min={ersterTag}
-              max={wahl.bis}
-              onChange={(e) => setWahl({ ...wahl, von: e.target.value })}
-            />
-            <label className="etikett" htmlFor="bis">
-              to
+            <label className="fl eng">
+              <span>To</span>
+              <input type="date" className="feld" value={wahl.bis} min={wahl.von} max={letzterTag}
+                     onChange={(e) => setWahl({ ...wahl, bis: e.target.value })} />
             </label>
-            <input
-              id="bis"
-              type="date"
-              className="rounded-md border px-2.5 py-1.5 text-sm zahl"
-              style={{ background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--text)" }}
-              value={wahl.bis}
-              min={wahl.von}
-              max={letzterTag}
-              onChange={(e) => setWahl({ ...wahl, bis: e.target.value })}
-            />
-            <span className="etikett">or</span>
-            {[1, 3, 7, 14, 30].map((n) => (
-              <button
-                key={n}
-                type="button"
-                className="rounded-md border px-2 py-1 text-xs font-semibold"
-                style={ruhend}
-                onClick={() => preset(n)}
-              >
-                {n}d
-              </button>
-            ))}
+            <div className="fl eng">
+              <span>Last days</span>
+              <div className="voreinstellung">
+                {[1, 3, 7, 14, 30].map((n) => (
+                  <button key={n} type="button" className="knopf rand z" onClick={() => preset(n)}>
+                    {n}d
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="etikett" htmlFor="modus">
-              Queue
+          <div className="steuer">
+            <label className="fl eng">
+              <span>Queue</span>
+              <select className="feld" value={wahl.modus} onChange={(e) => setWahl({ ...wahl, modus: e.target.value })}>
+                {modi.map((m) => (
+                  <option key={m} value={m}>{(verzeichnis.modi || {})[m] || m}</option>
+                ))}
+              </select>
             </label>
-            <select
-              id="modus"
-              className="rounded-md border px-2.5 py-1.5 text-sm"
-              style={{ background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--text)" }}
-              value={wahl.modus}
-              onChange={(e) => setWahl({ ...wahl, modus: e.target.value })}
-            >
-              {modi.map((m) => (
-                <option key={m} value={m}>
-                  {(verzeichnis.modi || {})[m] || m}
-                </option>
-              ))}
-            </select>
-            <label className="etikett" htmlFor="bounty">
-              Bounty
+            <label className="fl eng">
+              <span>Bounty</span>
+              <select className="feld" value={wahl.bounty} onChange={(e) => setWahl({ ...wahl, bounty: e.target.value })}>
+                {bereiche.map((b) => (
+                  <option key={b} value={b}>{(verzeichnis.bounty_name || {})[b] || b}</option>
+                ))}
+              </select>
             </label>
-            <select
-              id="bounty"
-              className="rounded-md border px-2.5 py-1.5 text-sm zahl"
-              style={{ background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--text)" }}
-              value={wahl.bounty}
-              onChange={(e) => setWahl({ ...wahl, bounty: e.target.value })}
-            >
-              {bereiche.map((b) => (
-                <option key={b} value={b}>
-                  {(verzeichnis.bounty_name || {})[b] || b}
-                </option>
-              ))}
-            </select>
-            <span className="text-xs" style={{ color: "var(--still)" }}>
-              {tageDesModus.length} days available, {ersterTag} to {letzterTag}
-            </span>
+            <p className="klein tage">
+              <span className="z">{tageDesModus.length}</span> days available, {ersterTag} to {letzterTag}
+            </p>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
 }
 
 /* --------------------------------------------------------------------------
-   Decklisten
+   Decklisten: eine Zeile je Liste mit Kartenstreifen, die volle Liste nach Namen
+   steht auf der Rueckseite.
    -------------------------------------------------------------------------- */
 
-function Deckliste({ liste, leaderId, spielerIndex }) {
+function Deckzeile({ nr, liste, leaderId, spielerIndex, namen }) {
   const g = liste.w + liste.l;
+  const [offen, setOffen] = useState(false);
   const [kopiert, setKopiert] = useState(false);
   // Wer diese Liste gespielt hat, soweit bekannt. Die Quelle sind die letzten neun
   // Partien der Spieler aus der Bestenliste, also ein Ausschnitt: bei den meisten
@@ -371,114 +438,75 @@ function Deckliste({ liste, leaderId, spielerIndex }) {
     );
   }
 
+  const lid = kennung(leaderId);
+  const streifen = liste.d.filter((e) => kennung(e) !== lid);
+
   return (
-    <article
-      className="liste grid gap-5 rounded-lg border p-4 lg:grid-cols-[176px_minmax(0,1fr)]"
-      style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
-    >
-      <div className="grid content-start gap-2">
-        <div className="text-3xl font-bold leading-none zahl" style={{ color: farbe(liste.w, g) }}>
-          {fmtProz(liste.w, g)}
+    <li className={"zeile" + (offen ? " offen" : "")}>
+      <div className="vorn" onClick={() => setOffen((o) => !o)}>
+        <span className="nr">{nr2(nr)}</span>
+        <span className="streifen" aria-label="Decklist">
+          {streifen.map((e, i) => {
+            const id = kennung(e);
+            const n = anzahl(e);
+            return (
+              <span key={id + i} className="karte-klein" title={(namen[id] || {}).n || id}>
+                <Kartenbild id={id} breite={20} />
+                {n > 1 ? <b>{n}</b> : null}
+              </span>
+            );
+          })}
+        </span>
+        <Zelle k="z-wr" label="Win rate" wert={fmtProz(liste.w, g)} klasse={wrKlasseWG(liste.w, g)} />
+        <Zelle k="z-partien" label="Games" wert={fmtZahl(g)} />
+        <Zelle k="z-first" label="First" wert={fmtProz(liste.fw, liste.fw + liste.fl)}
+               klasse={wrKlasseWG(liste.fw, liste.fw + liste.fl)} />
+        <Zelle k="z-second" label="Second" wert={fmtProz(liste.sw, liste.sw + liste.sl)}
+               klasse={wrKlasseWG(liste.sw, liste.sw + liste.sl)} />
+        <Zelle k="z-dauer" label="Time" wert={fmtDauer(liste.dur)} />
+        <DrehKnopf offen={offen} label={"List " + nr} />
+      </div>
+      <Rueckseite offen={offen}>
+        <RueckMarke>List {nr2(nr)} · {fmtZahl(g)} games</RueckMarke>
+        <Decktabellen eintraege={liste.d} namen={namen} />
+        <div className="rueck-fuss">
+          <dl className="rueck-zeilen">
+            <div><dt>Record</dt><dd className="z">{liste.w} – {liste.l}</dd></div>
+            <div><dt>Std. error</dt><dd className="z">± {fehler(g).toFixed(1)}</dd></div>
+            <div><dt>Duration</dt><dd className="z">{fmtDauer(liste.dur)}</dd></div>
+          </dl>
+          <button type="button" className="knopf rand" onClick={kopieren}>
+            {kopiert ? "Copied" : "Copy decklist"}
+          </button>
         </div>
-        <Balken w={liste.w} g={g} />
-        <dl className="grid gap-1 text-[13px]" style={{ color: "var(--leise)" }}>
-          {[
-            ["Games", fmtZahl(g)],
-            ["Record", liste.w + " – " + liste.l],
-            ["Std. error", "± " + fehler(g).toFixed(1)],
-            ["Going first", fmtProz(liste.fw, liste.fw + liste.fl)],
-            ["Going second", fmtProz(liste.sw, liste.sw + liste.sl)],
-            ["Duration", fmtDauer(liste.dur)],
-          ].map(([k, v]) => (
-            <div key={k} className="flex justify-between gap-3">
-              <dt>{k}</dt>
-              <dd className="zahl font-semibold" style={{ color: "var(--text)" }}>
-                {v}
-              </dd>
-            </div>
-          ))}
-        </dl>
-        <button
-          type="button"
-          onClick={kopieren}
-          className="mt-1 rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors"
-          style={{
-            background: kopiert ? "var(--akzentweich)" : "var(--flaeche2)",
-            borderColor: kopiert ? "var(--akzent)" : "var(--linie)",
-            color: kopiert ? "var(--akzent)" : "var(--leise)",
-          }}
-        >
-          {kopiert ? "Copied" : "Copy decklist"}
-        </button>
         {gespieltVon.length ? (
-          <div className="mt-1 grid gap-1 text-[13px]" style={{ color: "var(--leise)" }}>
-            <div className="etikett">Played by</div>
-            <div className="flex flex-wrap gap-1">
-              {gespieltVon.map((name) => (
-                <span
-                  key={name}
-                  className="rounded border px-1.5 py-0.5 text-[12px] font-semibold"
-                  style={{
-                    background: "var(--flaeche2)",
-                    borderColor: "var(--linie)",
-                    color: "var(--text)",
-                  }}
-                >
-                  {name}
-                </span>
-              ))}
-            </div>
+          <div className="rueck-fuss">
+            <span className="rueck-marke" style={{ margin: 0 }}>Played by</span>
+            <span className="etiketten">
+              {gespieltVon.map((name) => <span key={name} className="etikett">{name}</span>)}
+            </span>
           </div>
         ) : null}
-      </div>
-
-      <div className="flex flex-wrap content-start gap-1.5">
-        {liste.d.map((eintrag, i) => {
-          const id = kennung(eintrag);
-          const n = anzahl(eintrag);
-          return (
-            <span key={id + i} className="relative block w-[46px] sm:w-[54px]">
-              <Bild
-                id={id}
-                alt={id}
-                breite={54}
-                hoehe={76}
-                className="block h-[65px] w-[46px] rounded-[3px] object-cover sm:h-[76px] sm:w-[54px]"
-              />
-              {n > 1 ? (
-                <b
-                  className="absolute -bottom-1 -right-1 grid h-[18px] min-w-[18px] place-items-center rounded-full px-1 text-[11px] font-bold zahl"
-                  style={{ background: "var(--akzent)", color: "var(--grund)" }}
-                >
-                  {n}
-                </b>
-              ) : null}
-            </span>
-          );
-        })}
-      </div>
-    </article>
+      </Rueckseite>
+    </li>
   );
 }
 
+const SORT_LISTEN_TEXT = {
+  wr: "win rate", partien: "games", first: "win rate going first",
+  second: "win rate going second", dauer: "duration",
+};
+
 /* --------------------------------------------------------------------------
-   Matchups
+   Matchups des gewaehlten Leaders
    -------------------------------------------------------------------------- */
 
-const SPALTEN = [
-  { s: "name", t: "Opponent", links: true },
-  { s: "partien", t: "Games" },
-  { s: "wr", t: "Win rate" },
-  { s: "w", t: "Wins" },
-  { s: "l", t: "Losses" },
-  { s: "first", t: "Going first" },
-  { s: "second", t: "Going second" },
-  { s: null, t: "" },
+const MU_SORT = [
+  ["partien", "Games"], ["wr", "Win rate"], ["w", "Wins"], ["l", "Losses"],
+  ["first", "Going first"], ["second", "Going second"], ["name", "Opponent"],
 ];
 
-function Matchups({ leader, mindest, namen }) {
-  const [sortiert, setSortiert] = useState({ nach: "partien", ab: true });
-
+function Matchups({ leader, mindest, namen, sortiert, setSortiert }) {
   const zeilen = useMemo(() => {
     const r = (leader.gegner || [])
       .filter((g) => g.m >= mindest)
@@ -499,107 +527,47 @@ function Matchups({ leader, mindest, namen }) {
   }, [leader, mindest, sortiert]);
 
   if (!zeilen.length) {
-    return (
-      <p className="py-10 text-center" style={{ color: "var(--still)" }}>
-        No opponent reaches that game count.
-      </p>
-    );
+    return <p className="leer-satz">No opponent reaches that game count.</p>;
   }
 
+  const kopf = (t, k) => <SortKopf text={t} schluessel={k} sortiert={sortiert} setSortiert={setSortiert} />;
   return (
-    <div
-      className="tabellenhuelle overflow-x-auto rounded-lg border"
-      style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
-    >
-      <table className="w-full min-w-[680px] border-collapse">
-        <thead>
-          <tr>
-            {SPALTEN.map((sp) => (
-              <th
-                key={sp.t}
-                scope="col"
-                className={
-                  "sticky top-0 z-10 border-b px-3 py-2 etikett " +
-                  (sp.links ? "text-left" : "text-right") +
-                  (sp.s ? " cursor-pointer select-none" : "")
-                }
-                style={{
-                  background: "var(--flaeche)",
-                  borderColor: "var(--linie)",
-                  color: sortiert.nach === sp.s ? "var(--akzent)" : "var(--still)",
-                }}
-                aria-sort={
-                  sortiert.nach === sp.s ? (sortiert.ab ? "descending" : "ascending") : "none"
-                }
-                onClick={
-                  sp.s
-                    ? () =>
-                        setSortiert((v) =>
-                          v.nach === sp.s ? { nach: sp.s, ab: !v.ab } : { nach: sp.s, ab: true }
-                        )
-                    : undefined
-                }
-              >
-                {sp.t}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {zeilen.map((r) => (
-            <tr key={r.id} className="transition-colors hover:bg-[var(--flaeche2)]">
-              <td className="border-b px-2 py-1.5 sm:px-3" style={{ borderColor: "var(--linie)" }}>
-                <span className="flex items-center gap-2.5">
-                  <Bild id={r.id} className="block h-9 w-[26px] rounded-[3px] object-cover" />
-                  <LeaderName id={r.id} namen={namen} />
-                </span>
-              </td>
-              <td className="border-b px-3 py-1.5 text-right zahl" style={{ borderColor: "var(--linie)" }}>
-                {fmtZahl(r.m)}
-              </td>
-              <td
-                className="border-b px-3 py-1.5 text-right zahl font-semibold"
-                style={{ borderColor: "var(--linie)", color: farbe(r.w, r.m) }}
-              >
-                {fmtProz(r.w, r.m)}
-              </td>
-              <td className="border-b px-3 py-1.5 text-right zahl" style={{ borderColor: "var(--linie)" }}>
-                {fmtZahl(r.w)}
-              </td>
-              <td className="border-b px-3 py-1.5 text-right zahl" style={{ borderColor: "var(--linie)" }}>
-                {fmtZahl(r.l)}
-              </td>
-              <td className="border-b px-3 py-1.5 text-right zahl" style={{ borderColor: "var(--linie)" }}>
-                {fmtProz(r.fw, r.fw + r.fl)}
-              </td>
-              <td className="border-b px-3 py-1.5 text-right zahl" style={{ borderColor: "var(--linie)" }}>
-                {fmtProz(r.sw, r.sw + r.sl)}
-              </td>
-              <td className="border-b px-3 py-1.5" style={{ borderColor: "var(--linie)", width: 110 }}>
-                <Balken w={r.w} g={r.m} schmal />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      <div className="tafel-spalten spalten mu">
+        <span>Nr</span><span />
+        <SortKopf text="Opponent" schluessel="name" sortiert={sortiert} setSortiert={setSortiert} rechts={false} />
+        {kopf("Games", "partien")}{kopf("Win rate", "wr")}{kopf("Wins", "w")}{kopf("Losses", "l")}
+        {kopf("First", "first")}{kopf("Second", "second")}
+      </div>
+      <ol className="tafel mu">
+        {zeilen.map((r, i) => (
+          <li key={r.id} className="zeile">
+            <div className="vorn">
+              <span className="nr">{nr2(i + 1)}</span>
+              <Kartenbild id={r.id} breite={26} />
+              <span className="name gegner"><b>{(namen[r.id] || {}).n || r.id}</b><span className="kartennr">{r.id}</span></span>
+              <Zelle k="z-partien" label="Games" wert={fmtZahl(r.m)} />
+              <Zelle k="z-wr" label="Win rate" wert={fmtProz(r.w, r.m)} klasse={wrKlasseWG(r.w, r.m)} />
+              <Zelle k="z-w" label="Wins" wert={fmtZahl(r.w)} />
+              <Zelle k="z-l" label="Losses" wert={fmtZahl(r.l)} />
+              <Zelle k="z-first" label="First" wert={fmtProz(r.fw, r.fw + r.fl)} klasse={wrKlasseWG(r.fw, r.fw + r.fl)} />
+              <Zelle k="z-second" label="Second" wert={fmtProz(r.sw, r.sw + r.sl)} klasse={wrKlasseWG(r.sw, r.sw + r.sl)} />
+              <span className="meta-handy">{fmtZahl(r.m)} games · {fmtZahl(r.w)} – {fmtZahl(r.l)}</span>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </>
   );
 }
 
 /* --------------------------------------------------------------------------
-   Matchupmatrix
+   Matchupmatrix: ohne Gruen und Rot, fett ab 55 %, blass unter 45 %, der Spiegel
+   mit Rahmen.
    -------------------------------------------------------------------------- */
 
-/** Farbe einer Zelle. Divergierend um 50 Prozent, gedeckelt bei 25 Punkten Abstand. */
-function zellfarbe(wr, partien, mindest) {
-  if (partien < mindest) return { background: "var(--flaeche2)", color: "var(--still)" };
-  const abstand = Math.max(-1, Math.min(1, (wr - 50) / 25));
-  const staerke = Math.abs(abstand);
-  const ton = abstand >= 0 ? "var(--sieg)" : "var(--niederlage)";
-  return {
-    background: `color-mix(in srgb, ${ton} ${(14 + staerke * 62).toFixed(0)}%, var(--flaeche))`,
-    color: staerke > 0.42 ? "var(--grund)" : "var(--text)",
-  };
+function zellKlasse(wr) {
+  return wr >= GUT ? "gut" : wr < SCHWACH ? "schwach" : "";
 }
 
 function Matrix({ satz, top, mindest, namen, sitzModus, setSitzModus }) {
@@ -614,76 +582,37 @@ function Matrix({ satz, top, mindest, namen, sitzModus, setSitzModus }) {
   }, [leader]);
 
   if (!leader.length) {
-    return (
-      <p className="py-10 text-center" style={{ color: "var(--still)" }}>
-        No data in this range.
-      </p>
-    );
+    return <p className="leer-satz">No data in this range.</p>;
   }
 
+  const name = (id) => (namen[kennung(id)] || {}).n || kennung(id);
+
   return (
-    <div
-      className="matrixhuelle overflow-auto rounded-lg border"
-      style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
-    >
-      <table className="matrix border-collapse">
+    <div className="matrix-huelle">
+      <table className="matrix">
         <thead>
           <tr>
-            <th
-              className="sticky left-0 top-0 z-20 border-b border-r p-2 text-left etikett"
-              style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
-              scope="col"
-            >
-              <span className="hidden sm:inline">Row beats column</span>
-              <span className="sm:hidden">vs</span>
-            </th>
+            <th className="ecke" scope="col"><span className="lang-ecke">Row beats column</span></th>
             {leader.map((e) => (
-              <th
-                key={e.id}
-                scope="col"
-                className="sticky top-0 z-10 border-b border-l p-1 sm:p-1.5"
-                style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
-              >
-                <span className="grid justify-items-center gap-1" title={(namen[kennung(e.id)] || {}).n || ""}>
-                  <Bild
-                    id={kennung(e.id)}
-                    breite={32}
-                    hoehe={46}
-                    className="block h-[38px] w-[27px] rounded-[3px] object-cover sm:h-[46px] sm:w-8"
-                  />
-                  <span
-                    className="hidden text-[10px] font-semibold leading-tight sm:block"
-                    style={{ color: "var(--still)" }}
-                  >
-                    {((namen[kennung(e.id)] || {}).n || kennung(e.id)).slice(0, 13)}
-                  </span>
-                </span>
+              <th key={e.id} scope="col" title={name(e.id)}>
+                <Kartenbild id={kennung(e.id)} breite={24} />
+                <span className="kopfname">{name(e.id).slice(0, 13)}</span>
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {leader.map((zeile) => {
+          {leader.map((zeile, i) => {
             const g = zeile.w + zeile.l;
             return (
               <tr key={zeile.id}>
-                <th
-                  scope="row"
-                  className="sticky left-0 z-10 border-b border-r p-2 text-left"
-                  style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
-                >
-                  <span className="flex items-center gap-2">
-                    <Bild
-                      id={kennung(zeile.id)}
-                      breite={32}
-                      hoehe={44}
-                      className="block h-9 w-[26px] rounded-[3px] object-cover sm:h-11 sm:w-8"
-                    />
-                    <span className="hidden min-w-0 sm:block">
-                      <LeaderName id={zeile.id} namen={namen} klein />
-                      <span className="zahl block text-[11px]" style={{ color: "var(--still)" }}>
-                        {fmtProz(zeile.w, g)}
-                      </span>
+                <th scope="row">
+                  <span className="kopfzeile">
+                    <span className="nr">{nr2(i + 1)}</span>
+                    <Kartenbild id={kennung(zeile.id)} breite={26} />
+                    <span className="kn" style={{ minWidth: 0 }}>
+                      <b>{name(zeile.id)}</b>
+                      <small>{kennung(zeile.id)} · {fmtProz(zeile.w, g)}</small>
                     </span>
                   </span>
                 </th>
@@ -691,39 +620,35 @@ function Matrix({ satz, top, mindest, namen, sitzModus, setSitzModus }) {
                   const treffer = (nachschlag.get(zeile.id) || new Map()).get(spalte.id);
                   const partien = treffer ? treffer.m : 0;
                   const wr = treffer ? proz(treffer.w, treffer.m) : 0;
-                  const stil = zellfarbe(wr, partien, mindest);
                   const genug = partien >= mindest;
+                  const spiegel = spalte.id === zeile.id ? " spiegel" : "";
+                  const titel = genug
+                    ? fmtZahl(partien) + " games. Click to switch the whole matrix " +
+                      (sitzModus ? "back to the overall rate." : "to first and second.")
+                    : "too few games";
+                  if (!genug) {
+                    return (
+                      <td key={spalte.id} className={"leer" + spiegel} title={titel}
+                          onClick={() => setSitzModus(!sitzModus)}>–</td>
+                    );
+                  }
+                  if (sitzModus) {
+                    const f = proz(treffer.fw, treffer.fw + treffer.fl);
+                    const s = proz(treffer.sw, treffer.sw + treffer.sl);
+                    return (
+                      <td key={spalte.id} className={spiegel.trim()} title={titel}
+                          onClick={() => setSitzModus(!sitzModus)}>
+                        <span className="sitze-zelle">
+                          <span className={zellKlasse(f)}><i>1st</i>{f.toFixed(1)}</span>
+                          <span className={zellKlasse(s)}><i>2nd</i>{s.toFixed(1)}</span>
+                        </span>
+                      </td>
+                    );
+                  }
                   return (
-                    <td
-                      key={spalte.id}
-                      className="cursor-pointer border-b border-l p-1 text-center align-middle"
-                      style={{ borderColor: "var(--linie)", ...stil }}
-                      onClick={() => setSitzModus(!sitzModus)}
-                      title={
-                        genug
-                          ? fmtZahl(partien) + " games. Click to switch the whole matrix " +
-                            (sitzModus ? "back to the overall rate." : "to first and second.")
-                          : "too few games"
-                      }
-                    >
-                      {!genug ? (
-                        <span className="zahl block text-[13px] font-semibold leading-tight">–</span>
-                      ) : sitzModus ? (
-                        <span className="grid gap-0.5 leading-none">
-                          <span className="zahl block text-[12px] font-semibold">
-                            <span className="opacity-60">1st </span>
-                            {proz(treffer.fw, treffer.fw + treffer.fl).toFixed(1)}
-                          </span>
-                          <span className="zahl block text-[12px] font-semibold">
-                            <span className="opacity-60">2nd </span>
-                            {proz(treffer.sw, treffer.sw + treffer.sl).toFixed(1)}
-                          </span>
-                        </span>
-                      ) : (
-                        <span className="zahl block text-[15px] font-semibold leading-tight">
-                          {wr.toFixed(1)}
-                        </span>
-                      )}
+                    <td key={spalte.id} className={zellKlasse(wr) + spiegel} title={titel}
+                        onClick={() => setSitzModus(!sitzModus)}>
+                      {wr.toFixed(1)}
                     </td>
                   );
                 })}
@@ -760,8 +685,12 @@ function Matrix({ satz, top, mindest, namen, sitzModus, setSitzModus }) {
 const RATING_ANKER = 9.5;
 const RATING_LOG = 2.2727;
 const RATING_WR = 0.071;
+const RATING_STARK = 8.5;
+const RATING_MITTEL = 7;
 const rating = (g, spitze, wr) =>
   Math.max(0, Math.min(10, RATING_ANKER + RATING_LOG * Math.log10(g / spitze) + RATING_WR * (wr - 50)));
+
+const RANG_SORT = [["partien", "Games"], ["anteil", "Share"], ["wr", "Win rate"], ["rating", "Rating"]];
 
 function Rangliste({ satz, namen }) {
   const [nach, setNach] = useState("partien");
@@ -787,91 +716,63 @@ function Rangliste({ satz, namen }) {
     // besteht aus Leadern mit wenigen hundert Partien und sagt nichts ueber die Meta.
     return r.slice(0, 10);
   }, [satz, nach, gesamt]);
+  const anteilMax = Math.max(1, ...zeilen.map((z) => z.anteil));
 
-  const spalten = [
-    ["partien", "Games"],
-    ["anteil", "Share"],
-    ["wr", "Win rate"],
-    ["rating", "Rating"],
-  ];
+  // Die Tafelkoepfe sortieren immer absteigend, wie der Umschalter.
+  const sortiert = { nach, ab: true };
+  const setSortiert = (f) => setNach(f(sortiert).nach);
+  const kopf = (t, k) => <SortKopf text={t} schluessel={k} sortiert={sortiert} setSortiert={setSortiert} />;
+  const sortText = (RANG_SORT.find(([k]) => k === nach) || RANG_SORT[0])[1].toLowerCase();
 
   return (
-    <div
-      className="tabellenhuelle overflow-x-auto rounded-lg border"
-      style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
-    >
-      <table className="w-full min-w-[340px] border-collapse sm:min-w-[720px]">
-        <thead>
-          <tr>
-            <th className="sticky top-0 border-b px-3 py-2 text-left etikett"
-                style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }} scope="col">
-              #
-            </th>
-            <th className="sticky top-0 border-b px-3 py-2 text-left etikett"
-                style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }} scope="col">
-              Leader
-            </th>
-            {spalten.map(([k, t]) => (
-              <th
-                key={k}
-                scope="col"
-                className="sticky top-0 cursor-pointer select-none border-b px-3 py-2 text-right etikett"
-                style={{
-                  background: "var(--flaeche)",
-                  borderColor: "var(--linie)",
-                  color: nach === k ? "var(--akzent)" : "var(--still)",
-                }}
-                aria-sort={nach === k ? "descending" : "none"}
-                onClick={() => setNach(k)}
-              >
-                {t}
-              </th>
-            ))}
-            <th className="sticky top-0 border-b px-3 py-2"
-                style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }} />
-          </tr>
-        </thead>
-        <tbody>
-          {zeilen.map((e, i) => (
-            <tr key={e.id} className="transition-colors hover:bg-[var(--flaeche2)]">
-              <td className="border-b px-3 py-2 zahl text-sm" style={{ borderColor: "var(--linie)", color: "var(--still)" }}>
-                {i + 1}
-              </td>
-              <td className="border-b px-3 py-2" style={{ borderColor: "var(--linie)" }}>
-                <span className="flex items-center gap-2.5">
-                  <Bild id={kennung(e.id)} className="block h-11 w-8 rounded-[3px] object-cover" />
-                  <LeaderName id={e.id} namen={namen} />
-                </span>
-              </td>
-              <td className="border-b px-3 py-2 text-right zahl" style={{ borderColor: "var(--linie)" }}>
-                {fmtZahl(e.g)}
-              </td>
-              <td className="border-b px-3 py-2 text-right zahl" style={{ borderColor: "var(--linie)", color: "var(--leise)" }}>
-                {e.anteil.toFixed(1)} %
-              </td>
-              <td
-                className="border-b px-3 py-2 text-right zahl font-semibold"
-                style={{ borderColor: "var(--linie)", color: farbe(e.w, e.g) }}
-              >
-                {fmtProz(e.w, e.g)}
-              </td>
-              <td
-                className="border-b px-3 py-2 text-right zahl text-base font-bold"
-                style={{
-                  borderColor: "var(--linie)",
-                  color: e.rat >= 8.5 ? "var(--sieg)" : e.rat >= 7 ? "var(--akzent)" : "var(--leise)",
-                }}
-              >
-                {e.rat.toFixed(2)}
-              </td>
-              <td className="border-b px-3 py-2" style={{ borderColor: "var(--linie)", width: 130 }}>
-                <Balken w={e.w} g={e.g} schmal />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      <section className="vorspann">
+        <h1>Power rankings</h1>
+        <p className="lead">
+          {satz.name}, <strong>{fmtZahl(satz.partien)}</strong> games. The ten leaders that shape the meta,
+          with a rating on a scale to 10.
+        </p>
+      </section>
+      <div className="steuer">
+        <div className="fl eng"><span>Sort by</span>
+          <Schalter paare={RANG_SORT} wert={nach} setzen={setNach} label="Sort by" />
+        </div>
+      </div>
+      <Abschnitt titel={"Top 10 leaders by " + sortText}>
+        <div className="tafel-spalten spalten rang">
+          <span>Nr</span><span /><span>Leader</span>
+          {kopf("Games", "partien")}{kopf("Share", "anteil")}{kopf("Win rate", "wr")}{kopf("Rating", "rating")}
+        </div>
+        <ol className="tafel rang">
+          {zeilen.map((e, i) => {
+            const id = kennung(e.id);
+            return (
+              <li key={e.id} className="zeile">
+                <div className="vorn">
+                  <span className="nr">{nr2(i + 1)}</span>
+                  <Kartenbild id={id} breite={26} />
+                  <span className="name gegner"><b>{(namen[id] || {}).n || id}</b><span className="kartennr">{id}</span></span>
+                  <Zelle k="z-partien" label="Games" wert={fmtZahl(e.g)} />
+                  <span className="anteil">
+                    <span className="balken"><i style={{ width: ((100 * e.anteil) / anteilMax).toFixed(1) + "%" }} /></span>
+                    <span className="z">{e.anteil.toFixed(1)} %</span>
+                  </span>
+                  <Zelle k="z-wr" label="Win rate" wert={fmtProz(e.w, e.g)} klasse={wrKlasse(e.wr)} />
+                  <span className={"rating" + (e.rat >= RATING_STARK ? " gut" : e.rat < RATING_MITTEL ? " schwach" : "")}>
+                    {e.rat.toFixed(2)}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+        <p className="lesart">
+          The rating follows the published power rankings: mostly how often a leader is played, a little its win
+          rate. <b>Bold</b> rating from {RATING_STARK}, pale under {RATING_MITTEL}; bold win rate from {GUT} %,
+          pale under {SCHWACH} %. The bar shows the share against the most played leader.
+        </p>
+      </Abschnitt>
+    </>
   );
 }
 
@@ -879,14 +780,16 @@ function Rangliste({ satz, namen }) {
    Bestenliste
 
    Die Top 100 der Western Ladder. Die Daten kommen nicht vom CDN, sondern aus einem
-   Mitschnitt der Spielverbindung; warum das so ist, steht in
-   specs/features/bestenliste.md. Je Spieler liegt die Leaderaufstellung mit Sitzsplit
-   vor, und die ist der eigentliche Gewinn: der Client selbst zeigt sie nicht.
+   Mitschnitt des Spiels; warum das so ist, steht in specs/features/bestenliste.md.
+   Seit OPBounty 2.7 (20.10.2026) wird die Liste vom Bildschirm gelesen: je Leader gibt
+   es nur die Winrate, Partien, Spielzeit und Sitze fehlen. Die Spalten Games, Win rate
+   und Time erscheinen deshalb nur, wenn die Daten sie wieder fuehren.
    -------------------------------------------------------------------------- */
+
+const LADDER_LEADER_MAX = 3;
 
 function Bestenliste({ daten, namen, oeffnen }) {
   const [suche, setSuche] = useState("");
-
   const [sortiert, setSortiert] = useState({ nach: "rang", ab: false });
 
   // Bilanz je Spieler aus der Leaderaufstellung. Die Zeile selbst traegt keine
@@ -894,16 +797,15 @@ function Bestenliste({ daten, namen, oeffnen }) {
   const angereichert = useMemo(
     () =>
       daten.spieler.map((e) => {
-        // Seit OPBounty 2.7 (20.10.2026) wird die Liste vom Bildschirm gelesen. Dann gibt
-        // es je Leader nur die Winrate, keine Partien; die Spalten bleiben leer.
         const leader = (e.leader || []).filter((l) => l.leader);
         if (e.quelle === "ocr") return { ...e, leader, siege: null, partien: null, wr: null };
-        const siege = leader.reduce((a, l) => a + l.siege, 0);
-        const partien = leader.reduce((a, l) => a + l.partien, 0);
+        const siege = leader.reduce((a, l) => a + (l.siege || 0), 0);
+        const partien = leader.reduce((a, l) => a + (l.partien || 0), 0);
         return { ...e, leader, siege, partien, wr: proz(siege, partien) };
       }),
     [daten]
   );
+  const mitZahlen = angereichert.some((e) => e.partien);
 
   const spieler = useMemo(() => {
     const s = suche.trim().toLowerCase();
@@ -920,173 +822,93 @@ function Bestenliste({ daten, namen, oeffnen }) {
   }, [angereichert, suche, sortiert]);
 
   const stunden = (sek) => (sek / 3600).toFixed(1) + " h";
-
-  // Gleiche Spaltendefinition wie in den uebrigen Tabellen der Seite: Sortierschluessel
-  // am Kopf, Zahlen rechtsbuendig, Text links.
-  // `nurGross` blendet die Spalte unter 640 Pixel aus. Rang, Name, Bounty und
-  // Winrate tragen die Tabelle; Partien und Spielzeit sind dort Beiwerk.
-  const SPALTEN = [
-    { t: "#", s: "rang" },
-    { t: "Player", links: true },
-    { t: "Bounty", s: "bounty" },
-    { t: "Games", s: "partien", nurGross: true },
-    { t: "Win rate", s: "wr" },
-    { t: "Time", s: "spielzeit", nurGross: true },
-    { t: "Most played", links: true },
-  ];
+  const leaderWr = (l) => (l.winrate != null ? l.winrate : l.partien ? proz(l.siege, l.partien) : null);
+  const kopf = (t, k) => <SortKopf text={t} schluessel={k} sortiert={sortiert} setSortiert={setSortiert} />;
+  const ocr = angereichert.some((e) => e.quelle === "ocr");
+  const klasse = "tafel ladder" + (mitZahlen ? " mit-zahlen" : "");
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-3 py-1">
-        <span className="flex items-center gap-2">
-          <label className="etikett" htmlFor="spielerSuche">
-            Search Player
-          </label>
-          <input
-            id="spielerSuche"
-            type="search"
-            autoComplete="off"
-            placeholder="name"
-            className="w-36 rounded-md border px-2.5 py-1.5 text-sm"
-            style={{ background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--text)" }}
-            value={suche}
-            onChange={(e) => setSuche(e.target.value)}
-          />
-        </span>
+      <section className="vorspann">
+        <h1>Leaderboard</h1>
+        <p className="lead">
+          Top {angereichert.length} of the Western ladder{daten.stand ? <>, as of <strong>{datumKurz(daten.stand)}</strong></> : null}.
+          A tap on a player opens the player page.
+        </p>
+      </section>
+      <div className="steuer">
+        <label className="fl eng" style={{ width: 220, maxWidth: "100%" }}>
+          <span>Search player</span>
+          <input id="spielerSuche" type="search" autoComplete="off" placeholder="name" className="feld"
+                 value={suche} onChange={(e) => setSuche(e.target.value)} />
+        </label>
       </div>
-
-      <div
-        className="tabellenhuelle overflow-x-auto rounded-lg border"
-        style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
-      >
-        <table className="w-full min-w-[340px] border-collapse sm:min-w-[720px]">
-          <thead>
-            <tr>
-              {SPALTEN.map((sp) => (
-                <th
-                  key={sp.t}
-                  scope="col"
-                  className={
-                    "sticky top-0 z-10 whitespace-nowrap border-b px-2 py-2 etikett sm:px-3 " +
-                    (sp.links ? "text-left" : "text-right") +
-                    (sp.s ? " cursor-pointer select-none" : "") +
-                    (sp.nurGross ? " hidden sm:table-cell" : "")
-                  }
-                  style={{
-                    background: "var(--flaeche)",
-                    borderColor: "var(--linie)",
-                    color: sortiert.nach === sp.s ? "var(--akzent)" : "var(--still)",
-                  }}
-                  aria-sort={
-                    sortiert.nach === sp.s
-                      ? sortiert.ab
-                        ? "descending"
-                        : "ascending"
-                      : "none"
-                  }
-                  onClick={
-                    sp.s
-                      ? () =>
-                          setSortiert((v) =>
-                            v.nach === sp.s
-                              ? { nach: sp.s, ab: !v.ab }
-                              : { nach: sp.s, ab: true }
-                          )
-                      : undefined
-                  }
-                >
-                  {sp.t}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {spieler.map((e) => {
-              const top = (e.leader || [])[0];
-              return (
-                <Fragment key={e.login}>
-                  {/* Die ganze Zeile fuehrt auf die Spielerseite. Ein Aufklappen
-                      daneben gab es frueher; es zeigte dieselbe Aufstellung, die
-                      dort ohnehin steht, und war ein zweites Ziel in derselben
-                      Zeile. */}
-                  <tr
-                    className={e.user_id != null
-                      ? "cursor-pointer transition-colors hover:bg-[var(--flaeche2)]"
-                      : undefined}
-                    onClick={e.user_id != null ? () => oeffnen(e.user_id) : undefined}
-                    title={e.user_id != null ? undefined : "No player page: name not matched yet"}
-                  >
-                    <td className="zahl border-b px-2 py-1.5 text-right sm:px-3"
-                        style={{ borderColor: "var(--linie)", color: "var(--still)" }}>
-                      {e.rang}
-                    </td>
-                    <td className="border-b px-2 py-1.5 font-semibold sm:px-3"
-                        style={{ borderColor: "var(--linie)" }}>
-                      {/* Der Name fuehrt auf die Spielerseite, die Zeile daneben
-                          klappt nur die Aufstellung auf. Zwei Ziele in einer Zeile,
-                          deshalb haelt der Name das Klicken auf. */}
-                      <span style={{ color: "var(--akzent)" }}>{e.name}</span>
-                    </td>
-                    <td className="zahl whitespace-nowrap border-b px-2 py-1.5 text-right font-semibold sm:px-3"
-                        style={{ borderColor: "var(--linie)" }}>
-                      {fmtZahl(e.bounty)}
-                    </td>
-                    <td className="zahl hidden border-b px-2 py-1.5 text-right sm:table-cell sm:px-3"
-                        style={{ borderColor: "var(--linie)", color: "var(--leise)" }}>
-                      {e.partien == null ? "-" : fmtZahl(e.partien)}
-                    </td>
-                    <td
-                      className="zahl whitespace-nowrap border-b px-2 py-1.5 text-right font-semibold sm:px-3"
-                      style={{
-                        borderColor: "var(--linie)",
-                        color: e.partien ? farbe(e.siege, e.partien) : "var(--still)",
-                      }}
-                    >
-                      {e.partien ? e.wr.toFixed(1) + " %" : "-"}
-                    </td>
-                    <td className="zahl hidden border-b px-2 py-1.5 text-right sm:table-cell sm:px-3"
-                        style={{ borderColor: "var(--linie)", color: "var(--leise)" }}>
-                      {e.partien == null ? "-" : stunden(e.spielzeit || 0)}
-                    </td>
-                    <td className="border-b px-2 py-1.5 sm:px-3" style={{ borderColor: "var(--linie)" }}>
-                      {top ? (
-                        <span className="flex items-center gap-2">
-                          <Bild id={top.leader} breite={120} hoehe={168}
-                                className="h-[38px] w-[27px] shrink-0 rounded-[3px] object-cover" />
-                          {/* Auf dem Telefon traegt das Kartenbild die Aussage, der
-                              Name kostet dort nur Breite. */}
-                          <span className="hidden sm:contents">
-                            <LeaderName id={top.leader} namen={namen} klein />
-                            <span className="zahl text-xs" style={{ color: "var(--still)" }}>
-                              {top.partien == null
-                                ? top.winrate == null ? "" : top.winrate.toFixed(1) + " %"
-                                : <>{top.siege}&ndash;{top.niederlagen}</>}
-                            </span>
+      <Abschnitt titel="Players by rank">
+        <div className={"tafel-spalten spalten ladder" + (mitZahlen ? " mit-zahlen" : "")}>
+          <SortKopf text="Nr" schluessel="rang" sortiert={sortiert} setSortiert={setSortiert} rechts={false} absteigendZuerst={false} />
+          <span>Player</span>
+          {kopf("Bounty", "bounty")}
+          {mitZahlen ? <>{kopf("Games", "partien")}{kopf("Win rate", "wr")}{kopf("Time", "spielzeit")}</> : null}
+          <span>Most played</span><span />
+        </div>
+        <ol className={klasse}>
+          {spieler.map((e) => {
+            const ziel = e.user_id != null;
+            const ls = (e.leader || []).slice(0, LADDER_LEADER_MAX);
+            return (
+              <li key={e.login} className={"zeile" + (ziel ? "" : " ohne-ziel")}>
+                {/* Die ganze Zeile fuehrt auf die Spielerseite; der Name ist dazu ein
+                    echter Link fuer Tastatur und neue Tabs. */}
+                <div className="vorn" onClick={ziel ? () => oeffnen(e.user_id) : undefined}
+                     title={ziel ? undefined : "No player page: name not matched yet"}>
+                  <span className="nr">{nr2(e.rang)}</span>
+                  <span className="spieler">
+                    {ziel ? (
+                      <a href={PFADE.spieler + "?id=" + encodeURIComponent(e.user_id)}
+                         style={{ textDecoration: "none" }}
+                         onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); oeffnen(e.user_id); }}>
+                        <b>{e.name}</b>
+                      </a>
+                    ) : <b>{e.name}</b>}
+                  </span>
+                  <span className="bounty">{fmtZahl(e.bounty)}</span>
+                  {mitZahlen ? (
+                    <>
+                      <Zelle k="z-partien" label="Games" wert={e.partien == null ? "–" : fmtZahl(e.partien)} />
+                      <Zelle k="z-wr" label="Win rate" wert={e.partien ? e.wr.toFixed(1) + " %" : "–"}
+                             klasse={e.partien ? wrKlasse(e.wr) : "wr schwach"} />
+                      <Zelle k="z-zeit" label="Time" wert={e.partien == null ? "–" : stunden(e.spielzeit || 0)} />
+                    </>
+                  ) : null}
+                  <span className={"aufstellung" + (ls.length > 1 ? " mehrere" : "")}>
+                    {ls.length ? ls.map((l, j) => {
+                      const wr = leaderWr(l);
+                      const nm = (namen[l.leader] || {}).n || l.leader;
+                      return (
+                        <span key={l.leader + j} className={"eintrag" + (j ? " neben" : "")} title={nm}>
+                          <Kartenbild id={l.leader} breite={24} />
+                          {j === 0 ? <b>{nm}</b> : null}
+                          <span className={"z " + (wr == null ? "wr" : wrKlasse(wr))}>
+                            {wr == null ? "" : wr.toFixed(1) + " %"}
                           </span>
                         </span>
-                      ) : (
-                        <span style={{ color: "var(--still)" }}>no data</span>
-                      )}
-                    </td>
-                  </tr>
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      {angereichert.some((e) => e.quelle === "ocr") ? (
-        <p className="pt-3 text-xs" style={{ color: "var(--still)" }}>
-          Since OPBounty 2.7 the leaderboard is read from the game screen. It shows the win
-          rate of each player's top three leaders, but no games, play time or first and
-          second split.
-        </p>
-      ) : null}
-      {!spieler.length ? (
-        <p className="py-10 text-center" style={{ color: "var(--still)" }}>
-          No player matches.
-        </p>
-      ) : null}
+                      );
+                    }) : <span className="blass klein">no data</span>}
+                  </span>
+                  <span className="pfeil-rechts">{ziel ? <Zeichen name="rechts" groesse={16} /> : null}</span>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+        {!spieler.length ? <p className="leer-satz">No player matches.</p> : null}
+        {ocr ? (
+          <p className="lesart">
+            Since OPBounty 2.7 the leaderboard is read from the game screen. It shows the win rate of each
+            player's top three leaders, but no games, play time or first and second split.
+          </p>
+        ) : null}
+      </Abschnitt>
     </>
   );
 }
@@ -1098,8 +920,7 @@ function Bestenliste({ daten, namen, oeffnen }) {
    und die letzten Partien mit Deckliste und Replay.
 
    Neun Partien sind das Maximum: der Server schreibt einen Schnappschuss der letzten
-   neun ins Profil, mehr gibt es nicht. Wer viel spielt, bei dem faellt heraus, was
-   der letzte Lauf nicht gesehen hat.
+   neun ins Profil, mehr gibt es nicht.
    -------------------------------------------------------------------------- */
 
 // Der Eimer, in dem die Replays liegen. Kein Geheimnis, er steckt in jeder
@@ -1125,7 +946,6 @@ function replayAdresse(pfad) {
   );
 }
 
-
 /** Angelegtes Don unter einer Karte, als kleine Reihe. */
 function AngelegtesDon({ n }) {
   if (!n) return null;
@@ -1140,7 +960,7 @@ function AngelegtesDon({ n }) {
 function Stapel({ n, art = "karte", leer = "empty" }) {
   if (!n) return <span className="stapel leer">{leer}</span>;
   return (
-    <span className={"stapel " + art}>
+    <span className={"stapel sk-" + art}>
       <span className="zahl">{n}</span>
     </span>
   );
@@ -1173,7 +993,7 @@ function LifeStapel({ n }) {
 
 function Zone({ name, feld, className = "", children }) {
   return (
-    <div className={(feld ? "feld " : "") + className}>
+    <div className={(feld ? "rzone " : "") + className}>
       <div className="zonenname">{name}</div>
       {children}
     </div>
@@ -1187,7 +1007,7 @@ function Zone({ name, feld, className = "", children }) {
  * gegenueberliegen wie am Tisch. Gedreht wird nur das Raster ueber
  * grid-template-areas; die Karten bleiben aufrecht und damit lesbar.
  */
-function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug, geist }) {
+function Brett({ wer, stand, leader, namen, eigen, gedreht, amZug, geist }) {
   const s = stand || {};
   const don = s.don || {};
   const hand = s.hand || [];
@@ -1200,10 +1020,9 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug, geist
   const life = s.life || 0;
 
   return (
-    <div className={"seite" + (amZug ? " amzug" : "")} data-seite={wer}>
-      <div className="kopf">
-        <span className="text-[13px] font-bold"
-              style={{ color: eigen ? "var(--akzent)" : "var(--text)" }}>
+    <div className={"rseite" + (amZug ? " amzug" : "")} data-seite={wer}>
+      <div className="rkopf">
+        <span className={"rname" + (eigen ? " eigen" : "")}>
           {wer.split("#")[0]}
           {amZug ? " · to move" : ""}
         </span>
@@ -1228,7 +1047,7 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug, geist
         <div className="z-life"><LifeStapel n={life} /></div>
 
         <Zone name="Character Area" feld className="z-chars">
-          <div className="karten">
+          <div className="rkarten">
             {board.length || geist ? (
               <>
                 {board.map((k, i) => (
@@ -1242,8 +1061,6 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug, geist
                             className={"bkarte" + (gerestet.has(i) ? " gerestet" : "")}
                             alt={(namen[k] || {}).n || k
                                  + (gerestet.has(i) ? ", rested" : "")} />
-                      {/* Angelegtes Don steht unter der Karte, an der es haengt. Der
-                          Slot der Bewegungszeile nennt den Boardplatz. */}
                       <AngelegtesDon n={angelegt[i] || 0} />
                     </span>
                   </Fragment>
@@ -1256,8 +1073,8 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug, geist
           </div>
         </Zone>
 
-        <div className="feld z-mid">
-          <div className="mitte">
+        <div className="rzone z-mid">
+          <div className="rmitte">
             <div className="zonenpaar">
               <div className="zonenname">Leader</div>
               {leader ? (
@@ -1311,17 +1128,17 @@ function Brett({ wer, nummer, stand, leader, namen, eigen, gedreht, amZug, geist
       </div>
 
       <div className="z-hand">
-      <div className="zonenname" style={{ marginTop: 8 }}>Hand</div>
-      <div className="hand">
-        {hand.length ? (
-          hand.map((k, i) => (
-            <Bild key={k + i} id={k} breite={120} hoehe={168}
-                  className="bkarte" alt={(namen[k] || {}).n || k} />
-          ))
-        ) : (
-          <span className="brettleer">empty hand</span>
-        )}
-      </div>
+        <div className="zonenname" style={{ marginTop: 8 }}>Hand</div>
+        <div className="rhand">
+          {hand.length ? (
+            hand.map((k, i) => (
+              <Bild key={k + i} id={k} breite={120} hoehe={168}
+                    className="bkarte" alt={(namen[k] || {}).n || k} />
+            ))
+          ) : (
+            <span className="brettleer">empty hand</span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1362,6 +1179,7 @@ const PFEIL_BOGEN = 0.12;
  * Gemessen wird nach jedem Schritt und bei jeder Groessenaenderung: die Lage der Karten
  * haengt an Zoom, Fensterbreite und daran, ob eine Karte gerade quer liegt. Die Ebene
  * liegt im rollbaren Brettcontainer und ist so gross wie sein Inhalt, rollt also mit.
+ * Der Pfeil steht in hellem Blau mit dunklem Saum (eine Akzentfarbe).
  */
 function Angriffspfeil({ angriff, ebeneRef, zoom, schritt }) {
   const [linie, setLinie] = useState(null);
@@ -1407,7 +1225,7 @@ function Angriffspfeil({ angriff, ebeneRef, zoom, schritt }) {
   const cy = (y1 + y2) / 2 + (dx / laenge) * laenge * PFEIL_BOGEN;
   const pfad = `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
   const rahmen = (r, dick) => (
-    <rect x={r.x - 3} y={r.y - 3} width={r.b + 6} height={r.h + 6} rx={7}
+    <rect x={r.x - 3} y={r.y - 3} width={r.b + 6} height={r.h + 6} rx={5}
           fill="none" stroke="var(--angriff)" strokeWidth={dick} />
   );
 
@@ -1422,7 +1240,7 @@ function Angriffspfeil({ angriff, ebeneRef, zoom, schritt }) {
       {rahmen(von, 1.5)}
       {rahmen(auf, 2.5)}
       {/* Dunkler Saum unter dem Pfeil, damit er auf hellen Kartenbildern lesbar bleibt. */}
-      <path d={pfad} fill="none" stroke="var(--grund)" strokeOpacity="0.7"
+      <path d={pfad} fill="none" stroke="var(--grund)" strokeOpacity="0.75"
             strokeWidth={7} strokeLinecap="round" />
       <path d={pfad} fill="none" stroke="var(--angriff)" strokeWidth={3.5}
             strokeLinecap="round" markerEnd="url(#pfeilspitze)" />
@@ -1430,7 +1248,7 @@ function Angriffspfeil({ angriff, ebeneRef, zoom, schritt }) {
   );
 }
 
-/** Ereignisart aus der Zeile ableiten, fuer die Farbe am linken Rand. */
+/** Ereignisart aus der Zeile ableiten, fuer den Strich am linken Rand. */
 function ereignisart(text) {
   if (/Leader is|Chose to go|Will select turn order/i.test(text)) return "start";
   if (/Has Connected|Version is|Waiting for/i.test(text)) return "info";
@@ -1439,9 +1257,6 @@ function ereignisart(text) {
   return "effect";
 }
 
-// Die kleinste Stufe heisst "Mobil" statt "70 %". Sie ist keine Zoomstufe unter
-// anderen, sondern die Groesse, auf die das Telefonlayout ausgelegt ist; eine
-// Prozentzahl daneben legt nahe, sie sei nur eine Verkleinerung.
 /* Steuerzeichen als SVG statt als Unicode. Zeichen wie U+25B6 rendert manches
    Geraet, allen voran iOS, als farbiges Emoji; die Leiste sah dann nach Chat aus
    statt nach Wiedergabe. Ein Pfad erbt dagegen die Textfarbe und bleibt ueberall
@@ -1495,6 +1310,8 @@ function Symbol({ art }) {
   );
 }
 
+// Die kleinste Stufe heisst "Mobile" statt "70 %". Sie ist keine Zoomstufe unter
+// anderen, sondern die Groesse, auf die das Telefonlayout ausgelegt ist.
 const ZOOMSTUFEN = [0.7, 1, 1.3, 1.6, 2];
 const zoomName = (z) => (z === 0.7 ? "Mobile" : Math.round(z * 100) + "%");
 const TEMPO = [0.5, 1, 2, 4];
@@ -1502,11 +1319,9 @@ const TEMPO = [0.5, 1, 2, 4];
 function Kartenband({ karten, namen }) {
   if (!karten || !karten.length) return null;
   return (
-    <span className="ml-1.5 inline-flex gap-1 align-middle">
+    <span className="kartenband">
       {karten.slice(0, 3).map((k, i) => (
-        <Bild key={k + i} id={k} breite={120} hoehe={168}
-              className="inline-block h-[22px] w-[16px] rounded-[2px] object-cover align-middle"
-              alt={(namen[k] || {}).n || k} />
+        <Kartenbild key={k + i} id={k} breite={16} alt={(namen[k] || {}).n || k} />
       ))}
     </span>
   );
@@ -1514,13 +1329,13 @@ function Kartenband({ karten, namen }) {
 
 /**
  * @param eigenerLeader Kartennummer des Leaders, den der betrachtete Spieler
- *   gespielt hat. Der Ladder-Name taugt zur Zuordnung nicht: im Log stehen die
- *   Spielnamen, und die sind andere. FabaniniOvert heisst dort
- *   OvertimeChampanzini#2775. Ueber den Leader geht es zuverlaessig.
+ *   gespielt hat. Der Ladder Name taugt zur Zuordnung nicht: im Log stehen die
+ *   Spielnamen, und die sind andere. Ueber den Leader geht es zuverlaessig.
+ *
+ * Fuer "Analyze my replay" kommen Zeilen und Analyse direkt aus dem Speicher der Seite
+ * (zeilenDirekt, analyseDirekt), statt sie zu holen; eigenerName legt dort die eigene
+ * Seite fest, auch im Mirror.
  */
-/* Der Viewer. Fuer "Analyze my replay" kommen Zeilen und Analyse direkt aus dem Speicher
-   der Seite (zeilenDirekt, analyseDirekt), statt sie zu holen; eigenerName legt dort die
-   eigene Seite fest, auch im Mirror. */
 function Replay({ pfad, namen, eigenerLeader, zurueck, zeilenDirekt, analyseDirekt, eigenerName }) {
   const direkt = zeilenDirekt !== undefined;
   const [zeilen, setZeilen] = useState(direkt ? zeilenDirekt : null);
@@ -1612,13 +1427,18 @@ function Replay({ pfad, namen, eigenerLeader, zurueck, zeilenDirekt, analyseDire
   }, [i, logOffen]);
 
   if (zeilen === null) {
-    return <p className="py-4 text-sm" style={{ color: "var(--still)" }}>Loading replay ...</p>;
+    return <p className="laedt">Loading replay ...</p>;
   }
   if (zeilen === false || !schritte.length) {
     return (
-      <p className="py-4 text-sm" style={{ color: "var(--still)" }}>
-        No replay stored for this game. The client only uploads part of them.
-      </p>
+      <>
+        {zurueck ? (
+          <button type="button" onClick={zurueck} className="knopf leise zurueck-knopf">
+            <Zeichen name="links" groesse={16} />Back
+          </button>
+        ) : null}
+        <p className="leer-satz">No replay stored for this game. The client only uploads part of them.</p>
+      </>
     );
   }
 
@@ -1632,69 +1452,58 @@ function Replay({ pfad, namen, eigenerLeader, zurueck, zeilenDirekt, analyseDire
 
   // Auf dem Telefon zaehlt Treffsicherheit, nicht Vollstaendigkeit. Dort bleiben
   // Zurueck, ein Schritt vor und zurueck, Abspielen; Tempo und Zoom stecken je in
-  // einem Umschalter, der die Stufen durchgeht. Die Knoepfe sind dafuer groesser
-  // als auf dem Rechner, nicht kleiner.
-  const knopf =
-    "inline-flex items-center justify-center rounded-md border px-3 py-2.5 " +
-    "text-sm font-semibold transition-colors " +
-    "hover:bg-[var(--flaeche2)] disabled:opacity-40 " +
-    "min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:px-2.5 sm:py-1.5";
+  // einem Umschalter, der die Stufen durchgeht. Die Knoepfe sind dort 44 Pixel gross.
+  const knopf = "knopf rand rknopf";
   // Beide Klassen setzen `display`, genau wie der Grundknopf. Ohne das Ausrufezeichen
   // entscheidet die Reihenfolge im erzeugten CSS, und die Sprungknoepfe standen auf
   // dem Telefon wieder da.
   const nurGross = " !hidden sm:!inline-flex";
   const nurKlein = " sm:!hidden";
   const weiter = (liste, wert) => liste[(liste.indexOf(wert) + 1) % liste.length];
-  const stufe = (an) => ({
-    background: an ? "var(--akzentweich)" : "var(--flaeche2)",
-    borderColor: an ? "var(--akzent)" : "var(--linie)",
-    color: an ? "var(--akzent)" : "var(--leise)",
-  });
 
   return (
     <div className="brett" style={{ "--sk": zoom }}>
-      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 sm:mb-4 sm:gap-x-6 sm:gap-y-2">
+      <div className="r-steuer">
         {zurueck ? (
-          <button type="button" onClick={zurueck} className={knopf}
-                  style={{ borderColor: "var(--linie)", color: "var(--leise)" }}>
-            &larr; Back
+          <button type="button" onClick={zurueck} className="knopf leise">
+            <Zeichen name="links" groesse={16} />Back
           </button>
         ) : null}
 
-        <span className="flex items-center gap-1">
-          <button type="button" className={knopf + nurGross} style={stufe(false)}
+        <span className="gruppe">
+          <button type="button" className={knopf + nurGross}
                   disabled={nr <= 0} onClick={() => setI(0)}
                   aria-label="first step"><Symbol art="anfang" /></button>
-          <button type="button" className={knopf} style={stufe(false)}
+          <button type="button" className={knopf}
                   disabled={nr <= 0} onClick={() => setI((n) => Math.max(0, n - 1))}
                   aria-label="previous step"><Symbol art="zurueck" /></button>
-          <button type="button" className={knopf} style={stufe(laeuft)}
+          <button type="button" className={knopf + " voll"} aria-pressed={laeuft}
                   onClick={() => setLaeuft((l) => !l)}
                   aria-label={laeuft ? "pause" : "play"}>
             <Symbol art={laeuft ? "pause" : "spielen"} />
           </button>
-          <button type="button" className={knopf} style={stufe(false)}
+          <button type="button" className={knopf}
                   disabled={nr >= schritte.length - 1}
                   onClick={() => setI((n) => Math.min(schritte.length - 1, n + 1))}
                   aria-label="next step"><Symbol art="vor" /></button>
-          <button type="button" className={knopf + nurGross} style={stufe(false)}
+          <button type="button" className={knopf + nurGross}
                   disabled={nr >= schritte.length - 1}
                   onClick={() => setI(schritte.length - 1)}
                   aria-label="last step"><Symbol art="ende" /></button>
         </span>
 
-        <span className={"items-center gap-1" + nurGross}>
+        <span className={"gruppe" + nurGross}>
           {TEMPO.map((t) => (
-            <button key={t} type="button" className={knopf} style={stufe(tempo === t)}
+            <button key={t} type="button" className={knopf + " z"} aria-pressed={tempo === t}
                     onClick={() => setTempo(t)}>
               {t === 0.5 ? "\u00BDx" : t + "x"}
             </button>
           ))}
         </span>
 
-        <span className={"items-center gap-1" + nurGross}>
+        <span className={"gruppe" + nurGross}>
           {ZOOMSTUFEN.map((z) => (
-            <button key={z} type="button" className={knopf} style={stufe(zoom === z)}
+            <button key={z} type="button" className={knopf} aria-pressed={zoom === z}
                     onClick={() => setZoom(z)}>
               {zoomName(z)}
             </button>
@@ -1702,23 +1511,23 @@ function Replay({ pfad, namen, eigenerLeader, zurueck, zeilenDirekt, analyseDire
         </span>
 
         {/* Auf dem Telefon je ein Umschalter statt einer Reihe. */}
-        <button type="button" className={knopf + nurKlein} style={stufe(tempo !== 1)}
+        <button type="button" className={knopf + nurKlein} aria-pressed={tempo !== 1}
                 onClick={() => setTempo((t) => weiter(TEMPO, t))}>
           {tempo === 0.5 ? "\u00BDx" : tempo + "x"}
         </button>
-        <button type="button" className={knopf + nurKlein} style={stufe(zoom !== 1)}
+        <button type="button" className={knopf + nurKlein} aria-pressed={zoom !== 1}
                 onClick={() => setZoom((z) => weiter(ZOOMSTUFEN, z))}>
           {zoomName(zoom)}
         </button>
 
-        <span className="zahl text-xs sm:text-sm" style={{ color: "var(--leise)" }}>
+        <span className="r-stand">
           {nr + 1} / {schritte.length}
-          <span className="hidden sm:inline" style={{ color: "var(--still)" }}>
+          <span className="hidden sm:inline">
             {" "}&middot; turn {jetzt.zug} / {zuege}
           </span>
         </span>
 
-        <button type="button" className={knopf + " ml-auto"} style={stufe(logOffen)}
+        <button type="button" className={knopf + " ml-auto"} aria-pressed={logOffen}
                 onClick={() => setLogOffen((o) => !o)}>
           {logOffen ? "Hide events" : "Events"}
         </button>
@@ -1726,39 +1535,21 @@ function Replay({ pfad, namen, eigenerLeader, zurueck, zeilenDirekt, analyseDire
 
       {analyse ? (
         <ReplayAnalyse analyse={analyse} schritte={schritte} leader={leader} spieler={spieler}
-                 nr={nr} setI={setI} knopf={knopf} stufe={stufe} />
+                       nr={nr} setI={setI} knopf={knopf} />
       ) : null}
 
       {/* Die laufende Zeile steht immer da, auch wenn die Liste zu ist. */}
-      <div className="mb-3 rounded-lg border px-3 py-2"
-           style={{ borderColor: "var(--linie)", background: "var(--flaeche)" }}>
-        <p className="text-[13px] leading-tight">
-          {jetzt.wer ? (
-            <span className="mr-1.5 font-semibold"
-                  style={{ color: jetzt.wer === spieler ? "var(--akzent)" : "var(--leise)" }}>
-              {jetzt.wer.split("#")[0]}
-            </span>
-          ) : null}
-          <span style={{ color: jetzt.wer ? "var(--text)" : "var(--still)" }}>{jetzt.text}</span>
-          <Kartenband karten={jetzt.karten} namen={namen} />
-        </p>
-      </div>
+      <p className="r-jetzt">
+        {jetzt.wer ? (
+          <span className={"wer" + (jetzt.wer === spieler ? " eigen" : "")}>{jetzt.wer.split("#")[0]}</span>
+        ) : null}
+        <span className={jetzt.wer ? undefined : "blass"}>{jetzt.text}</span>
+        <Kartenband karten={jetzt.karten} namen={namen} />
+      </p>
 
-      <div
-        className={
-          "grid gap-3 lg:items-start " +
-          (logOffen ? "lg:grid-cols-[300px_minmax(0,1fr)]" : "lg:grid-cols-1")
-        }
-      >
-        <div
-          ref={listeRef}
-          className={
-            "max-h-[70vh] overflow-y-auto rounded-lg border p-3 " +
-            (logOffen ? "" : "hidden")
-          }
-          style={{ borderColor: "var(--linie)", background: "var(--flaeche)" }}
-        >
-          <div className="grid gap-1.5">
+      <div className={"r-raster" + (logOffen ? " mit-log" : "")}>
+        <div ref={listeRef} className={"r-log" + (logOffen ? "" : " hidden")}>
+          <div className="ereignisse">
             {schritte.map((s, j) => {
               const art = ereignisart(s.text);
               const dran = j === nr;
@@ -1768,21 +1559,12 @@ function Replay({ pfad, namen, eigenerLeader, zurueck, zeilenDirekt, analyseDire
                   type="button"
                   data-jetzt={dran ? "1" : "0"}
                   onClick={() => setI(j)}
-                  className={"ereignis " + art + " w-full text-left"}
-                  style={{
-                    background: dran ? "var(--akzentweich)" : "transparent",
-                    opacity: j > nr ? 0.45 : 1,
-                  }}
+                  className={"ereignis " + art + (dran ? " jetzt" : "") + (j > nr ? " spaeter" : "")}
                 >
-                  <div className="art">
-                    {art} &middot; turn {s.zug}
-                  </div>
-                  <div className="text-[13px] leading-tight">
+                  <div className="art">{art} &middot; turn {s.zug}</div>
+                  <div className="text">
                     {s.wer ? (
-                      <span className="mr-1 font-semibold"
-                            style={{ color: s.wer === spieler ? "var(--akzent)" : "var(--leise)" }}>
-                        {s.wer.split("#")[0]}
-                      </span>
+                      <span className={"wer" + (s.wer === spieler ? " eigen" : "")}>{s.wer.split("#")[0]}</span>
                     ) : null}
                     {s.text}
                   </div>
@@ -1792,8 +1574,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck, zeilenDirekt, analyseDire
           </div>
         </div>
 
-        <div ref={ebeneRef} className="relative grid gap-2 overflow-x-auto"
-             style={{ overscrollBehaviorX: "contain" }}>
+        <div ref={ebeneRef} className="r-ebene">
           {seiten.map((n, k) => (
             <Brett
               key={n}
@@ -1815,10 +1596,31 @@ function Replay({ pfad, namen, eigenerLeader, zurueck, zeilenDirekt, analyseDire
   );
 }
 
-/* Mulligan je Gegner aus Metacoach (vom Bazzite nach public/mulligan/ gepusht): fuer den
-   gewaehlten Leader, Gegner und Sitz behaltene gegen gemischte Haende und je Karte der
-   Starthand die echte Winrate. "Top players" heisst beide Spieler ab 2000 Bounty. */
+/* --------------------------------------------------------------------------
+   Mulligan je Gegner aus Metacoach (vom Bazzite nach public/mulligan/ gepusht): fuer
+   den gewaehlten Leader, Gegner und Sitz behaltene gegen gemischte Haende und je Karte
+   der Starthand die echte Winrate. "Top players" heisst beide Spieler ab 2000 Bounty.
+   -------------------------------------------------------------------------- */
+
 const MULLIGAN_ABSTAND = 3;
+// Skala der Hantel wie in Metacoach: 30 bis 80 %, Strich bei 50 %.
+const HANTEL_UNTEN = 30;
+const HANTEL_OBEN = 80;
+
+/** Winrate mit (gefuellt) gegen ohne (Ring). */
+function Hantel({ mit, ohne }) {
+  const x = (v) => Math.max(0, Math.min(100, ((v - HANTEL_UNTEN) / (HANTEL_OBEN - HANTEL_UNTEN)) * 100));
+  const a = x(mit);
+  const b = x(ohne);
+  return (
+    <span className="hantel" aria-hidden="true">
+      <span className="mitte" style={{ left: x(50) + "%" }} />
+      <span className="spanne" style={{ left: Math.min(a, b) + "%", width: Math.abs(a - b) + "%" }} />
+      <span className="punkt ohne" style={{ left: b + "%" }} />
+      <span className="punkt mit" style={{ left: a + "%" }} />
+    </span>
+  );
+}
 
 function MulliganJeGegner({ leaderId, namen }) {
   const [daten, setDaten] = useState(undefined);
@@ -1836,12 +1638,12 @@ function MulliganJeGegner({ leaderId, namen }) {
     return () => { ab = true; };
   }, [leaderId]);
 
-  if (daten === undefined) return <p className="py-4 text-sm" style={{ color: "var(--still)" }}>Loading mulligan data ...</p>;
+  if (daten === undefined) return <Abschnitt titel="Mulligan by matchup"><p className="laedt">Loading mulligan data ...</p></Abschnitt>;
   if (daten === null) {
     return (
-      <p className="py-4 text-[13px]" style={{ color: "var(--still)" }}>
-        No per matchup mulligan data for this leader yet.
-      </p>
+      <Abschnitt titel="Mulligan by matchup">
+        <p className="leer-satz">No per matchup mulligan data for this leader yet.</p>
+      </Abschnitt>
     );
   }
   const mindest = daten.grenzen?.min_zelle ?? 30;
@@ -1860,121 +1662,86 @@ function MulliganJeGegner({ leaderId, namen }) {
   const schlecht = karten.filter((k) => k.abstand !== null && k.abstand <= -MULLIGAN_ABSTAND).slice(-3).reverse();
   const nameK = (id) => (namen[id] || {}).n || id;
   const und = (l) => l.length <= 1 ? l.join("") : l.slice(0, -1).join(", ") + " or " + l[l.length - 1];
-  const knopf = (an) => ({
-    background: an ? "var(--akzentweich)" : "var(--flaeche2)",
-    borderColor: an ? "var(--akzent)" : "var(--linie)",
-    color: an ? "var(--akzent)" : "var(--leise)",
-  });
-  const zelle = "zahl whitespace-nowrap border-b px-2 py-1.5 text-right sm:px-3";
 
   return (
-    <section className="min-w-0">
-      <h2 className="pb-2 text-base font-semibold">Mulligan by matchup</h2>
-      <div className="flex flex-wrap items-center gap-2 pb-3">
-        <select className="w-full min-w-0 max-w-full rounded-md border px-2.5 py-2 text-sm sm:w-auto sm:py-1.5" value={gegner}
-                style={{ background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--text)" }}
-                onChange={(e) => setGegner(e.target.value)} aria-label="Opponent">
-          {liste.map(([g, e]) => (
-            <option key={g} value={g}>
-              {name(g)}{g !== "alle" ? " " + g : ""} ({fmtZahl((e.partien.first || 0) + (e.partien.second || 0))} games)
-            </option>
-          ))}
-        </select>
-        {[["first", "Going first"], ["second", "Going second"]].map(([k, t]) => (
-          <button key={k} type="button" className="rounded-md border px-2.5 py-1.5 text-sm font-semibold"
-                  style={knopf(sitz === k)} onClick={() => setSitz(k)}>{t}</button>
-        ))}
-        {[["feld", "All players"], ["spitze", "Top players"]].map(([k, t]) => (
-          <button key={k} type="button" className="rounded-md border px-2.5 py-1.5 text-sm font-semibold"
-                  style={knopf(stufe === k)} onClick={() => setStufe(k)}>{t}</button>
-        ))}
+    <Abschnitt titel="Mulligan by matchup">
+      <div className="steuer eins">
+        <label className="fl eng wahlfeld">
+          <span>Opponent</span>
+          <select className="feld" value={gegner} onChange={(e) => setGegner(e.target.value)}>
+            {liste.map(([g, e]) => (
+              <option key={g} value={g}>
+                {name(g)}{g !== "alle" ? " " + g : ""} ({fmtZahl((e.partien.first || 0) + (e.partien.second || 0))} games)
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="fl eng"><span>Seat</span><Sitzwahl wert={sitz} setzen={setSitz} /></div>
+        <div className="fl eng"><span>Players</span>
+          <Schalter paare={[["feld", "All players"], ["spitze", "Top players"]]} wert={stufe} setzen={setStufe} label="Players" />
+        </div>
       </div>
+      <div style={{ height: 18 }} />
 
       {!m ? (
-        <p className="py-2 text-[13px]" style={{ color: "var(--still)" }}>
-          Not enough games for this matchup, seat and group. Try All players or All opponents.
-        </p>
+        <p className="leer-satz">Not enough games for this matchup, seat and group. Try All players or All opponents.</p>
       ) : (
         <>
-          <p className="max-w-[74ch] pb-1 text-[15px]">
-            {gut.length ? <>Keep hands with <b>{und(gut.map((k) => nameK(k.karte)))}</b>. </> : null}
-            {schlecht.length ? <>With <b>{und(schlecht.map((k) => nameK(k.karte)))}</b>, mulligan more often. </> : null}
-            {!gut.length && !schlecht.length ? "No card makes a clear difference here." : null}
-          </p>
-          <p className="max-w-[74ch] pb-3 text-[13px]" style={{ color: "var(--still)" }}>
-            Kept the opening hand: {fmtZahl(m.behalten)} games, win rate {wr(m.wr_behalten, m.behalten)}.
-            Mulliganed: {fmtZahl(m.weg)} games, win rate {wr(m.wr_weg, m.weg)}.
-            Real results from the ladder replays, computed by Metacoach; a dash means fewer than {mindest} games.
-          </p>
-          {/* Am Telefon eine Liste statt der Tabelle: je Karte eine Zeile mit den zwei
-              Winrates nebeneinander, ohne seitliches Scrollen. */}
-          <ul className="grid min-w-0 grid-cols-1 gap-1.5 sm:hidden">
-            {karten.map((k) => (
-              <li key={k.karte} className="flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-2"
-                  style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}>
-                <Bild id={k.karte} breite={120} hoehe={168}
-                      className="h-[34px] w-[24px] shrink-0 rounded-[3px] object-cover" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-semibold">{nameK(k.karte)}</span>
-                  <span className="zahl block text-[11px]" style={{ color: "var(--still)" }}>
-                    kept {fmtZahl(k.behalten)} &middot; mulliganed {fmtZahl(k.weg)}
-                  </span>
-                </span>
-                <span className="zahl shrink-0 text-right text-[13px] leading-tight">
-                  <span className="block" style={{
-                    color: k.abstand === null ? "var(--still)" : k.abstand >= MULLIGAN_ABSTAND ? "var(--sieg)" : "var(--text)" }}>
-                    {wr(k.wr_behalten, k.behalten)} <span style={{ color: "var(--still)" }}>kept</span>
-                  </span>
-                  <span className="block" style={{
-                    color: k.abstand === null ? "var(--still)" : k.abstand <= -MULLIGAN_ABSTAND ? "var(--niederlage)" : "var(--text)" }}>
-                    {wr(k.wr_weg, k.weg)} <span style={{ color: "var(--still)" }}>mull.</span>
-                  </span>
-                </span>
-              </li>
-            ))}
+          <ul className="rat-zeilen">
+            {gut.length ? (
+              <li><Zeichen name="karte" /><span className="label">Keep</span>
+                <p>Keep hands with <b>{und(gut.map((k) => nameK(k.karte)))}</b>.</p></li>
+            ) : null}
+            {schlecht.length ? (
+              <li><Zeichen name="karte" /><span className="label">Mulligan</span>
+                <p>With <b>{und(schlecht.map((k) => nameK(k.karte)))}</b>, mulligan more often.</p></li>
+            ) : null}
+            {!gut.length && !schlecht.length ? (
+              <li><Zeichen name="karte" /><span className="label">Opening hand</span>
+                <p>No card makes a clear difference here.</p></li>
+            ) : null}
           </ul>
-          <div className="tabellenhuelle hidden overflow-x-auto rounded-lg border sm:block"
-               style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}>
-            <table className="w-full min-w-[480px] border-collapse">
-              <thead>
-                <tr>
-                  {["Card in opening hand", "Kept", "Win rate kept", "Mulliganed", "Win rate mulligan"].map((h, i) => (
-                    <th key={h} scope="col" className={"whitespace-nowrap border-b px-2 py-2 etikett sm:px-3 " + (i ? "text-right" : "text-left")}
-                        style={{ background: "var(--flaeche)", borderColor: "var(--linie)", color: "var(--still)" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {karten.map((k) => (
-                  <tr key={k.karte}>
-                    <td className="border-b px-2 py-1.5 sm:px-3" style={{ borderColor: "var(--linie)" }}>
-                      <span className="flex items-center gap-2">
-                        <Bild id={k.karte} breite={120} hoehe={168}
-                              className="h-[38px] w-[27px] shrink-0 rounded-[3px] object-cover" />
-                        <span className="min-w-0">
-                          <span className="block truncate text-[13px] font-semibold">{nameK(k.karte)}</span>
-                          <span className="zahl block text-[11px]" style={{ color: "var(--still)" }}>{k.karte}</span>
-                        </span>
-                      </span>
-                    </td>
-                    <td className={zelle} style={{ borderColor: "var(--linie)" }}>{fmtZahl(k.behalten)}</td>
-                    <td className={zelle} style={{ borderColor: "var(--linie)",
-                        color: k.abstand === null ? "var(--still)" : k.abstand >= MULLIGAN_ABSTAND ? "var(--sieg)" : "var(--text)" }}>
-                      {wr(k.wr_behalten, k.behalten)}
-                    </td>
-                    <td className={zelle} style={{ borderColor: "var(--linie)" }}>{fmtZahl(k.weg)}</td>
-                    <td className={zelle} style={{ borderColor: "var(--linie)",
-                        color: k.abstand === null ? "var(--still)" : k.abstand <= -MULLIGAN_ABSTAND ? "var(--niederlage)" : "var(--text)" }}>
-                      {wr(k.wr_weg, k.weg)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <p className="lesart">
+            Kept the opening hand: <span className="z">{fmtZahl(m.behalten)}</span> games, win rate{" "}
+            <span className="z">{wr(m.wr_behalten, m.behalten)}</span>. Mulliganed: <span className="z">{fmtZahl(m.weg)}</span> games,
+            win rate <span className="z">{wr(m.wr_weg, m.weg)}</span>. Real results from the ladder replays, computed by
+            Metacoach; a dash means fewer than {mindest} games.
+          </p>
+          <div className="tafel-spalten spalten mull" style={{ marginTop: 16 }}>
+            <span>Nr</span><span /><span>Card in opening hand</span>
+            <span className="rechts">Kept</span><span className="rechts">Win rate kept</span>
+            <span style={{ textAlign: "center" }}>Kept vs mull.</span>
+            <span className="rechts">Mulliganed</span><span className="rechts">Win rate mulligan</span>
           </div>
+          <ol className="tafel mull">
+            {karten.map((k, i) => {
+              const keep = k.abstand !== null && k.abstand >= MULLIGAN_ABSTAND;
+              const mull = k.abstand !== null && k.abstand <= -MULLIGAN_ABSTAND;
+              const kl = (an) => (k.abstand === null ? "wr schwach" : an ? "wr gut" : "wr");
+              return (
+                <li key={k.karte} className={"zeile" + (keep || mull ? " rat" : "")}>
+                  <div className="vorn">
+                    <span className="nr">{nr2(i + 1)}</span>
+                    <Kartenbild id={k.karte} breite={26} />
+                    <span className="name gegner"><b>{nameK(k.karte)}</b><span className="kartennr">{k.karte}</span></span>
+                    <span className="z zahlzelle z-b">{fmtZahl(k.behalten)}</span>
+                    <span className={"z zahlzelle z-wrb " + kl(keep)} data-label="Kept">{wr(k.wr_behalten, k.behalten)}</span>
+                    {k.abstand === null ? <span className="hantel" /> : <Hantel mit={k.wr_behalten} ohne={k.wr_weg} />}
+                    <span className="z zahlzelle z-w">{fmtZahl(k.weg)}</span>
+                    <span className={"z zahlzelle z-wrw " + kl(mull)} data-label="Mull.">{wr(k.wr_weg, k.weg)}</span>
+                    <span className="meta-handy">kept {fmtZahl(k.behalten)} · mulliganed {fmtZahl(k.weg)}</span>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+          <p className="lesart">
+            Filled dot: win rate when the card was kept in the opening hand; ring: when that hand was mulliganed.
+            Scale {HANTEL_UNTEN} to {HANTEL_OBEN} %, the tick is 50 %. Highlighted rows differ by {MULLIGAN_ABSTAND} points or more.
+          </p>
         </>
       )}
-    </section>
+    </Abschnitt>
   );
 }
 
@@ -1983,26 +1750,33 @@ function Changelog() {
   const datum = (iso) =>
     new Date(iso + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
   return (
-    <div className="mx-auto grid max-w-3xl gap-6 py-2">
-      {CHANGELOG.map((e) => (
-        <section key={e.tag}>
-          <h2 className="mb-2 text-lg font-bold" style={{ fontFamily: "var(--font-anzeige)" }}>
-            {datum(e.tag)}
-          </h2>
-          <ul className="grid gap-1.5 pl-5" style={{ listStyle: "disc", color: "var(--text)" }}>
-            {e.punkte.map((p, i) => (
-              <li key={i} className="text-[15px] leading-relaxed">{p}</li>
-            ))}
-          </ul>
-        </section>
-      ))}
-    </div>
+    <>
+      <section className="vorspann">
+        <h1>Changelog</h1>
+        <p className="lead">What changed on Fiesta, one entry per day, newest first.</p>
+      </section>
+      <Abschnitt titel="Changes">
+        <ol className="chronik">
+          {CHANGELOG.map((e) => (
+            <li key={e.tag}>
+              <h2>{datum(e.tag)}</h2>
+              <ul>
+                {e.punkte.map((p, i) => <li key={i}>{p}</li>)}
+              </ul>
+            </li>
+          ))}
+        </ol>
+      </Abschnitt>
+    </>
   );
 }
 
-/* Die Analyse aus Metacoach ueber dem Brett: Siegchance ueber die Partie, Accuracy beider
-   Spieler, die Note am laufenden Schritt und ein Sprung zum naechsten Fehler. Alles ist
-   eine Schaetzung aus dem Wertnetz von Metacoach, ausser beim Mulligan (echte Winrate). */
+/* --------------------------------------------------------------------------
+   Die Analyse aus Metacoach: Siegchance ueber die Partie, Accuracy beider Spieler,
+   die Note am laufenden Schritt und ein Sprung zum naechsten Fehler. Alles ist eine
+   Schaetzung aus dem Wertnetz von Metacoach, ausser beim Mulligan (echte Winrate).
+   -------------------------------------------------------------------------- */
+
 const NOTE_TEXT = {
   best: "Best", excellent: "Excellent", good: "Good",
   inaccuracy: "Inaccuracy", mistake: "Mistake", blunder: "Blunder",
@@ -2016,8 +1790,40 @@ const BESSER_TEXT = {
   countern: "counter", blocken: "block", behalten: "keep", weggemischt: "mulligan",
 };
 const ART_TEXT = { angriff: "Attack", abwehr: "Defense", mulligan: "Mulligan" };
+const ART_ZEICHEN = { angriff: "schwert", abwehr: "schild", mulligan: "karte" };
 
-function ReplayAnalyse({ analyse, schritte, leader, spieler, nr, setI, knopf, stufe }) {
+// Masse der Siegkurve im SVG, gestreckt auf die volle Breite.
+const KURVE_BREITE = 1000;
+const KURVE_HOEHE = 120;
+const KURVE_STRICH = 12;
+
+/** Die Siegchance als Flaeche, 50 % gestrichelt, Fehler als Striche am Boden.
+    werte: [{x, v}] mit x von 0 bis 1 und v in Prozent; striche und marke ebenso auf x. */
+function Siegkurve({ werte, striche = [], marke = null, hoehe = KURVE_HOEHE, label = "Win chance over the game" }) {
+  const px = (x) => (x * KURVE_BREITE).toFixed(1);
+  const py = (v) => (hoehe - (v / 100) * hoehe).toFixed(1);
+  const linie = werte.map((w) => `${px(w.x)},${py(w.v)}`).join(" ");
+  const anfang = px(werte[0].x);
+  const ende = px(werte[werte.length - 1].x);
+  return (
+    <svg className="kurve" viewBox={`0 0 ${KURVE_BREITE} ${hoehe}`} preserveAspectRatio="none" role="img" aria-label={label}>
+      <line x1="0" y1={hoehe / 2} x2={KURVE_BREITE} y2={hoehe / 2} stroke="var(--linie-stark)" strokeWidth="1"
+            strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
+      <polyline points={`${anfang},${hoehe} ${linie} ${ende},${hoehe}`} fill="var(--akzent-flaeche)" stroke="none" />
+      <polyline points={linie} fill="none" stroke="var(--akzent)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+      {striche.map((s, j) => (
+        <line key={j} x1={px(s.x)} x2={px(s.x)} y1={hoehe - KURVE_STRICH} y2={hoehe}
+              stroke={s.leise ? "var(--text-3)" : "var(--akzent-hell)"} strokeWidth="2" vectorEffect="non-scaling-stroke" />
+      ))}
+      {marke !== null ? (
+        <line x1={px(marke)} x2={px(marke)} y1="0" y2={hoehe} stroke="var(--text)" strokeWidth="1"
+              vectorEffect="non-scaling-stroke" />
+      ) : null}
+    </svg>
+  );
+}
+
+function ReplayAnalyse({ analyse, schritte, leader, spieler, nr, setI, knopf }) {
   const anker = useMemo(() => ankerBauen(schritte), [schritte]);
   const namen = useMemo(() => spielerZuordnen(analyse, leader, anker.erster), [analyse, leader, anker]);
   const marken = useMemo(() => markenBauen(analyse, anker), [analyse, anker]);
@@ -2027,69 +1833,66 @@ function ReplayAnalyse({ analyse, schritte, leader, spieler, nr, setI, knopf, st
   const max = Math.max(1, schritte.length - 1);
   const zurueck = fehlerSuchen(marken, nr, -1);
   const vor = fehlerSuchen(marken, nr, 1);
-  const punkte = kurve.map((k) => `${(100 * k.schritt) / max},${100 - k.wert}`).join(" ");
+
+  // Die Kurve liegt hier auf der Schrittachse des Viewers.
+  const werte = kurve.map((k) => ({ x: k.schritt / max, v: k.wert }));
+  const striche = marken.filter((m) => FEHLERNOTEN.includes(m.note))
+    .map((m) => ({ x: m.schritt / max, leise: String(m.wer) !== eigen }));
 
   return (
-    <div className="mb-3 rounded-lg border px-3 py-2"
-         style={{ borderColor: "var(--linie)", background: "var(--flaeche)" }}>
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[13px]">
-        <span className="font-semibold">Analysis</span>
+    <div className="r-analyse">
+      <div className="r-analyse-kopf">
+        <span className="rueck-marke" style={{ margin: 0 }}>Analysis</span>
         {["1", "2"].map((k) => {
           const s = analyse.spieler?.[k];
           if (!s || !namen[k]) return null;
-          const fehler = s.noten ? FEHLERNOTEN.reduce((n, x) => n + (s.noten[x] || 0), 0) : null;
+          const fehlerZahl = s.noten ? FEHLERNOTEN.reduce((n, x) => n + (s.noten[x] || 0), 0) : null;
           return (
-            <span key={k} style={{ color: namen[k] === spieler ? "var(--akzent)" : "var(--leise)" }}>
+            <span key={k} className={namen[k] === spieler ? "eigen" : "klein"}>
               {namen[k].split("#")[0]}: accuracy{" "}
-              <span className="zahl font-semibold">{s.accuracy === null ? "\u2013" : s.accuracy.toFixed(1)}</span>
-              {fehler !== null ? (
-                <span style={{ color: "var(--still)" }}>
-                  {" "}&middot; {fehler} {fehler === 1 ? "flagged decision" : "flagged decisions"}
+              <span className="z">{s.accuracy === null ? "\u2013" : s.accuracy.toFixed(1)}</span>
+              {fehlerZahl !== null ? (
+                <span className="blass">
+                  {" "}&middot; {fehlerZahl} {fehlerZahl === 1 ? "flagged decision" : "flagged decisions"}
                 </span>
               ) : null}
             </span>
           );
         })}
-        <span className="ml-auto flex gap-1">
-          <button type="button" className={knopf} style={stufe(false)} disabled={zurueck === null}
+        <span className="knopfreihe">
+          <button type="button" className={knopf} disabled={zurueck === null}
                   onClick={() => zurueck !== null && setI(zurueck)}>Previous mistake</button>
-          <button type="button" className={knopf} style={stufe(false)} disabled={vor === null}
+          <button type="button" className={knopf} disabled={vor === null}
                   onClick={() => vor !== null && setI(vor)}>Next mistake</button>
         </span>
       </div>
 
-      {kurve.length > 1 ? (
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="mt-2 block h-16 w-full"
-             role="img" aria-label="Win chance over the game">
-          <line x1="0" y1="50" x2="100" y2="50" stroke="var(--linie)" strokeWidth="0.6"
-                vectorEffect="non-scaling-stroke" />
-          <polyline points={punkte} fill="none" stroke="var(--akzent)" strokeWidth="1.5"
-                    vectorEffect="non-scaling-stroke" />
-          {marken.filter((m) => FEHLERNOTEN.includes(m.note)).map((m, j) => (
-            <line key={j} x1={(100 * m.schritt) / max} x2={(100 * m.schritt) / max} y1="92" y2="100"
-                  stroke={String(m.wer) === eigen ? "var(--akzent)" : "var(--leise)"} strokeWidth="1.5"
-                  vectorEffect="non-scaling-stroke" />
-          ))}
-          <line x1={(100 * nr) / max} x2={(100 * nr) / max} y1="0" y2="100" stroke="var(--text)"
-                strokeWidth="1" vectorEffect="non-scaling-stroke" />
-        </svg>
-      ) : null}
-      <p className="text-[11px]" style={{ color: "var(--still)" }}>
+      {werte.length > 1 ? <Siegkurve werte={werte} striche={striche} marke={nr / max} hoehe={72} /> : null}
+      <p className="lesart" style={{ marginTop: 4 }}>
         {spieler ? spieler.split("#")[0] + "'s" : "Player"} win chance after each turn, estimated by the Metacoach
         model of {String(analyse.modell || "").slice(0, 10)}. Ticks mark inaccuracies, mistakes and blunders.
       </p>
 
-      {hier.map((m, j) => (
-        <p key={j} className="mt-1 text-[13px]">
-          <span className="font-semibold" style={{ color: FEHLERNOTEN.includes(m.note) ? "var(--akzent)" : "var(--leise)" }}>
-            {NOTE_TEXT[m.note]}
-          </span>{" "}
-          {namen[String(m.wer)] ? namen[String(m.wer)].split("#")[0] + " " : ""}
-          {WAHL_TEXT[m.wahl] || m.wahl}
-          {m.note !== "best" ? <> &middot; better: {BESSER_TEXT[m.beste] || m.beste}, {m.verlust.toFixed(1)} points</> : null}
-          <span style={{ color: "var(--still)" }}> &middot; {ART_TEXT[m.art]}, {m.lage}</span>
-        </p>
-      ))}
+      {hier.map((m, j) => {
+        const fehlerNote = FEHLERNOTEN.includes(m.note);
+        return (
+          <p key={j} className="note">
+            <span className={"etikett" + (fehlerNote ? " voll" : m.note === "best" ? " akzent" : "")}>
+              {NOTE_TEXT[m.note]}
+            </span>{" "}
+            {namen[String(m.wer)] ? namen[String(m.wer)].split("#")[0] + " " : ""}
+            <b>{WAHL_TEXT[m.wahl] || m.wahl}</b>
+            {m.note !== "best" ? (
+              <> &middot; better: {BESSER_TEXT[m.beste] || m.beste},{" "}
+                {m.art === "mulligan"
+                  ? <span className="z">{m.verlust.toFixed(1)} points</span>
+                  : <span className="sch">{m.verlust.toFixed(1)} points</span>}
+              </>
+            ) : null}
+            <span className="blass"> &middot; {ART_TEXT[m.art]}, {m.lage}</span>
+          </p>
+        );
+      })}
     </div>
   );
 }
@@ -2103,72 +1906,50 @@ function ReplayAnalyse({ analyse, schritte, leader, spieler, nr, setI, knopf, st
    steht nur ein Hinweis da; die anderen Reiter laufen unveraendert.
    -------------------------------------------------------------------------- */
 
-const SITZ_KNOPF = [["first", "Going first"], ["second", "Going second"]];
-
-function wahlStil(an) {
-  return {
-    background: an ? "var(--akzentweich)" : "var(--flaeche2)",
-    borderColor: an ? "var(--akzent)" : "var(--linie)",
-    color: an ? "var(--akzent)" : "var(--leise)",
-  };
-}
-
-const WAHLFELD = "w-full min-w-0 max-w-full rounded-md border px-2.5 py-2 text-sm sm:w-auto sm:py-1.5";
-const WAHLFELD_STIL = { background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--text)" };
-
 /* Ein Hinweis, warum etwas von Metacoach fehlt, je nach Grund des Fehlers. */
-function MetacoachHinweis({ fehler, was }) {
-  const grund = fehler?.grund;
+function MetacoachHinweis({ fehler: f, was }) {
+  const grund = f?.grund;
   const text = grund === "kaputt"
     ? `The ${was} could not be unlocked. After a password change Metacoach encrypts it again the following night.`
     : `${was[0].toUpperCase() + was.slice(1)} currently unavailable: Metacoach, where it comes from, cannot be reached right now. Everything else on Fiesta works as usual.`;
-  return (
-    <p className="max-w-[74ch] rounded-lg border px-3 py-2 text-[13px]"
-       style={{ background: "var(--flaeche)", borderColor: "var(--linie)", color: "var(--leise)" }}>
-      {text}
-    </p>
-  );
+  return <div className="notiz"><p>{text}</p></div>;
 }
 
-/* Ein Satz mit seiner Zahl klein dahinter; Schaetzungen aus dem Wertnetz kursiv. */
+/* Ein Satz mit seiner Zahl klein dahinter; Schaetzungen aus dem Wertnetz kursiv mit Raute. */
 function BookSatz({ s }) {
   return (
-    <span className="min-w-0 text-[14px] leading-snug">
+    <li>
       {s.text}
-      {s.zahl || s.schaetzung ? (
-        <span className="zahl ml-1.5 whitespace-nowrap text-[11px]"
-              style={{ color: "var(--still)", fontStyle: s.schaetzung ? "italic" : "normal" }}>
-          {s.zahl || "estimate"}
-        </span>
-      ) : null}
-    </span>
-  );
-}
-
-function BookZeile({ etikett, saetze }) {
-  if (!saetze.length) return null;
-  return (
-    <li className="grid min-w-0 grid-cols-1 gap-x-3 gap-y-0.5 sm:grid-cols-[104px_minmax(0,1fr)]">
-      <span className="etikett pt-0.5" style={{ color: "var(--still)" }}>{etikett}</span>
-      <span className="grid min-w-0 grid-cols-1 gap-0.5">
-        {saetze.map((s, i) => <BookSatz key={i} s={s} />)}
-      </span>
+      {s.schaetzung ? <span className="zahl sch">{s.zahl || "estimate"}</span>
+        : s.zahl ? <span className="zahl z">{s.zahl}</span> : null}
     </li>
   );
 }
 
-function BookSchritt({ marke, titel, unter, children }) {
+/* Eine Hilfezeile im Schritt: Zeichen, Label in Versalien, Saetze. */
+function BookZeile({ etikett, saetze, zeichen }) {
+  if (!saetze.length) return null;
   return (
-    <li className="flex min-w-0 gap-3 rounded-lg border px-3 py-2.5"
-        style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}>
-      <span className="zahl w-6 shrink-0 pt-0.5 text-center text-[15px] font-bold" style={{ color: "var(--akzent)" }}
-            aria-hidden="true">{marke}</span>
-      <div className="min-w-0 flex-1">
-        <h3 className="pb-1.5 text-[15px] font-semibold">
-          {titel}
-          {unter ? <span className="zahl ml-1.5 text-[12px] font-normal" style={{ color: "var(--still)" }}>{unter}</span> : null}
-        </h3>
-        <ul className="grid min-w-0 grid-cols-1 gap-1.5">{children}</ul>
+    <li className="hilfe-zeile">
+      <Zeichen name={zeichen} />
+      <span className="label">{etikett}</span>
+      <ul className="saetze">
+        {saetze.map((s, i) => <BookSatz key={i} s={s} />)}
+      </ul>
+    </li>
+  );
+}
+
+/* Ein nummerierter Schritt mit Nummernfeld. Mit liste=false steht freier Inhalt darin. */
+function BookSchritt({ marke, titel, unter, id, liste = true, children }) {
+  return (
+    <li className="schritt" id={id}>
+      <span className="schritt-nr" aria-hidden="true">{marke}</span>
+      <div style={{ minWidth: 0 }}>
+        <div className="schritt-kopf">
+          <h3>{titel}{unter ? <span className="don"> · {unter}</span> : null}</h3>
+        </div>
+        {liste ? <ul className="hilfe">{children}</ul> : <div className="schritt-text">{children}</div>}
       </div>
     </li>
   );
@@ -2209,111 +1990,138 @@ function Book({ namen, startLeader }) {
   }, [leaderId]);
 
   const name = (id) => (namen[id] || {}).n || id;
-  const kopf = (
-    <h2 className="pb-1 text-base font-semibold">Guide</h2>
+  const lead = (
+    <p className="lead">
+      Turn by turn: what to play, where to attack and when to counter, from the ladder replays, computed by
+      Metacoach. Small numbers in italics are estimates from its model; upright numbers are real results.
+    </p>
   );
-  if (liste === undefined) {
-    return <section className="min-w-0">{kopf}<p className="py-4 text-sm" style={{ color: "var(--still)" }}>Loading the guide ...</p></section>;
-  }
-  if (liste === null) return <section className="min-w-0">{kopf}<MetacoachHinweis fehler={listeFehler} was="guide" /></section>;
-  if (!liste.length) {
-    return <section className="min-w-0">{kopf}<p className="py-4 text-[13px]" style={{ color: "var(--still)" }}>No leader has a book yet.</p></section>;
-  }
+  const kopf = (titel) => <section className="vorspann"><h1>{titel}</h1>{lead}</section>;
+  if (liste === undefined) return <>{kopf("Guide")}<p className="laedt">Loading the guide ...</p></>;
+  if (liste === null) return <>{kopf("Guide")}<MetacoachHinweis fehler={listeFehler} was="guide" /></>;
+  if (!liste.length) return <>{kopf("Guide")}<p className="leer-satz">No leader has a book yet.</p></>;
 
   const b = daten ? bookAusschnitt(daten, gegner, sitz) : null;
   const mindest = b?.grenzen?.min_zelle ?? BOOK_MIN_ZELLE;
   const zuege = b ? zuegeMitDaten(b) : [];
   const gegnerName = gegner === BOOK_ALLE ? "all opponents" : name(gegner);
-  const datum = (iso) => (iso ? new Date(String(iso).slice(0, 10) + "T12:00:00Z")
-    .toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "\u2013");
+  const sonst = b ? unterschiedeSonst(b.unterschiede) : [];
+  const springen = (T) => (e) => {
+    e.preventDefault();
+    document.getElementById("zug-" + T)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
-    <section className="min-w-0">
-      {kopf}
-      <p className="max-w-[74ch] pb-3 text-[13px]" style={{ color: "var(--still)" }}>
-        Turn by turn: what to play, where to attack and when to counter, from the ladder replays, computed by
-        Metacoach. Small numbers in italics are estimates from its model; upright numbers are real results.
-        Top players means both players at {fmtZahl(daten?.grenzen?.spitze_bounty ?? 2000)} bounty or more.
-      </p>
-      <div className="flex min-w-0 flex-wrap items-center gap-2 pb-3">
-        <select className={WAHLFELD} style={WAHLFELD_STIL} value={leaderId || ""} aria-label="Leader"
-                onChange={(e) => setLeaderId(e.target.value)}>
-          {liste.map((e) => (
-            <option key={e.leader} value={e.leader}>
-              {name(e.leader)} {e.leader} ({fmtZahl((e.partien?.first || 0) + (e.partien?.second || 0))} games)
-            </option>
-          ))}
-        </select>
-        {daten ? (
-          <select className={WAHLFELD} style={WAHLFELD_STIL} value={gegner} aria-label="Opponent"
-                  onChange={(e) => setGegner(e.target.value)}>
-            {gegnerListe(daten).map((g) => (
-              <option key={g.gegner} value={g.gegner}>
-                {g.gegner === BOOK_ALLE ? "All opponents" : name(g.gegner) + " " + g.gegner} ({fmtZahl((g.partien.first || 0) + (g.partien.second || 0))} games)
+    <>
+      {kopf(b ? `${name(b.leader)} against ${gegner === BOOK_ALLE ? "all opponents" : name(gegner)}, ${sitz}` : "Guide")}
+      <div className="steuer eins">
+        <label className="fl eng wahlfeld">
+          <span>Leader</span>
+          <select className="feld" value={leaderId || ""} onChange={(e) => setLeaderId(e.target.value)}>
+            {liste.map((e) => (
+              <option key={e.leader} value={e.leader}>
+                {name(e.leader)} {e.leader} ({fmtZahl((e.partien?.first || 0) + (e.partien?.second || 0))} games)
               </option>
             ))}
           </select>
+        </label>
+        {daten ? (
+          <label className="fl eng wahlfeld">
+            <span>Opponent</span>
+            <select className="feld" value={gegner} onChange={(e) => setGegner(e.target.value)}>
+              {gegnerListe(daten).map((g) => (
+                <option key={g.gegner} value={g.gegner}>
+                  {g.gegner === BOOK_ALLE ? "All opponents" : name(g.gegner) + " " + g.gegner} ({fmtZahl((g.partien.first || 0) + (g.partien.second || 0))} games)
+                </option>
+              ))}
+            </select>
+          </label>
         ) : null}
-        {SITZ_KNOPF.map(([k, t]) => (
-          <button key={k} type="button" className="rounded-md border px-2.5 py-1.5 text-sm font-semibold"
-                  style={wahlStil(sitz === k)} onClick={() => setSitz(k)}>{t}</button>
-        ))}
+        <Sitzwahl wert={sitz} setzen={setSitz} />
       </div>
 
       {daten === undefined ? (
-        <p className="py-4 text-sm" style={{ color: "var(--still)" }}>Loading the guide ...</p>
+        <p className="laedt">Loading the guide ...</p>
       ) : daten === null ? (
         datenFehler?.grund === "fehlt"
-          ? <p className="py-2 text-[13px]" style={{ color: "var(--still)" }}>No guide for this leader right now.</p>
+          ? <p className="leer-satz" style={{ marginTop: 16 }}>No guide for this leader right now.</p>
           : <MetacoachHinweis fehler={datenFehler} was="guide" />
       ) : !b ? (
-        <p className="py-2 text-[13px]" style={{ color: "var(--still)" }}>Not in the guide.</p>
+        <p className="leer-satz" style={{ marginTop: 16 }}>Not in the guide.</p>
       ) : (
         <>
-          <p className="max-w-[74ch] pb-2 text-[13px]" style={{ color: "var(--still)" }}>
-            {name(b.leader)} against {gegnerName}, {sitz}: <span className="zahl">{fmtZahl(b.partien?.[sitz] || 0)}</span> games.
-            Model of {datum(b.modell)}, book of {datum(b.stand)}.
-          </p>
           {b.rueckfall ? (
-            <p className="mb-2 max-w-[74ch] rounded-lg border px-3 py-2 text-[13px]"
-               style={{ background: "var(--akzentweich)", borderColor: "var(--akzent)", color: "var(--text)" }}>
-              Too few games against {gegnerName} on this seat, so this shows the numbers against all opponents.
-            </p>
+            <div className="notiz warn">
+              <p>Too few games against {gegnerName} on this seat, so this shows the numbers against all opponents.</p>
+            </div>
           ) : null}
-          <ol className="grid min-w-0 grid-cols-1 gap-2">
-            <BookSchritt marke={"\u2022"} titel="Mulligan" unter="before turn 1">
-              <BookZeile etikett="Opening hand" saetze={[mulliganSatz(b.feld ?? b.spitze, mindest, name)]} />
-            </BookSchritt>
-            {zuege.map((T) => {
-              const z = zugDaten(b, T);
-              const angriff = angriffSatz(T, b.spitze, b.feld);
-              const abwehr = abwehrSatz(T, b.spitze, b.feld);
-              return (
-                <BookSchritt key={T} marke={T} titel={"Turn " + T}
-                             unter={z && z.don !== null && z.don !== undefined ? "\u00b7 " + bookZahl(z.don) + " Don" : ""}>
-                  <BookZeile etikett="Play" saetze={spielenSaetze(T, b.spitze, b.feld, mindest, name)} />
-                  <BookZeile etikett="Attack" saetze={angriff ? [angriff] : []} />
-                  <BookZeile etikett="Defend" saetze={abwehr ? [abwehr] : []} />
-                  <BookZeile etikett="Top players" saetze={unterschiedeImZug(b.unterschiede, T).map((u) => spitzeSatz(u, name))} />
-                </BookSchritt>
-              );
-            })}
-          </ol>
-          {!zuege.length ? (
-            <p className="py-2 text-[13px]" style={{ color: "var(--still)" }}>Too few turns on this seat yet.</p>
-          ) : null}
-          {unterschiedeSonst(b.unterschiede).length ? (
-            <>
-              <h3 className="pb-1.5 pt-4 text-[15px] font-semibold">What top players do differently otherwise</h3>
-              <ul className="grid min-w-0 grid-cols-1 gap-1.5 rounded-lg border px-3 py-2.5"
-                  style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}>
-                <BookZeile etikett="Top players" saetze={unterschiedeSonst(b.unterschiede).map((u) => spitzeSatz(u, name))} />
-              </ul>
-            </>
-          ) : null}
+          <div className="raster">
+            <div style={{ minWidth: 0 }}>
+              <Abschnitt titel="Turn by turn">
+                <ol className="schritte">
+                  <BookSchritt marke={<Zeichen name="karte" groesse={20} />} titel="Mulligan" unter="before turn 1" id="zug-0">
+                    <BookZeile etikett="Opening hand" zeichen="karte" saetze={[mulliganSatz(b.feld ?? b.spitze, mindest, name)]} />
+                  </BookSchritt>
+                  {zuege.map((T) => {
+                    const z = zugDaten(b, T);
+                    const angriff = angriffSatz(T, b.spitze, b.feld);
+                    const abwehr = abwehrSatz(T, b.spitze, b.feld);
+                    return (
+                      <BookSchritt key={T} marke={T} titel={"Turn " + T} id={"zug-" + T}
+                                   unter={z && z.don !== null && z.don !== undefined ? bookZahl(z.don) + " Don" : ""}>
+                        <BookZeile etikett="Play" zeichen="hand" saetze={spielenSaetze(T, b.spitze, b.feld, mindest, name)} />
+                        <BookZeile etikett="Attack" zeichen="schwert" saetze={angriff ? [angriff] : []} />
+                        <BookZeile etikett="Defend" zeichen="schild" saetze={abwehr ? [abwehr] : []} />
+                        <BookZeile etikett="Top players" zeichen="krone" saetze={unterschiedeImZug(b.unterschiede, T).map((u) => spitzeSatz(u, name))} />
+                      </BookSchritt>
+                    );
+                  })}
+                </ol>
+                {!zuege.length ? <p className="leer-satz">Too few turns on this seat yet.</p> : null}
+              </Abschnitt>
+              {sonst.length ? (
+                <Abschnitt titel="What top players do differently otherwise">
+                  <ul className="hilfe">
+                    <BookZeile etikett="Top players" zeichen="krone" saetze={sonst.map((u) => spitzeSatz(u, name))} />
+                  </ul>
+                </Abschnitt>
+              ) : null}
+            </div>
+            <aside className="seitenleiste">
+              <div className="leiste-block pikto-block">
+                <h3>Signs</h3>
+                <ul className="pikto-liste">
+                  <li><Zeichen name="karte" />Mulligan</li>
+                  <li><Zeichen name="hand" />Play</li>
+                  <li><Zeichen name="schwert" />Attack</li>
+                  <li><Zeichen name="schild" />Defend</li>
+                  <li><Zeichen name="krone" />Top players</li>
+                </ul>
+              </div>
+              <div className="leiste-block lesen">
+                <h3>Reading numbers</h3>
+                <p><span className="z">99 %</span> upright: a real result from the ladder replays.</p>
+                <p><span className="sch">−6.9 points</span> in italics: an estimate from the Metacoach model.</p>
+              </div>
+              {zuege.length ? (
+                <div className="leiste-block sprung-block">
+                  <h3>To turn</h3>
+                  <div className="sprung">
+                    {zuege.map((T) => <a key={T} href={"#zug-" + T} onClick={springen(T)}>{T}</a>)}
+                  </div>
+                </div>
+              ) : null}
+              <div className="leiste-block quelle">
+                <h3>Source</h3>
+                <p>{name(b.leader)} against {gegnerName}, {sitz}: <span className="z">{fmtZahl(b.partien?.[sitz] || 0)}</span> games.</p>
+                <p>Model of {datumKurz(b.modell)}, book of {datumKurz(b.stand)}.</p>
+                <p>Top players means both players at <span className="z">{fmtZahl(daten?.grenzen?.spitze_bounty ?? 2000)}</span> bounty or more.</p>
+              </div>
+            </aside>
+          </div>
         </>
       )}
-    </section>
+    </>
   );
 }
 
@@ -2321,9 +2129,10 @@ function Book({ namen, startLeader }) {
    Analyze my replay (specs/features/eigenes-replay-analysieren.md)
 
    Das Log einer eigenen Partie wird im Browser gelesen (src/zuglager.js), mit dem
-   Wertnetz (src/wertnetz.js) und dem Book von Metacoach bewertet (src/spielbewertung.js)
-   und im Replay Viewer samt ReplayAnalyse gezeigt. Das Log verlaesst den Browser nie:
-   kein Upload, kein Speichern; es lebt nur im Zustand dieser Komponente.
+   Wertnetz (src/wertnetz.js) und dem Book von Metacoach bewertet (src/spielbewertung.js).
+   Oben stehen Kurve und die nummerierte Tafel der Entscheidungen, darunter aufklappbar
+   das Brett des Replay Viewers. Das Log verlaesst den Browser nie: kein Upload, kein
+   Speichern; es lebt nur im Zustand dieser Komponente.
    -------------------------------------------------------------------------- */
 
 const LOG_PFAD_MAC = "~/Library/Application Support/com.Batsu.OPTCGSim/CombatLogs/AutoSaved/";
@@ -2340,17 +2149,6 @@ const LESEGRUND = {
   "log kaputt": "it is damaged or cut off.",
 };
 
-function Pfad({ children }) {
-  return (
-    // Ohne die Klasse zahl: die setzt nowrap, und der lange Pfad schob am Handy die Seite breit.
-    <code className="block min-w-0 whitespace-normal break-all rounded-md border px-2 py-1 text-[12px]"
-          style={{ background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--text)",
-            fontFamily: "var(--font-zahl)" }}>
-      {children}
-    </code>
-  );
-}
-
 /* Kartentabellen aus karten.json: Events, Counter, Kosten (wie karten.tsv in Metacoach). */
 function kartenTabellen(namen) {
   const events = new Set();
@@ -2364,6 +2162,118 @@ function kartenTabellen(namen) {
   return { events, counter, kosten };
 }
 
+/** Kurve und Entscheidungen des eigenen Spielers aus der Analyse einer Partie. */
+function EigeneAnalyse({ analyse, ich, eigenName }) {
+  const anderer = ich === "1" ? "2" : "1";
+  const s = analyse.spieler[ich];
+  const o = analyse.spieler[anderer];
+  const fehlerZahl = s?.noten ? FEHLERNOTEN.reduce((n, x) => n + (s.noten[x] || 0), 0) : 0;
+  // Der Mulligan zuerst, danach die Partie in ihrer Reihenfolge.
+  const eigene = (analyse.entscheidungen || [])
+    .filter((e) => String(e.wer) === ich)
+    .map((e, i) => ({ e, i }))
+    .sort((x, y) => (x.e.art === "mulligan" ? -1 : 0) - (y.e.art === "mulligan" ? -1 : 0) || x.i - y.i)
+    .map((x) => x.e);
+  const roh = (analyse.kurve || []).map((k) => (ich === "2" ? 100 - k.v1 : k.v1));
+  const n = Math.max(1, roh.length - 1);
+  const kurve = roh.map((v, i) => ({ x: i / n, v }));
+  const halbzug = (e) => {
+    if (e.art === "mulligan") return 0;
+    const wer = e.art === "abwehr" ? Number(anderer) : Number(ich);
+    const i = analyse.kurve.findIndex((k) => k.T === e.T && k.wer === wer);
+    return i < 0 ? null : i;
+  };
+  const striche = eigene.filter((e) => FEHLERNOTEN.includes(e.note)).map(halbzug)
+    .filter((i) => i !== null).map((i) => ({ x: i / n }));
+  const letzterT = analyse.kurve?.length ? analyse.kurve[analyse.kurve.length - 1].T : 1;
+
+  return (
+    <>
+      <Abschnitt titel="Analysis">
+        <dl className="genau">
+          <div>
+            <dt>{eigenName}</dt>
+            <dd><span className="z gross">{s?.accuracy == null ? "–" : s.accuracy.toFixed(1)}</span>{" "}
+              <span className="klein">accuracy{s?.noten ? <> · {fehlerZahl} {fehlerZahl === 1 ? "flagged decision" : "flagged decisions"}</> : null}</span>
+            </dd>
+          </div>
+          <div>
+            <dt>Opponent</dt>
+            <dd><span className="z gross blass">{o?.accuracy == null ? "–" : o.accuracy.toFixed(1)}</span>{" "}
+              <span className="klein">accuracy</span></dd>
+          </div>
+        </dl>
+        {s?.noten ? (
+          <div className="noten-zeile">
+            {NOTENFOLGE.filter((x) => s.noten[x]).map((x) => (
+              <span key={x} className={"etikett" + (FEHLERNOTEN.includes(x) ? " akzent" : "")}>
+                <span className="z">{s.noten[x]}</span> {NOTE_TEXT[x].toLowerCase()}
+              </span>
+            ))}
+            {!NOTENFOLGE.some((x) => s.noten[x]) ? <span className="klein">No graded decisions.</span> : null}
+          </div>
+        ) : null}
+      </Abschnitt>
+
+      {kurve.length > 1 ? (
+        <Abschnitt titel="Win chance">
+          <div className="kurve-huelle">
+            <Siegkurve werte={kurve} striche={striche} />
+            <div className="kurve-achse"><span>Turn 1</span><span>Turn {letzterT}</span></div>
+          </div>
+          <p className="lesart">
+            {eigenName}'s win chance after each turn, estimated by the Metacoach model
+            of {String(analyse.modell || "").slice(0, 10)}. The dashed line is 50 %. Ticks mark inaccuracies,
+            mistakes and blunders.
+          </p>
+        </Abschnitt>
+      ) : null}
+
+      {eigene.length ? (
+        <Abschnitt titel="Your decisions">
+          <div className="tafel-spalten spalten entsch">
+            <span>Nr</span><span>Turn</span><span /><span>Grade</span><span>Decision</span><span>Situation</span>
+          </div>
+          <ol className="tafel entsch">
+            {eigene.map((e, i) => {
+              const markiert = FEHLERNOTEN.includes(e.note);
+              const punkte = e.art === "mulligan"
+                ? <span className="z">{e.verlust.toFixed(1)} points</span>
+                : <span className="sch">{e.verlust.toFixed(1)} points</span>;
+              return (
+                <li key={i} className={"zeile" + (markiert ? " fehler" : "")}>
+                  <div className="vorn">
+                    <span className="nr">{nr2(i + 1)}</span>
+                    <span className={"stufe" + (e.art === "abwehr" ? " leise" : "")}
+                          title={(e.art === "abwehr" ? "opponent's turn " : "your turn ") + e.T}>
+                      {e.art === "mulligan" ? "M" : e.T}
+                    </span>
+                    <Zeichen name={ART_ZEICHEN[e.art] || "karte"} />
+                    <span className="notenkopf">
+                      <span className={"etikett" + (markiert ? " voll" : e.note === "best" ? " akzent" : "")}>
+                        {NOTE_TEXT[e.note]}
+                      </span>
+                    </span>
+                    <span className="wahltext">
+                      <b>{WAHL_TEXT[e.wahl] || e.wahl}</b>
+                      {e.note !== "best" ? <> · better: {BESSER_TEXT[e.beste] || e.beste}, {punkte}</> : null}
+                    </span>
+                    <span className="lage">{ART_TEXT[e.art]}, {e.lage}</span>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+          <p className="lesart">
+            Points are the win chance lost against the best choice, <span className="raute">◆</span> italic as an
+            estimate from the model. A grey turn number is the opponent's turn.
+          </p>
+        </Abschnitt>
+      ) : null}
+    </>
+  );
+}
+
 function EigenesReplay({ namen }) {
   const [text, setText] = useState(null);
   const [eingefuegt, setEingefuegt] = useState("");
@@ -2374,6 +2284,8 @@ function EigenesReplay({ namen }) {
   const [netzFehler, setNetzFehler] = useState(null);
   const [books, setBooks] = useState(null);
   const [ziehen, setZiehen] = useState(false);
+  // null heisst: von selbst offen, wenn es keine Analyse gibt.
+  const [brettOffen, setBrettOffen] = useState(null);
 
   const tabellen = useMemo(() => kartenTabellen(namen), [namen]);
   const kartenDa = tabellen.counter && Object.keys(namen || {}).length > 0;
@@ -2438,6 +2350,7 @@ function EigenesReplay({ namen }) {
     setDateiName("");
     setWahl(null);
     setLeseFehler("");
+    setBrettOffen(null);
   };
 
   const dateiLesen = (datei) => {
@@ -2457,85 +2370,75 @@ function EigenesReplay({ namen }) {
 
   if (text === null || !partie) {
     return (
-      <section className="mx-auto grid min-w-0 max-w-3xl grid-cols-1 gap-4">
-        <div className="min-w-0">
-          <h2 className="pb-1 text-base font-semibold">Analyze my replay</h2>
-          <p className="max-w-[74ch] text-[13px]" style={{ color: "var(--still)" }}>
+      <>
+        <section className="vorspann">
+          <h1>Analyze my replay</h1>
+          <p className="lead">
             Open the log of one of your own games and get the same analysis as on the replays here: your accuracy,
             the win chance over the game and a grade for every attack, defense and mulligan.
           </p>
-        </div>
+        </section>
 
-        <ol className="grid min-w-0 grid-cols-1 gap-2">
-          <BookSchritt marke="1" titel="Find the log">
-            <li className="grid min-w-0 grid-cols-1 gap-1.5 text-[14px]">
-              <span>OPTCGSim saves every game by itself, one .log file per game, named by date and time.</span>
-              <span className="etikett pt-1" style={{ color: "var(--still)" }}>Mac</span>
-              <Pfad>{LOG_PFAD_MAC}</Pfad>
-              <span className="text-[13px]" style={{ color: "var(--leise)" }}>
-                In Finder use Go, then Go to Folder, and paste the path.
-              </span>
-              <span className="etikett pt-1" style={{ color: "var(--still)" }}>Windows</span>
-              <Pfad>{LOG_PFAD_WINDOWS}</Pfad>
-              <span className="text-[13px]" style={{ color: "var(--leise)" }}>
-                The AppData folder is hidden. Type this into the address bar of the File Explorer and press Enter:
-              </span>
-              <Pfad>{LOG_PFAD_EXPLORER}</Pfad>
-              <span className="text-[13px]" style={{ color: "var(--leise)" }}>
+        <Abschnitt titel="Three steps">
+          <ol className="schritte">
+            <BookSchritt marke="1" titel="Find the log" liste={false}>
+              <p>OPTCGSim saves every game by itself, one .log file per game, named by date and time.</p>
+              <span className="label">Mac</span>
+              <code className="pfad">{LOG_PFAD_MAC}</code>
+              <p className="klein">In Finder use Go, then Go to Folder, and paste the path.</p>
+              <span className="label">Windows</span>
+              <code className="pfad">{LOG_PFAD_WINDOWS}</code>
+              <p className="klein">The AppData folder is hidden. Type this into the address bar of the File Explorer and press Enter:</p>
+              <code className="pfad">{LOG_PFAD_EXPLORER}</code>
+              <p className="klein">
                 %USERPROFILE% stands for your own user folder, so you do not need to know your user name.
                 Then open AutoSaved.
-              </span>
-            </li>
-          </BookSchritt>
-          <BookSchritt marke="2" titel="Or save it from the game">
-            <li className="text-[14px]">After the game, press <b>Download Log</b> in the game and use that file.</li>
-          </BookSchritt>
-          <BookSchritt marke="3" titel="Open it here">
-            <li className="grid min-w-0 grid-cols-1 gap-2">
+              </p>
+            </BookSchritt>
+            <BookSchritt marke="2" titel="Or save it from the game" liste={false}>
+              <p>After the game, press <b>Download Log</b> in the game and use that file.</p>
+            </BookSchritt>
+            <BookSchritt marke="3" titel="Open it here" liste={false}>
               <label
-                className="grid min-w-0 cursor-pointer place-items-center rounded-lg border border-dashed px-3 py-6 text-center text-[14px]"
-                style={{ borderColor: ziehen ? "var(--akzent)" : "var(--linie)",
-                  background: ziehen ? "var(--akzentweich)" : "var(--flaeche2)" }}
+                className={"ablage" + (ziehen ? " zieht" : "")}
                 onDragOver={(e) => { e.preventDefault(); setZiehen(true); }}
                 onDragLeave={() => setZiehen(false)}
                 onDrop={(e) => { e.preventDefault(); setZiehen(false); dateiLesen(e.dataTransfer.files?.[0]); }}
               >
-                <span className="font-semibold">Choose a log file</span>
-                <span className="text-[12px]" style={{ color: "var(--still)" }}>or drop it here</span>
-                <input type="file" accept=".log,.txt,text/plain" className="sr-only"
+                <span>Choose a log file</span>
+                <small>or drop it here</small>
+                <input type="file" accept=".log,.txt,text/plain" className="nur-sr"
                        onChange={(e) => { dateiLesen(e.target.files?.[0]); e.target.value = ""; }} />
               </label>
               <textarea
-                className="min-h-[96px] w-full min-w-0 rounded-md border px-2.5 py-2 text-[12px]"
-                style={WAHLFELD_STIL} value={eingefuegt} placeholder="Or paste the whole log here"
-                aria-label="Paste the log" spellCheck={false}
+                className="feld"
+                style={{ minHeight: 96 }}
+                value={eingefuegt}
+                placeholder="Or paste the whole log here"
+                aria-label="Paste the log"
+                spellCheck={false}
                 onChange={(e) => setEingefuegt(e.target.value)}
               />
               <span>
-                <button type="button" className="rounded-md border px-3 py-1.5 text-sm font-semibold"
-                        style={wahlStil(Boolean(eingefuegt.trim()))} disabled={!eingefuegt.trim()}
+                <button type="button" className="knopf voll" disabled={!eingefuegt.trim()}
                         onClick={() => { setWahl(null); setDateiName(""); setText(eingefuegt); }}>
                   Analyze pasted log
                 </button>
               </span>
-              <span className="text-[12px]" style={{ color: "var(--still)" }}>
+              <p className="klein">
                 Your log never leaves this browser. It is read and analyzed right here; nothing is uploaded or saved,
                 and it is gone when you close the page.
-              </span>
-            </li>
-          </BookSchritt>
-        </ol>
+              </p>
+            </BookSchritt>
+          </ol>
+        </Abschnitt>
 
-        {leseFehler ? <p className="text-[13px]" style={{ color: "var(--niederlage)" }}>{leseFehler}</p> : null}
+        {leseFehler ? <p className="meldung fehler">{leseFehler}</p> : null}
         {gelesen && !partie ? (
-          <p className="text-[13px]" style={{ color: "var(--niederlage)" }}>
-            This log could not be analyzed: {LESEGRUND[gelesen.grund] || gelesen.grund}
-          </p>
+          <p className="meldung fehler">This log could not be analyzed: {LESEGRUND[gelesen.grund] || gelesen.grund}</p>
         ) : null}
-        {!kartenDa ? (
-          <p className="text-[12px]" style={{ color: "var(--still)" }}>Card data is still loading.</p>
-        ) : null}
-      </section>
+        {!kartenDa ? <p className="meldung">Card data is still loading.</p> : null}
+      </>
     );
   }
 
@@ -2548,24 +2451,29 @@ function EigenesReplay({ namen }) {
   const bookFehlt = books && meinLeader && books[meinLeader] === null;
   const bookFehler = books && Object.values(books).find((d) => d instanceof Error);
   const s = analyse && ich ? analyse.spieler[ich] : null;
+  const anderer = ich === "2" ? "1" : "2";
+  const laedtModell = netzJson === undefined || (partie && !books);
+  const offen = brettOffen ?? !analyse;
 
   return (
-    <section className="grid min-w-0 grid-cols-1 gap-3">
-      <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h2 className="text-base font-semibold">Analyze my replay</h2>
-        <span className="min-w-0 truncate text-[13px]" style={{ color: "var(--still)" }}>
-          {dateiName || "pasted log"} &middot; {name(partie.leader["1"])} against {name(partie.leader["2"])}
-        </span>
-        <button type="button" className="ml-auto rounded-md border px-2.5 py-1.5 text-sm font-semibold"
-                style={wahlStil(false)} onClick={neu}>Analyze another log</button>
-      </div>
+    <>
+      <section className="vorspann">
+        <div className="titelzeile" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+          <h1>Analyze my replay</h1>
+          <button type="button" className="knopf rand" onClick={neu}>Analyze another log</button>
+        </div>
+        <p className="lead" style={{ overflowWrap: "anywhere" }}>
+          {dateiName || "pasted log"} · <strong>{name(partie.leader[ich || "1"])}</strong> against{" "}
+          <strong>{name(partie.leader[ich ? anderer : "2"])}</strong>
+          {s ? <>, {s.first ? "first" : "second"}, {s.sieg ? "won" : "lost"}</> : null}.
+        </p>
+      </section>
 
       {!ich ? (
-        <div className="flex min-w-0 flex-wrap items-center gap-2 text-[13px]">
+        <div className="wer-war-ich">
           <span>Which player were you?</span>
           {["1", "2"].map((nr) => (
-            <button key={nr} type="button" className="rounded-md border px-2.5 py-1.5 text-sm font-semibold"
-                    style={wahlStil(false)} onClick={() => setWahl(Number(nr))}>
+            <button key={nr} type="button" className="knopf rand" onClick={() => setWahl(Number(nr))}>
               {spielerName(nr)} ({name(partie.leader[nr])})
             </button>
           ))}
@@ -2575,253 +2483,192 @@ function EigenesReplay({ namen }) {
       {netzJson === null || (netzJson && !netz) ? <MetacoachHinweis fehler={netzFehler} was="analysis" /> : null}
       {bookFehler ? <MetacoachHinweis fehler={bookFehler} was="guide" /> : null}
       {bookFehlt ? (
-        <p className="max-w-[74ch] text-[13px]" style={{ color: "var(--leise)" }}>
+        <div className="notiz"><p>
           There is no guide for {name(meinLeader)} {meinLeader} yet, so your decisions get no grades.
           The win chance over the game is still shown.
-        </p>
+        </p></div>
       ) : null}
       {leaderUnbekannt.length ? (
-        <p className="max-w-[74ch] text-[13px]" style={{ color: "var(--leise)" }}>
+        <div className="notiz"><p>
           The model has no value of its own for {leaderUnbekannt.map((l) => name(l) + " " + l).join(" and ")} and counts it
           as an other leader.
-        </p>
+        </p></div>
       ) : null}
       {unbekannt.length ? (
-        <p className="max-w-[74ch] text-[13px]" style={{ color: "var(--leise)" }}>
+        <div className="notiz"><p>
           {unbekannt.length === 1 ? "One card" : unbekannt.length + " cards"} of this game {unbekannt.length === 1 ? "is" : "are"} not
           known to the model and {unbekannt.length === 1 ? "counts" : "count"} as an empty slot
           for the win chance: {unbekannt.map((k) => name(k) + " " + k).join(", ")}.
-        </p>
-      ) : null}
-      {s && s.noten ? (
-        <p className="text-[13px]" style={{ color: "var(--leise)" }}>
-          {NOTENFOLGE.filter((n) => s.noten[n]).map((n) => `${s.noten[n]} ${NOTE_TEXT[n].toLowerCase()}`).join(" \u00b7 ") || "No graded decisions."}
-        </p>
+        </p></div>
       ) : null}
 
-      {netzJson === undefined || (partie && !books) ? (
-        <p className="py-2 text-sm" style={{ color: "var(--still)" }}>Loading the model ...</p>
+      {laedtModell ? (
+        <p className="laedt">Loading the model ...</p>
       ) : (
-        <Replay
-          key={(dateiName || "eingefuegt") + ":" + (ich || "")}
-          pfad={null}
-          namen={namen}
-          eigenerName={ich ? spielerName(ich) : undefined}
-          zeilenDirekt={zeilen || []}
-          analyseDirekt={analyse}
-        />
+        <>
+          {analyse && ich ? <EigeneAnalyse analyse={analyse} ich={ich} eigenName={spielerName(ich).split("#")[0]} /> : null}
+          <details className="allezahlen brett-auf" open={offen}
+                   onToggle={(e) => setBrettOffen(e.currentTarget.open)}>
+            <summary><Zeichen name="dreh" groesse={16} />Replay board</summary>
+            {offen ? (
+              <Replay
+                key={(dateiName || "eingefuegt") + ":" + (ich || "")}
+                pfad={null}
+                namen={namen}
+                eigenerName={ich ? spielerName(ich) : undefined}
+                zeilenDirekt={zeilen || []}
+                analyseDirekt={analyse}
+              />
+            ) : null}
+          </details>
+        </>
       )}
-    </section>
+    </>
   );
 }
 
-function Partie({ p, namen, replayOeffnen }) {
+/* --------------------------------------------------------------------------
+   Spielerseite: Aufstellung und letzte Partien
+   -------------------------------------------------------------------------- */
+
+function Partie({ nr, p, namen, replayOeffnen }) {
   const [offen, setOffen] = useState(false);
   const karten = (p.deck || []).slice(1);
+  const eigenName = (namen[kennung(p.eigener_leader)] || {}).n || kennung(p.eigener_leader);
+  const fremdName = (namen[p.gegner_leader] || {}).n || p.gegner_leader;
   return (
-    <div className="rounded-lg border" style={{ borderColor: "var(--linie)", background: "var(--flaeche)" }}>
-      {/* Feste Spalten statt fliessender Reihe: sonst wandert das "vs" je nach
-          Namenslaenge, und die Zeilen stehen untereinander nicht auf einer Linie. */}
-      <button
-        type="button"
-        className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto] items-center gap-x-2 px-2 py-2.5 text-left sm:gap-x-3 sm:px-3"
-        onClick={() => setOffen((o) => !o)}
-      >
-        <span
-          className="zahl w-7 shrink-0 rounded px-1 py-0.5 text-center text-xs font-bold"
-          style={{
-            background: p.gewonnen ? "var(--siegweich)" : "var(--niederlageweich)",
-            color: p.gewonnen ? "var(--sieg)" : "var(--niederlage)",
-          }}
-        >
+    <li className={"zeile" + (offen ? " offen" : "")}>
+      <div className="vorn" onClick={() => setOffen((o) => !o)}>
+        <span className={"etikett ausgang" + (p.gewonnen ? " akzent" : "")} title={p.gewonnen ? "won" : "lost"}>
           {p.gewonnen ? "W" : "L"}
         </span>
-        {/* Eigene Seite: Bild links, Text rechts daneben. */}
-        <span className="flex min-w-0 items-center gap-2">
-          <Bild id={p.eigener_leader} breite={120} hoehe={168}
-                className="h-[38px] w-[27px] shrink-0 rounded-[3px] object-cover" />
-          {/* Auf dem Telefon ist der Name so kurz abgeschnitten, dass er nichts mehr
-              sagt. Dort steht die Kartennummer, die exakt ist und passt; der Name
-              kommt ab 640 Pixel dazu. */}
-          <span className="min-w-0">
-            <span className="hidden sm:block">
-              <LeaderName id={p.eigener_leader} namen={namen} klein />
-            </span>
-            <span className="zahl block truncate text-[13px] font-semibold sm:hidden">
-              {kennung(p.eigener_leader)}
-            </span>
-          </span>
-        </span>
-
-        <span className="px-1 text-xs" style={{ color: "var(--still)" }}>vs</span>
-
-        {/* Gegnerseite gespiegelt: Text links, Bild rechts, alles rechtsbuendig. */}
-        <span className="flex min-w-0 items-center justify-end gap-2">
-          <span className="min-w-0 text-right">
-            <span className="hidden truncate text-[13px] font-semibold sm:block">
-              {(namen[p.gegner_leader] || {}).n || p.gegner_leader}
-            </span>
-            <span className="zahl block truncate text-[13px] font-semibold sm:hidden">
-              {kennung(p.gegner_leader)}
-            </span>
-            <span className="block truncate text-xs" style={{ color: "var(--still)" }}>
-              {p.gegner}
-            </span>
-          </span>
-          <Bild id={p.gegner_leader} breite={120} hoehe={168}
-                className="h-[38px] w-[27px] shrink-0 rounded-[3px] object-cover" />
-        </span>
-
-        <span className="flex shrink-0 items-center gap-3">
-          <span className="zahl hidden text-xs sm:block" style={{ color: "var(--still)" }}>
-            {String(p.zeit).slice(0, 16).replace("T", " ")}
-          </span>
-          <span className="zahl w-12 text-right text-xs" style={{ color: "var(--still)" }}>
-            {fmtDauer(p.dauer)}
-          </span>
-        </span>
-      </button>
-
-      {offen ? (
-        <div className="border-t px-3 pb-3 pt-3" style={{ borderColor: "var(--linie)" }}>
-          {p.deck_von ? (
-            <p className="mb-2 text-xs" style={{ color: "var(--still)" }}>
-              The replay of a win stores no list. Shown is this player's last known list with
-              this leader, from {String(p.deck_von).slice(0, 10)}.
-            </p>
-          ) : null}
-          {karten.length ? (
-            <div className="flex flex-wrap gap-1.5">
-              {karten.map((k, i) => (
-                <span key={k + i} className="relative block w-[46px] sm:w-[54px]">
-                  <Bild id={kennung(k)} breite={120} hoehe={168}
-                        className="h-[65px] w-[46px] rounded-[3px] object-cover sm:h-[76px] sm:w-[54px]" />
-                  <span
-                    className="zahl absolute -bottom-1 -right-1 min-w-[18px] rounded-full px-1 text-center text-[10px] font-bold"
-                    style={{ background: "var(--akzent)", color: "#fff" }}
-                  >
-                    {anzahl(k)}
-                  </span>
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm" style={{ color: "var(--still)" }}>
-              No decklist recorded for this game.
-            </p>
-          )}
-          {p.replay ? (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                className="rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-[var(--flaeche2)]"
-                style={{ borderColor: "var(--linie)", color: "var(--akzent)" }}
-                onClick={() => replayOeffnen(p.replay, p.eigener_leader)}
-              >
-                Watch replay
-              </button>
-              <a
-                href={replayAdresse(p.replay)}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="text-xs underline"
-                style={{ color: "var(--still)" }}
-              >
-                raw log
-              </a>
-            </div>
-          ) : null}
-
-        </div>
-      ) : null}
-    </div>
+        <span className="eb"><Kartenbild id={p.eigener_leader} breite={26} /></span>
+        <span className="eigen"><b>{eigenName}</b></span>
+        <span className="vs">vs</span>
+        <span className="fremd"><b>{fremdName}</b><small>{p.gegner}</small></span>
+        <span className="fb"><Kartenbild id={p.gegner_leader} breite={26} /></span>
+        <span className="zeit">{String(p.zeit).slice(0, 16).replace("T", " ")}</span>
+        <span className="dauer">{fmtDauer(p.dauer)}</span>
+        <DrehKnopf offen={offen} label={"Game " + nr} />
+      </div>
+      <Rueckseite offen={offen}>
+        <RueckMarke>Game {nr2(nr)} · {String(p.zeit).slice(0, 10)}</RueckMarke>
+        {p.deck_von ? (
+          <p className="hinweis" style={{ marginTop: 0, marginBottom: 10 }}>
+            The replay of a win stores no list. Shown is this player's last known list with
+            this leader, from {String(p.deck_von).slice(0, 10)}.
+          </p>
+        ) : null}
+        {karten.length ? (
+          <Decktabellen eintraege={karten} namen={namen} />
+        ) : (
+          <p className="hinweis" style={{ marginTop: 0 }}>No decklist recorded for this game.</p>
+        )}
+        {p.replay ? (
+          <div className="rueck-fuss">
+            <button type="button" className="knopf voll" onClick={() => replayOeffnen(p.replay, p.eigener_leader)}>
+              Watch replay
+            </button>
+            <a href={replayAdresse(p.replay)} target="_blank" rel="noreferrer noopener" className="link">raw log</a>
+          </div>
+        ) : null}
+      </Rueckseite>
+    </li>
   );
 }
 
 function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen }) {
   if (!eintrag) {
     return (
-      <p className="py-10 text-center" style={{ color: "var(--still)" }}>
-        This player is not in the current top 100.
-      </p>
+      <>
+        <button type="button" onClick={zurueck} className="knopf leise zurueck-knopf">
+          <Zeichen name="links" groesse={16} />Leaderboard
+        </button>
+        <p className="leer-satz">This player is not in the current top 100.</p>
+      </>
     );
   }
   const partien = (daten && daten.partien) || [];
+  const leader = (eintrag.leader || []).filter((l) => l.leader);
+  const nurWr = leader.every((l) => l.partien == null);
   return (
     <>
-      <button
-        type="button"
-        onClick={zurueck}
-        className="mb-4 w-fit rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-[var(--flaeche2)]"
-        style={{ borderColor: "var(--linie)", color: "var(--leise)" }}
-      >
-        &larr; Leaderboard
+      <button type="button" onClick={zurueck} className="knopf leise zurueck-knopf">
+        <Zeichen name="links" groesse={16} />Leaderboard
       </button>
 
-      <section className="pb-1">
-        <h1 className="breit text-[22px] font-extrabold leading-[1.05] sm:text-[34px]"
-            style={{ fontFamily: "var(--font-anzeige)", letterSpacing: "-0.015em" }}>
-          {eintrag.name}
-        </h1>
-        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3 sm:mt-5 sm:gap-x-9">
+      <section className="vorspann">
+        <h1>{eintrag.name}</h1>
+        <dl className="kennzeile">
           <Kennzahl etikett="Rank" kind={<Zaehler wert={eintrag.rang} />} />
-          <Kennzahl etikett="Bounty" kind={<span className="zahl">{fmtZahl(eintrag.bounty)}</span>} />
+          <Kennzahl etikett="Bounty" kind={<span className="z">{fmtZahl(eintrag.bounty)}</span>} />
           {daten ? (
             <>
-              <Kennzahl
-                etikett="Win rate"
-                kind={<Zaehler wert={daten.winrate || 0} nachkomma={1} suffix=" %" />}
-              />
-              <Kennzahl etikett="Record"
-                        kind={<span className="zahl">{daten.siege}&ndash;{daten.niederlagen}</span>} />
+              <Kennzahl etikett="Win rate" kind={<Zaehler wert={daten.winrate || 0} nachkomma={1} suffix=" %" />} />
+              <Kennzahl etikett="Record" kind={<span className="z">{daten.siege} – {daten.niederlagen}</span>} />
             </>
           ) : null}
           {eintrag.quelle === "ocr" ? null : (
             <Kennzahl etikett="Games" kind={<Zaehler wert={eintrag.partien} />} nurGross />
           )}
-        </div>
+        </dl>
       </section>
 
-      <h2 className="mt-5 text-base font-semibold">Leaders played</h2>
-      {/* Getrennt wird ueber Abstand, nicht ueber Trennzeichen, und ohne Balken.
-          Bricht die Zeile am Handy um, bleibt jede der drei Angaben fuer sich lesbar. */}
-      <div className="grid gap-2">
-        {(eintrag.leader || []).filter((l) => l.leader).map((l) => (
-          <div key={l.leader} className="grid grid-cols-[34px_minmax(0,1fr)] items-center gap-3">
-            <Bild id={l.leader} breite={120} hoehe={168}
-                  className="h-[46px] w-[34px] rounded-[3px] object-cover" />
-            <span className="min-w-0">
-              <LeaderName id={l.leader} namen={namen} klein />
-              <span className="zahl flex flex-wrap gap-x-5 text-xs"
-                    style={{ color: "var(--still)" }}>
-                {l.partien == null ? (
-                  <span>{l.winrate == null ? "win rate unreadable" : l.winrate.toFixed(1) + " % win rate"}</span>
-                ) : (
-                  <>
-                    <span>{l.siege}&ndash;{l.niederlagen} in {l.partien} games</span>
-                    <span>first {proz(l.erst_siege, l.erst_siege + l.erst_niederlagen).toFixed(1)} %</span>
-                    <span>second {proz(l.zweit_siege, l.zweit_siege + l.zweit_niederlagen).toFixed(1)} %</span>
-                  </>
-                )}
-              </span>
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <h2 className="mt-5 text-base font-semibold">Recent games</h2>
-      {partien.length ? (
-        <div className="grid gap-2">
-          {partien.map((p, i) => (
-            <Partie key={(p.replay || "") + i} p={p} namen={namen}
-                    replayOeffnen={replayOeffnen} />
-          ))}
+      <Abschnitt titel="Leaders played">
+        <div className="tafel-spalten spalten gespielt">
+          <span>Nr</span><span /><span>Leader</span>
+          {nurWr ? <><span className="rechts">Win rate</span><span /><span /></>
+            : <><span className="rechts">Record</span><span className="rechts">First</span><span className="rechts">Second</span></>}
         </div>
-      ) : (
-        <p className="py-6" style={{ color: "var(--still)" }}>
-          No recent games recorded for this player.
-        </p>
-      )}
+        <ol className="tafel gespielt">
+          {leader.map((l, i) => {
+            const id = kennung(l.leader);
+            const fw = proz(l.erst_siege, l.erst_siege + l.erst_niederlagen);
+            const sw = proz(l.zweit_siege, l.zweit_siege + l.zweit_niederlagen);
+            return (
+              <li key={l.leader} className="zeile">
+                <div className="vorn">
+                  <span className="nr">{nr2(i + 1)}</span>
+                  <Kartenbild id={l.leader} breite={30} />
+                  <span className="name gegner"><b>{(namen[id] || {}).n || id}</b><span className="kartennr">{id}</span></span>
+                  {l.partien == null ? (
+                    <>
+                      <Zelle k="z-a" label="Win rate" wert={l.winrate == null ? "unreadable" : l.winrate.toFixed(1) + " %"}
+                             klasse={l.winrate == null ? "wr schwach" : wrKlasse(l.winrate)} />
+                      <span className="z-b" /><span className="z-c" />
+                    </>
+                  ) : (
+                    <>
+                      <Zelle k="z-a" label="Record" wert={`${l.siege} – ${l.niederlagen}`} />
+                      <Zelle k="z-b" label="First" wert={fw.toFixed(1) + " %"} klasse={wrKlasse(fw)} />
+                      <Zelle k="z-c" label="Second" wert={sw.toFixed(1) + " %"} klasse={wrKlasse(sw)} />
+                    </>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </Abschnitt>
+
+      <Abschnitt titel="Recent games">
+        {partien.length ? (
+          <>
+            <div className="tafel-spalten spalten spiele">
+              <span /><span /><span>Leader</span><span /><span className="rechts">Opponent</span><span />
+              <span className="rechts">Played</span><span className="rechts">Time</span><span />
+            </div>
+            <ol className="tafel spiele">
+              {partien.map((p, i) => (
+                <Partie key={(p.replay || "") + i} nr={i + 1} p={p} namen={namen} replayOeffnen={replayOeffnen} />
+              ))}
+            </ol>
+            <p className="lesart">A tap on a game turns it over and shows the list and the replay.</p>
+          </>
+        ) : (
+          <p className="leer-satz">No recent games recorded for this player.</p>
+        )}
+      </Abschnitt>
     </>
   );
 }
@@ -2880,27 +2727,41 @@ function adresseSetzen(reiter, leader, ersetzen, spielerId, replayPfad) {
   window.history[ersetzen ? "replaceState" : "pushState"]({}, "", ziel);
 }
 
+/* Die Reiter in ihrer Reihenfolge: Schluessel, Name am Rechner, Name am Handy. */
+const REITER = [
+  ["decks", "Decklists", "Decks"],
+  ["matchups", "Matchups", "Matchups"],
+  ["matrix", "Matchup matrix", "Matrix"],
+  ["rang", "Power rankings", "Ranking"],
+  ["beste", "Leaderboard", "Ladder"],
+  ["analyse", "Mulligan", "Mulligan"],
+  ["book", "Guide", "Guide"],
+  ["eigenes", "Analyze my replay", "Analyze"],
+  ["changelog", "Changelog", "Changelog"],
+];
+const REITER_NAME = { spieler: "Player", replay: "Replay" };
+
+/** Ein Klick mit Taste oder Mittelknopf oeffnet wie gewohnt einen neuen Tab. */
+const eigenerKlick = (e) => !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0);
+
 /* --------------------------------------------------------------------------
    Schloss
    -------------------------------------------------------------------------- */
 
 function Schloss({ aufSchliessen }) {
   const [passwort, setPasswort] = useState("");
-  const [fehler, setFehler] = useState("");
+  const [fehlerText, setFehlerText] = useState("");
   const [laeuft, setLaeuft] = useState(false);
-  // Das Log steht standardmaessig zu: es traegt alles, aber das Brett ist das,
-  // weswegen man hier ist.
-  const [logOffen, setLogOffen] = useState(false);
 
   async function absenden(e) {
     e.preventDefault();
     if (!passwort || laeuft) return;
     setLaeuft(true);
-    setFehler("");
+    setFehlerText("");
     const ok = await anmelden(passwort);
     setLaeuft(false);
     if (!ok) {
-      setFehler("That password does not fit.");
+      setFehlerText("That password does not fit.");
       setPasswort("");
       return;
     }
@@ -2913,73 +2774,45 @@ function Schloss({ aufSchliessen }) {
   }
 
   return (
-    <div className="grid min-h-screen place-items-center px-5">
-      <form onSubmit={absenden} className="w-full max-w-[340px] text-center">
-        <span className="mx-auto mb-5 block w-fit">
-          <Sombrero groesse={72} />
-        </span>
-        <h1 className="breit text-[26px] font-bold leading-tight">
-          Letacios <span style={{ color: "var(--akzent)" }}>Fiesta</span>
-        </h1>
+    <div className="anmeldung">
+      <form onSubmit={absenden} className="karte">
+        <div className="marke-gross"><Sombrero groesse={72} /></div>
+        <h1>Letacios Fiesta</h1>
+        <p className="lead">Ladder statistics for the group. Enter the password.</p>
         <input
           type="password"
           autoFocus
           autoComplete="current-password"
+          aria-label="Password"
           value={passwort}
           onChange={(e) => setPasswort(e.target.value)}
-          className="mt-5 w-full rounded-md border px-3 py-2 text-center"
-          style={{
-            background: "var(--flaeche2)",
-            borderColor: fehler ? "var(--niederlage)" : "var(--linie)",
-            color: "var(--text)",
-          }}
+          className={"feld" + (fehlerText ? " falsch" : "")}
         />
-        <button
-          type="submit"
-          disabled={laeuft || !passwort}
-          className="mt-3 w-full rounded-md px-3 py-2 text-sm font-semibold transition-opacity"
-          style={{
-            background: "var(--akzent)",
-            color: "#fff",
-            opacity: laeuft || !passwort ? 0.5 : 1,
-          }}
-        >
+        <button type="submit" disabled={laeuft || !passwort} className="knopf voll">
           {laeuft ? "Checking" : "Continue"}
         </button>
-        {fehler ? (
-          <p className="mt-3 text-sm" style={{ color: "var(--niederlage)" }}>
-            {fehler}
-          </p>
-        ) : null}
+        {fehlerText ? <p className="meldung fehler">{fehlerText}</p> : null}
       </form>
     </div>
   );
 }
 
 /* --------------------------------------------------------------------------
+   Mulligan
+
+   Seit dem 22.10.2026 nur noch der Mulligan je Matchup aus Metacoach; der Teil aus den
+   oeffentlichen Zahlen von OPBounty (alle Gegner, Kopien) ist auf Wunsch des Nutzers weg.
+   -------------------------------------------------------------------------- */
+
+function Analyse({ leader, namen }) {
+  return <MulliganJeGegner leaderId={kennung(leader.id)} namen={namen} />;
+}
+
+/* --------------------------------------------------------------------------
    Die Seite
    -------------------------------------------------------------------------- */
 
-/* --------------------------------------------------------------------------
-   Analysis
-
-   Kartenwerte je Leader aus den oeffentlichen Statistiken von OPBounty, siehe
-   specs/features/mulligan-guide.md. hand: je Karte acht Zaehler in der Reihenfolge
-   keep first, keep second, mulligan first, mulligan second, wins in hand first, wins in
-   hand second, losses in hand first, losses in hand second. kopien: je "2xOP17-041"
-   [Partien, Siege].
-
-   Keep und "in hand" zaehlt OPBounty auf verschiedenen Grundlagen; die Summen passen nicht
-   zueinander (am 20.10.2026 geprueft). Deshalb wird jede Zahl nur durch ihre eigene
-   Zaehlung geteilt, nie eine durch die andere.
-   -------------------------------------------------------------------------- */
-
-
-function Analyse({ leader, namen }) {
-  // Seit dem 22.10.2026 nur noch der Mulligan je Matchup aus Metacoach; der Teil aus den
-  // oeffentlichen Zahlen von OPBounty (alle Gegner, Kopien) ist auf Wunsch des Nutzers weg.
-  return <MulliganJeGegner leaderId={kennung(leader.id)} namen={namen} />;
-}
+const MATRIX_HANDY_TOP = 8;
 
 export default function App() {
   const [entsperrt, setEntsperrt] = useState(null);
@@ -3001,6 +2834,7 @@ export default function App() {
   const [reiter, setReiter] = useState(() => reiterAusPfad(window.location.pathname));
   const [mindest, setMindest] = useState(50);
   const [mindestGeg, setMindestGeg] = useState(100);
+  const [muSortiert, setMuSortiert] = useState({ nach: "partien", ab: true });
   const [sortListen, setSortListen] = useState("wr");
   const [karteFilter, setKarteFilter] = useState("");
   // Nur zwoelf Listen bauen. Sechzig auf einmal sind ueber tausend Kartenfelder und
@@ -3023,10 +2857,9 @@ export default function App() {
   const [matrixTop, setMatrixTop] = useState(12);
   const [matrixMindest, setMatrixMindest] = useState(50);
   const [sitzModus, setSitzModus] = useState(false);
-
-  // Auf dem Telefon liegen die drei Decklistenfilter hinter einem Knopf. Ausgeklappt
-  // kosten sie drei Zeilen, und die erste Liste rutscht dafuer aus dem Bild.
-  const [filterOffen, setFilterOffen] = useState(false);
+  // Am Handy zeigt die Matrix zuerst die Top 8; ein Knopf holt alle gewaehlten dazu.
+  const [matrixAlle, setMatrixAlle] = useState(false);
+  const schmal = useSchmal(760);
 
   const [quelleOffen, setQuelleOffen] = useState(false);
   const [leisteOffen, setLeisteOffen] = useState(false);
@@ -3100,11 +2933,9 @@ export default function App() {
     };
   }, [entsperrt, reiter, beste]);
 
-  /* Die Partien je Spieler. Eigene Datei, nur fuer die Spielerseite gebraucht,
-     und sie darf ebenso fehlen wie die Bestenliste. */
+  /* Die Partien je Spieler. Eigene Datei, fuer die Spielerseite und den Deckreiter
+     (wer hat welche Liste gespielt), und sie darf ebenso fehlen wie die Bestenliste. */
   useEffect(() => {
-    // Seit dem 10.09.2026 auch fuer den Deckreiter: dort steht unter jeder Liste, wer
-    // sie gespielt hat, und das kommt aus derselben Datei.
     if (entsperrt !== true || spielerAlle !== null) return;
     if (reiter !== "spieler" && reiter !== "decks") return;
     let abgebrochen = false;
@@ -3207,17 +3038,21 @@ export default function App() {
     };
   }, [verzeichnis, wahl.art, wahl.satz, wahl.modus, wahl.bounty, wahl.von, wahl.bis]);
 
-
   /* Einzug beim ersten Aufbau. Eine Bewegung, nicht drei. */
   useLayoutEffect(() => {
     if (!satz) return;
+    const ziele = [kopfRef.current, railRef.current, buehneRef.current].filter(Boolean);
+    if (!ziele.length) return;
     const ctx = gsap.context(() => {
-      gsap.from([kopfRef.current, railRef.current, buehneRef.current], {
-        y: 14,
-        opacity: 0,
+      // Ziel ausdruecklich setzen: gsap.from liest sonst den gerade sichtbaren Wert, und
+      // der Uebergang der Buehne (opacity) liess sie dann halb durchsichtig stehen.
+      gsap.fromTo(ziele, { y: 14, opacity: 0 }, {
+        y: 0,
+        opacity: 1,
         duration: 0.45,
         stagger: 0.07,
         ease: "power2.out",
+        clearProps: "opacity,transform,translate,rotate,scale",
       });
     });
     return () => ctx.revert();
@@ -3267,10 +3102,6 @@ export default function App() {
     return r;
   }, [leader, mindest, sortListen, karteFilter]);
 
-  // Weicht einer der drei Decklistenfilter vom Standard ab? Der Knopf traegt dann
-  // einen Punkt, damit eingeklappt sichtbar bleibt, dass gefiltert wird.
-  const filterAbweichend = mindest !== 50 || sortListen !== "wr" || karteFilter.trim() !== "";
-
   /* Adresse mitfuehren, sobald Reiter oder Leader stehen. */
   useEffect(() => {
     if (entsperrt !== true || !gewaehlt) return;
@@ -3298,662 +3129,353 @@ export default function App() {
 
   if (fehlerText && !satz) {
     return (
-      <div className="mx-auto max-w-2xl px-6 py-24">
-        <div className="mb-4 flex items-center gap-3">
+      <div className="fehlerseite">
+        <div className="marke" style={{ marginBottom: 14 }}>
           <Sombrero groesse={40} />
-          <h1 className="text-2xl font-extrabold" style={{ fontFamily: "var(--font-anzeige)" }}>
-            Letacios Fiesta
-          </h1>
+          <b style={{ font: "700 22px/1 var(--kopf-font)" }}>Letacios Fiesta</b>
         </div>
-        <p style={{ color: "var(--leise)" }}>{fehlerText}</p>
+        <p className="meldung fehler">{fehlerText}</p>
       </div>
     );
   }
 
   const leaderbezogen = reiter === "decks" || reiter === "matchups" || reiter === "analyse";
-
-  const eingabe = {
-    background: "var(--flaeche2)",
-    borderColor: "var(--linie)",
-    color: "var(--text)",
+  const reiterName = REITER_NAME[reiter] || (REITER.find(([k]) => k === reiter) || REITER[0])[1];
+  const zahlFeld = (setzen, max) => (e) => {
+    const n = Math.round(Number(e.target.value));
+    setzen(Number.isFinite(n) ? Math.max(0, Math.min(max, n)) : 0);
   };
+  const lid = leader ? kennung(leader.id) : null;
+  const leaderName = lid ? (namen[lid] || {}).n || lid : "–";
+  const matrixZahl = schmal && !matrixAlle ? Math.min(MATRIX_HANDY_TOP, matrixTop) : matrixTop;
+
+  /* Die Leaderleiste links. Am Handy steht nur der gewaehlte Leader als Knopf; die
+     Liste klappt darunter auf. */
+  const leiste = leader ? (
+    <aside ref={railRef} className={"leiste" + (leisteOffen ? " offen" : "")} aria-label="Leaders">
+      <button type="button" className="leiste-knopf" aria-expanded={leisteOffen}
+              onClick={() => setLeisteOffen((o) => !o)}>
+        <Kartenbild id={lid} breite={26} />
+        <span style={{ minWidth: 0 }}><span className="fl-label">Leader</span><b>{leaderName}</b></span>
+        <span className={"z " + wrKlasseWG(leader.w, leader.w + leader.l)}>{fmtProz(leader.w, leader.w + leader.l)}</span>
+        <Zeichen name="dreh" groesse={16} />
+      </button>
+      <div className="leiste-kopf">
+        <label className="fl eng">
+          <span>Leader</span>
+          <input id="suche" type="search" autoComplete="off" placeholder="OP17-039 ..." className="feld"
+                 value={suche} onChange={(e) => setSuche(e.target.value)} />
+        </label>
+        <Schalter paare={[["partien", "Games"], ["wr", "Win rate"], ["listen", "Lists"]]}
+                  wert={sortLeader} setzen={setSortLeader} label="Sort leaders" />
+      </div>
+      <ol className="leiste-liste">
+        {leaderListe.map((e, i) => {
+          const g = e.w + e.l;
+          const id = kennung(e.id);
+          return (
+            <li key={e.id}>
+              <a href={PFADE[reiter] + "?leader=" + encodeURIComponent(id)}
+                 aria-current={e.id === leader.id ? "true" : undefined}
+                 onClick={(ev) => {
+                   if (!eigenerKlick(ev)) return;
+                   ev.preventDefault();
+                   setGewaehlt(e.id);
+                   setLeisteOffen(false);
+                 }}>
+                <span className="nr">{nr2(i + 1)}</span>
+                <Kartenbild id={id} breite={24} />
+                <span style={{ minWidth: 0 }}>
+                  <b>{(namen[id] || {}).n || id}</b>
+                  <small>{fmtZahl(g)} games · {e.listen.length} {e.listen.length === 1 ? "list" : "lists"}</small>
+                </span>
+                <span className={"z " + wrKlasseWG(e.w, g)}>{fmtProz(e.w, g)}</span>
+              </a>
+            </li>
+          );
+        })}
+        {!leaderListe.length ? <li className="leer-satz">No leader matches that search.</li> : null}
+      </ol>
+    </aside>
+  ) : null;
+
+  /* Titel und Kennzeile des gewaehlten Leaders */
+  const leaderKopf = leader ? (
+    <section className="vorspann">
+      <div className="titelzeile">
+        <Kartenbild id={lid} breite={36} />
+        <h1>{leaderName}</h1>
+        <span className="kartennr">{lid}</span>
+      </div>
+      <dl className="kennzeile">
+        <Kennzahl etikett="Win rate"
+                  kind={<Zaehler wert={proz(leader.w, leader.w + leader.l)} nachkomma={1} suffix=" %" />}
+                  unter={"± " + fehler(leader.w + leader.l).toFixed(1)} />
+        <Kennzahl etikett="Games" kind={<Zaehler wert={leader.w + leader.l} />} />
+        <Kennzahl etikett="Wins" kind={<Zaehler wert={leader.w} />} nurGross />
+        <Kennzahl etikett="Losses" kind={<Zaehler wert={leader.l} />} nurGross />
+        <Kennzahl etikett="Going first"
+                  kind={<Zaehler wert={proz(leader.fw, leader.fw + leader.fl)} nachkomma={1} suffix=" %" />} />
+        <Kennzahl etikett="Going second"
+                  kind={<Zaehler wert={proz(leader.sw, leader.sw + leader.sl)} nachkomma={1} suffix=" %" />} />
+        <Kennzahl etikett="Duration" kind={<span className="z">{fmtDauer(leader.dur)}</span>} nurGross />
+        <Kennzahl etikett="Lists" kind={<Zaehler wert={leader.listen.length} />} nurGross />
+      </dl>
+    </section>
+  ) : null;
+
+  let inhalt = null;
+  if (!leader) {
+    inhalt = <p className="laedt">Loading ...</p>;
+  } else if (reiter === "changelog") {
+    inhalt = <Changelog />;
+  } else if (reiter === "decks") {
+    inhalt = (
+      <>
+        <div className="steuer">
+          <label className="fl eng" style={{ width: 110 }}>
+            <span>Min games</span>
+            <input id="mindest" type="number" min="0" max="200" className="feld" value={mindest}
+                   onChange={zahlFeld(setMindest, 200)} />
+          </label>
+          <label className="fl eng">
+            <span>Sort by</span>
+            <select id="sortListen" className="feld" value={sortListen} onChange={(e) => setSortListen(e.target.value)}>
+              <option value="wr">Win rate</option>
+              <option value="partien">Games</option>
+              <option value="first">Win rate going first</option>
+              <option value="second">Win rate going second</option>
+              <option value="dauer">Duration</option>
+            </select>
+          </label>
+          <label className="fl eng breit-handy" style={{ width: 150 }}>
+            <span>Contains card</span>
+            <input id="karteFilter" type="search" autoComplete="off" placeholder="OP17-041" className="feld"
+                   value={karteFilter} onChange={(e) => setKarteFilter(e.target.value)} />
+          </label>
+          <span className="klein z" style={{ paddingBottom: 10 }}>
+            {listen.length} of {leader.listen.length} lists
+          </span>
+        </div>
+        <Abschnitt titel={`Lists by ${SORT_LISTEN_TEXT[sortListen]}, at least ${mindest} games`}>
+          <div className="tafel-spalten spalten listen">
+            <span>Nr</span><span>Deck</span><span className="rechts">Win rate</span><span className="rechts">Games</span>
+            <span className="rechts">First</span><span className="rechts">Second</span><span className="rechts">Time</span><span />
+          </div>
+          <ol className="tafel listen">
+            {listen.slice(0, sichtbar).map((l, i) => (
+              <Deckzeile key={l.d.join("|") + i} nr={i + 1} liste={l} leaderId={leader.id}
+                         spielerIndex={spielerIndex} namen={namen} />
+            ))}
+          </ol>
+          {!listen.length ? <p className="leer-satz">No list matches these filters.</p> : null}
+          {listen.length > sichtbar ? (
+            <div className="mehr">
+              <button type="button" className="knopf rand" onClick={() => setSichtbar((n) => n + 36)}>
+                Show more, {listen.length - sichtbar} left
+              </button>
+            </div>
+          ) : null}
+          <p className="lesart">
+            <b>Bold</b> from {GUT} % win rate, pale under {SCHWACH} %. A tap on a row turns it over and shows the list by name.
+          </p>
+        </Abschnitt>
+      </>
+    );
+  } else if (reiter === "matchups") {
+    inhalt = (
+      <>
+        <div className="steuer">
+          <label className="fl eng" style={{ width: 110 }}>
+            <span>Min games</span>
+            <input id="mindestGeg" type="number" min="0" max="1000" className="feld" value={mindestGeg}
+                   onChange={zahlFeld(setMindestGeg, 1000)} />
+          </label>
+          <label className="fl eng nur-handy">
+            <span>Sort by</span>
+            <select className="feld" value={muSortiert.nach}
+                    onChange={(e) => setMuSortiert({ nach: e.target.value, ab: e.target.value !== "name" })}>
+              {MU_SORT.map(([k, t]) => <option key={k} value={k}>{t}</option>)}
+            </select>
+          </label>
+          <span className="klein z" style={{ paddingBottom: 10 }}>
+            {(leader.gegner || []).filter((g) => g.m >= mindestGeg).length} of {(leader.gegner || []).length} opponents
+          </span>
+        </div>
+        <Abschnitt titel={`Matchups of ${leaderName}, at least ${mindestGeg} games`}>
+          <Matchups leader={leader} mindest={mindestGeg} namen={namen}
+                    sortiert={muSortiert} setSortiert={setMuSortiert} />
+          <p className="lesart">
+            These are the matchups of {leaderName} alone, the leader selected on the left. For every leader against
+            every other one, open the matchup matrix. <b>Bold</b> from {GUT} %, pale under {SCHWACH} %.
+          </p>
+        </Abschnitt>
+      </>
+    );
+  } else if (reiter === "matrix") {
+    inhalt = (
+      <>
+        <section className="vorspann">
+          <h1>Matchup matrix</h1>
+          <p className="lead">
+            {satz.name}, <strong>{fmtZahl(satz.partien)}</strong> games. The {matrixZahl} leaders with the most games,
+            row against column.
+          </p>
+        </section>
+        <div className="steuer">
+          <div className="fl eng"><span>Top leaders</span>
+            <Schalter paare={[[8, "8"], [12, "12"], [16, "16"], [20, "20"]]} wert={matrixTop} label="Top leaders"
+                      setzen={(n) => { setMatrixTop(n); setMatrixAlle(true); }} />
+          </div>
+          <label className="fl eng" style={{ width: 150 }}>
+            <span>Min games per cell</span>
+            <input id="matrixMindest" type="number" min="0" max="500" className="feld" value={matrixMindest}
+                   onChange={zahlFeld(setMatrixMindest, 500)} />
+          </label>
+          <button type="button" className="knopf rand" aria-pressed={sitzModus} onClick={() => setSitzModus(!sitzModus)}>
+            {sitzModus ? "Showing first and second" : "Show first and second"}
+          </button>
+        </div>
+        <Abschnitt titel={sitzModus ? "Row beats column, first and second in %" : "Row beats column, win rate in %"}>
+          <Matrix satz={satz} top={matrixZahl} mindest={matrixMindest} namen={namen}
+                  sitzModus={sitzModus} setSitzModus={setSitzModus} />
+          {schmal && matrixTop > MATRIX_HANDY_TOP ? (
+            <div className="mehr">
+              <button type="button" className="knopf rand" onClick={() => setMatrixAlle((a) => !a)}>
+                {matrixAlle ? "Show top " + MATRIX_HANDY_TOP : "Show all " + matrixTop}
+              </button>
+            </div>
+          ) : null}
+          <p className="lesart">
+            Win rate of the row leader against the column leader. <b>Bold</b> from {GUT} %, pale under {SCHWACH} %,
+            a dash means fewer than {matrixMindest} games, the framed cell is the mirror. Click a cell to switch the
+            whole matrix {sitzModus ? "back to the overall rate" : "to first and second"}.
+          </p>
+        </Abschnitt>
+      </>
+    );
+  } else if (reiter === "rang") {
+    inhalt = <Rangliste satz={satz} namen={namen} />;
+  } else if (reiter === "analyse") {
+    inhalt = <Analyse leader={leader} namen={namen} />;
+  } else if (reiter === "book") {
+    inhalt = <Book namen={namen} startLeader={gewaehlt ? kennung(gewaehlt) : null} />;
+  } else if (reiter === "eigenes") {
+    inhalt = <EigenesReplay namen={namen} />;
+  } else if (reiter === "replay") {
+    inhalt = replayPfad ? (
+      <Replay
+        pfad={replayPfad}
+        namen={namen}
+        eigenerLeader={replayLeader}
+        zurueck={() => setReiter(spielerId ? "spieler" : "beste")}
+      />
+    ) : (
+      <p className="leer-satz">No replay selected.</p>
+    );
+  } else if (reiter === "spieler") {
+    inhalt = beste === null || spielerAlle === null ? (
+      <p className="laedt">Loading ...</p>
+    ) : (
+      <Spieler
+        eintrag={beste && beste.spieler
+          ? beste.spieler.find((e) => String(e.user_id) === String(spielerId))
+          : null}
+        daten={spielerAlle && spielerAlle.spieler ? spielerAlle.spieler[String(spielerId)] : null}
+        namen={namen}
+        zurueck={() => setReiter("beste")}
+        replayOeffnen={(pfad, ldr) => {
+          setReplayPfad(pfad);
+          setReplayLeader(ldr);
+          setReiter("replay");
+          window.scrollTo(0, 0);
+        }}
+      />
+    );
+  } else {
+    inhalt = beste === null ? (
+      <p className="laedt">Loading the ladder ...</p>
+    ) : beste === false ? (
+      <p className="leer-satz">No ladder snapshot available yet.</p>
+    ) : (
+      <Bestenliste
+        daten={beste}
+        namen={namen}
+        oeffnen={(id) => {
+          setSpielerId(String(id));
+          setReiter("spieler");
+          window.scrollTo(0, 0);
+        }}
+      />
+    );
+  }
+
+  const buehne = (
+    <div ref={buehneRef} className={"buehne" + (laedt && satz ? " dimmt" : "")}>
+      {fehlerText ? <p className="meldung fehler">{fehlerText}</p> : null}
+      {leaderbezogen ? leaderKopf : null}
+      {inhalt}
+    </div>
+  );
 
   return (
-    <>
-      <header
-        ref={kopfRef}
-        className="sticky top-0 z-40 border-b backdrop-blur"
-        style={{ background: "color-mix(in srgb, var(--flaeche) 92%, transparent)", borderColor: "var(--linie)" }}
-      >
-        <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 sm:px-5">
-          <span className="flex items-center gap-2.5">
-            <Sombrero groesse={34} />
-            <span
-              className="breit text-[18px] font-extrabold leading-none"
-              style={{ fontFamily: "var(--font-anzeige)", letterSpacing: "-0.01em" }}
-            >
-              Letacios <span style={{ color: "var(--akzent)" }}>Fiesta</span>
-            </span>
-          </span>
+    <div className="blatt">
+      <div className="karte">
+        <header ref={kopfRef} className="band">
+          <a className="marke" href={PFADE.decks}
+             onClick={(e) => { if (!eigenerKlick(e)) return; e.preventDefault(); setReiter("decks"); }}>
+            <Sombrero groesse={30} className="hut" />
+            <b>Letacios Fiesta</b>
+          </a>
 
-          {/* Der Quellenchip. Er zeigt, was geladen ist, und oeffnet erst auf Klick die
-              Bedienelemente. Vorher stand dafuer eine Kachel dauerhaft ueber dem Inhalt. */}
-          <div className="relative" ref={quelleRef}>
-            <button
-              type="button"
-              onClick={() => setQuelleOffen((o) => !o)}
-              aria-expanded={quelleOffen}
-              className="flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm"
-              style={{
-                background: quelleOffen ? "var(--akzentweich)" : "var(--flaeche2)",
-                borderColor: quelleOffen ? "var(--akzent)" : "var(--linie)",
-                color: "var(--text)",
-              }}
-            >
-              <span className="font-semibold">{satz ? satz.name : "loading"}</span>
-              {satz ? (
-                <span className="zahl text-xs" style={{ color: "var(--still)" }}>
-                  {fmtZahl(satz.partien)}
-                </span>
-              ) : null}
-              <svg width="10" height="7" viewBox="0 0 10 7" aria-hidden="true">
-                <path d="M1 1.5 5 5.5 9 1.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
-              </svg>
+          {/* Der Quellenchip zeigt, was geladen ist, und oeffnet erst auf Klick die
+              Bedienelemente. */}
+          <div className="quelle-huelle" ref={quelleRef}>
+            <button type="button" className="quelle-chip" aria-expanded={quelleOffen}
+                    onClick={() => setQuelleOffen((o) => !o)}>
+              <span className="lang">{satz ? satz.name : "loading"}</span>
+              {satz ? <span className="z">{fmtZahl(satz.partien)}</span> : null}
+              <Zeichen name="dreh" groesse={14} />
             </button>
             {quelleOffen && verzeichnis ? (
-              <div
-                className="fixed inset-x-3 top-[112px] z-50 rounded-lg border sm:absolute sm:inset-x-auto sm:left-0 sm:top-[calc(100%+8px)] sm:w-[min(92vw,640px)]"
-                style={{
-                  background: "var(--flaeche)",
-                  borderColor: "var(--linie)",
-                  boxShadow: "var(--schatten)",
-                }}
-              >
+              <div className="quelle-tafel">
                 <Quelle verzeichnis={verzeichnis} wahl={wahl} setWahl={setWahl} laedt={laedt} />
               </div>
             ) : null}
           </div>
+        </header>
 
-          {laedt ? (
-            <span className="etikett" style={{ color: "var(--akzent)" }}>
-              loading
-            </span>
-          ) : null}
-
-        </div>
-
-        {/* Reiter im Kopf statt als eigenes Band. Spart eine ganze Zeile Bedienung
-            ueber dem Inhalt und macht klar, dass sie die Seite umschalten. */}
-        <nav
-          className="hide-scroll mx-auto flex max-w-[1500px] gap-1 overflow-x-auto px-3 sm:px-5"
-          role="tablist"
-        >
-          {[
-            ["decks", "Decklists", "Decks"],
-            ["matchups", "Matchups", "Matchups"],
-            ["matrix", "Matchup matrix", "Matrix"],
-            ["rang", "Power rankings", "Ranking"],
-            ["beste", "Leaderboard", "Ladder"],
-            ["analyse", "Mulligan", "Mulligan"],
-            ["book", "Guide", "Guide"],
-            ["eigenes", "Analyze my replay", "Analyze"],
-            ["changelog", "Changelog", "Changelog"],
-          ].map(([k, lang, kurz]) => (
-            <button
-              key={k}
-              type="button"
-              role="tab"
-              aria-selected={reiter === k}
-              onClick={() => setReiter(k)}
-              className="-mb-px shrink-0 border-b-2 px-3 py-2 text-[13px] font-semibold uppercase tracking-[0.1em] transition-colors"
-              style={{
-                borderColor: reiter === k ? "var(--akzent)" : "transparent",
-                color: reiter === k ? "var(--text)" : "var(--leise)",
-              }}
-            >
-              <span className="sm:hidden">{kurz}</span>
-              <span className="hidden sm:inline">{lang}</span>
-            </button>
+        {/* Neun Reiter: am Rechner eine Zeile, am Handy zwei Zeilen, nichts verborgen. */}
+        <nav className="reiter" aria-label="Tabs">
+          {REITER.map(([k, lang, kurz]) => (
+            <a key={k} href={PFADE[k]} aria-current={reiter === k ? "page" : undefined}
+               onClick={(e) => { if (!eigenerKlick(e)) return; e.preventDefault(); setReiter(k); }}>
+              <span className="lang">{lang}</span>
+              <span className="kurz">{kurz}</span>
+            </a>
           ))}
         </nav>
         {/* Ladeband. Ein Zeitraum ueber dreissig Tage holt dreissig Dateien nach, ohne
             Rueckmeldung wirkt die Seite in dieser Sekunde eingefroren. */}
-        <span
-          aria-hidden="true"
-          className="block h-[2px] overflow-hidden"
-          style={{ background: laedt ? "var(--akzentweich)" : "transparent" }}
-        >
-          {laedt ? (
-            <span
-              className="block h-full w-1/3"
-              style={{
-                background: "var(--akzent)",
-                animation: "lauf 1.1s ease-in-out infinite",
-              }}
-            />
-          ) : null}
-        </span>
-      </header>
+        <span aria-hidden="true" className={"ladeband" + (laedt ? " an" : "")}>{laedt ? <i /> : null}</span>
 
-      <div
-        className={
-          "mx-auto grid max-w-[1500px] gap-5 px-3 pb-16 pt-5 sm:px-5 lg:items-start " +
-          (leaderbezogen ? "lg:grid-cols-[320px_minmax(0,1fr)]" : "lg:grid-cols-1")
-        }
-      >
-        {leaderbezogen ? (
-        <aside
-          ref={railRef}
-          className="flex max-h-[70vh] flex-col overflow-hidden rounded-lg border lg:sticky lg:top-[112px] lg:max-h-[calc(100vh-132px)]"
-          style={{ background: "var(--flaeche)", borderColor: "var(--linie)" }}
-        >
-          {/* Auf dem Telefon steht hier nur der gewaehlte Leader. Aufgeklappt haette die
-              Liste sonst den ganzen ersten Bildschirm belegt, bevor Daten kommen. */}
-          <button
-            type="button"
-            className="flex items-center gap-2.5 border-b p-3 text-left lg:hidden"
-            style={{ borderColor: "var(--linie)" }}
-            aria-expanded={leisteOffen}
-            onClick={() => setLeisteOffen((o) => !o)}
-          >
-            {leader ? (
-              <Bild id={kennung(leader.id)} className="block h-10 w-7 rounded-[3px] object-cover" />
-            ) : null}
-            <span className="min-w-0 flex-1">
-              <span className="etikett block">Leader</span>
-              <span className="block truncate text-sm font-semibold">
-                {leader ? (namen[kennung(leader.id)] || {}).n || kennung(leader.id) : "–"}
-              </span>
-            </span>
-            <svg
-              width="12" height="8" viewBox="0 0 10 7" aria-hidden="true"
-              style={{ transform: leisteOffen ? "rotate(180deg)" : "none", color: "var(--still)" }}
-            >
-              <path d="M1 1.5 5 5.5 9 1.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
-            </svg>
-          </button>
-
-          <div
-            className={
-              (leisteOffen ? "grid" : "hidden") +
-              " gap-2 border-b p-3 lg:grid"
-            }
-            style={{ borderColor: "var(--linie)" }}
-          >
-            <label className="etikett" htmlFor="suche">
-              Leader
-            </label>
-            <input
-              id="suche"
-              type="search"
-              autoComplete="off"
-              placeholder="OP17-039 ..."
-              className="w-full rounded-md border px-2.5 py-1.5 text-sm"
-              style={eingabe}
-              value={suche}
-              onChange={(e) => setSuche(e.target.value)}
-            />
-          </div>
-          <div
-            className={
-              (leisteOffen ? "flex" : "hidden") +
-              " items-center justify-between border-b px-3 pb-2 lg:flex"
-            }
-            style={{ borderColor: "var(--linie)" }}
-          >
-            {[
-              ["partien", "Games"],
-              ["wr", "Win rate"],
-              ["listen", "Lists"],
-            ].map(([k, t]) => (
-              <button
-                key={k}
-                type="button"
-                className="etikett"
-                aria-pressed={sortLeader === k}
-                style={{ color: sortLeader === k ? "var(--akzent)" : "var(--still)" }}
-                onClick={() => setSortLeader(k)}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-          <div className={(leisteOffen ? "block" : "hidden") + " flex-1 overflow-y-auto lg:block"}>
-            {leaderListe.map((e) => {
-              const g = e.w + e.l;
-              const id = kennung(e.id);
-              return (
-                <button
-                  key={e.id}
-                  type="button"
-                  onClick={() => {
-                    setGewaehlt(e.id);
-                    setLeisteOffen(false);
-                  }}
-                  aria-current={e.id === (leader && leader.id)}
-                  className="grid w-full grid-cols-[34px_minmax(0,1fr)_auto] items-center gap-2.5 border-b px-3 py-1.5 text-left transition-colors hover:bg-[var(--flaeche2)]"
-                  style={{
-                    borderColor: "var(--linie)",
-                    background: e.id === (leader && leader.id) ? "var(--akzentweich)" : "transparent",
-                  }}
-                >
-                  <span className="relative block">
-                    <Bild id={id} className="block h-12 w-[34px] rounded-[3px] object-cover" />
-                    <span
-                      className="absolute -left-1.5 top-0 block h-full w-[2px] rounded-full"
-                      style={{ background: farbverlauf((namen[id] || {}).f) }}
-                    />
-                  </span>
-                  <span className="min-w-0">
-                    <span
-                      className="block truncate text-sm font-semibold"
-                      style={{ color: e.id === (leader && leader.id) ? "var(--akzent)" : "var(--text)" }}
-                    >
-                      {(namen[id] || {}).n || id}
-                    </span>
-                    <span
-                      className="zahl flex gap-3 text-xs"
-                      style={{ color: "var(--still)" }}
-                    >
-                      <span>{fmtZahl(g)} games</span>
-                      <span>{e.listen.length} {e.listen.length === 1 ? "list" : "lists"}</span>
-                    </span>
-                  </span>
-                  <span className="zahl text-sm font-semibold" style={{ color: farbe(e.w, g) }}>
-                    {fmtProz(e.w, g)}
-                  </span>
-                </button>
-              );
-            })}
-            {!leaderListe.length ? (
-              <p className="p-6 text-center text-sm" style={{ color: "var(--still)" }}>
-                No leader matches that search.
-              </p>
-            ) : null}
-          </div>
-        </aside>
-        ) : null}
-
-        <main
-          ref={buehneRef}
-          className="grid min-w-0 gap-4 transition-opacity duration-200"
-          style={{ opacity: laedt && satz ? 0.45 : 1 }}
-        >
-          {fehlerText ? (
-            <p
-              className="rounded-lg border px-4 py-3 text-sm"
-              style={{ background: "var(--flaeche)", borderColor: "var(--niederlage)", color: "var(--niederlage)" }}
-            >
-              {fehlerText}
-            </p>
-          ) : null}
-
-          {leader ? (
-            <>
-              {leaderbezogen ? (
-              <section className="grid grid-cols-[66px_minmax(0,1fr)] gap-3 pb-1 sm:grid-cols-[112px_minmax(0,1fr)] sm:gap-5">
-                <span className="relative block">
-                  <Bild
-                    id={kennung(leader.id)}
-                    breite={112}
-                    hoehe={156}
-                    className="h-[92px] w-[66px] rounded object-cover sm:h-[156px] sm:w-28"
-                  />
-                  <span
-                    className="absolute -left-2 top-1 block w-[3px] rounded-full"
-                    style={{
-                      height: "calc(100% - 8px)",
-                      background: farbverlauf((namen[kennung(leader.id)] || {}).f),
-                    }}
-                  />
-                </span>
-                <div>
-                  <h1
-                    className="breit text-[22px] font-extrabold leading-[1.05] sm:text-[34px]"
-                    style={{
-                      fontFamily: "var(--font-anzeige)",
-                      textWrap: "balance",
-                      letterSpacing: "-0.015em",
-                    }}
-                  >
-                    {(namen[kennung(leader.id)] || {}).n || kennung(leader.id)}
-                  </h1>
-                  <p className="zahl text-[13px]" style={{ color: "var(--still)" }}>
-                    {kennung(leader.id)}
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3 sm:mt-5 sm:gap-x-9 sm:gap-y-4">
-                    <Kennzahl
-                      etikett="Win rate"
-                      kind={<Zaehler wert={proz(leader.w, leader.w + leader.l)} nachkomma={1} suffix=" %" />}
-                      unter={"± " + fehler(leader.w + leader.l).toFixed(1)}
-                    />
-                    <Kennzahl etikett="Games" kind={<Zaehler wert={leader.w + leader.l} />} />
-                    <Kennzahl etikett="Wins" kind={<Zaehler wert={leader.w} />} nurGross />
-                    <Kennzahl etikett="Losses" kind={<Zaehler wert={leader.l} />} nurGross />
-                    <Kennzahl
-                      etikett="Going first"
-                      kind={<Zaehler wert={proz(leader.fw, leader.fw + leader.fl)} nachkomma={1} suffix=" %" />}
-                    />
-                    <Kennzahl
-                      etikett="Going second"
-                      kind={<Zaehler wert={proz(leader.sw, leader.sw + leader.sl)} nachkomma={1} suffix=" %" />}
-                    />
-                    <Kennzahl etikett="Duration" kind={<span className="zahl">{fmtDauer(leader.dur)}</span>} nurGross />
-                    <Kennzahl etikett="Lists" kind={<Zaehler wert={leader.listen.length} />} nurGross />
-                  </div>
-                </div>
-              </section>
-              ) : null}
-
-              {reiter === "changelog" ? (
-                <Changelog />
-              ) : reiter === "decks" ? (
-                <>
-                  {/* Nur auf dem Telefon: eine Zeile statt drei. Der Punkt zeigt, dass ein
-                      Filter vom Standard abweicht, sonst waere eingeklappt nicht zu sehen,
-                      dass gefiltert wird. */}
-                  <div className="flex items-center justify-between gap-3 py-1 sm:hidden">
-                    <button
-                      type="button"
-                      className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors"
-                      style={
-                        filterOffen
-                          ? { background: "var(--akzentweich)", borderColor: "var(--akzent)", color: "var(--akzent)" }
-                          : { background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--leise)" }
-                      }
-                      aria-expanded={filterOffen}
-                      onClick={() => setFilterOffen((o) => !o)}
-                    >
-                      Filters
-                      {filterAbweichend ? (
-                        <span
-                          className="h-1.5 w-1.5 rounded-full"
-                          style={{ background: "var(--akzent)" }}
-                          aria-label="active"
-                        />
-                      ) : null}
-                      <svg
-                        width="10"
-                        height="7"
-                        viewBox="0 0 10 7"
-                        aria-hidden="true"
-                        style={{ transform: filterOffen ? "rotate(180deg)" : "none" }}
-                      >
-                        <path d="M1 1.5 5 5.5 9 1.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
-                      </svg>
-                    </button>
-                    <span className="zahl text-[13px]" style={{ color: "var(--still)" }}>
-                      {listen.length} of {leader.listen.length} lists
-                    </span>
-                  </div>
-
-                  <div
-                    className={
-                      (filterOffen ? "flex" : "hidden") +
-                      " flex-wrap items-center gap-x-5 gap-y-3 pb-2 sm:flex sm:py-1"
-                    }
-                  >
-                    <span className="flex items-center gap-2">
-                      <label className="etikett" htmlFor="mindest">
-                        min
-                      </label>
-                      <input
-                        id="mindest"
-                        type="range"
-                        min="1"
-                        max="200"
-                        value={mindest}
-                        onChange={(e) => setMindest(+e.target.value)}
-                        className="w-32"
-                        style={{ accentColor: "var(--akzent)" }}
-                      />
-                      <span className="zahl w-8 text-sm">{mindest}</span>
-                      <span className="etikett">games</span>
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <label className="etikett" htmlFor="sortListen">
-                        sort by
-                      </label>
-                      <select
-                        id="sortListen"
-                        className="rounded-md border px-2.5 py-1.5 text-sm"
-                        style={eingabe}
-                        value={sortListen}
-                        onChange={(e) => setSortListen(e.target.value)}
-                      >
-                        <option value="wr">Win rate</option>
-                        <option value="partien">Games</option>
-                        <option value="first">Win rate going first</option>
-                        <option value="second">Win rate going second</option>
-                        <option value="dauer">Duration</option>
-                      </select>
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <label className="etikett" htmlFor="karteFilter">
-                        contains card
-                      </label>
-                      <input
-                        id="karteFilter"
-                        type="search"
-                        autoComplete="off"
-                        placeholder="OP17-041"
-                        className="w-36 rounded-md border px-2.5 py-1.5 text-sm zahl"
-                        style={eingabe}
-                        value={karteFilter}
-                        onChange={(e) => setKarteFilter(e.target.value)}
-                      />
-                    </span>
-                    <span className="zahl hidden text-[13px] sm:inline" style={{ color: "var(--still)" }}>
-                      {listen.length} of {leader.listen.length} lists
-                    </span>
-                  </div>
-                  <div className="grid gap-3">
-                    {listen.slice(0, sichtbar).map((l, i) => (
-                      <Deckliste
-                        key={l.d.join("|") + i}
-                        liste={l}
-                        leaderId={leader.id}
-                        spielerIndex={spielerIndex}
-                      />
-                    ))}
-                    {!listen.length ? (
-                      <p className="py-10 text-center" style={{ color: "var(--still)" }}>
-                        No list matches these filters.
-                      </p>
-                    ) : null}
-                    {listen.length > sichtbar ? (
-                      <button
-                        type="button"
-                        onClick={() => setSichtbar((n) => n + 36)}
-                        className="mx-auto mt-1 rounded-md border px-4 py-2 text-sm font-semibold"
-                        style={{
-                          background: "var(--flaeche2)",
-                          borderColor: "var(--linie)",
-                          color: "var(--leise)",
-                        }}
-                      >
-                        Show more, {listen.length - sichtbar} left
-                      </button>
-                    ) : null}
-                  </div>
-                </>
-              ) : reiter === "matchups" ? (
-                <>
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-3 py-1">
-                    <span className="flex items-center gap-2">
-                      <label className="etikett" htmlFor="mindestGeg">
-                        min
-                      </label>
-                      <input
-                        id="mindestGeg"
-                        type="range"
-                        min="1"
-                        max="1000"
-                        value={mindestGeg}
-                        onChange={(e) => setMindestGeg(+e.target.value)}
-                        className="w-32"
-                        style={{ accentColor: "var(--akzent)" }}
-                      />
-                      <span className="zahl w-10 text-sm">{mindestGeg}</span>
-                      <span className="etikett">games</span>
-                    </span>
-                    <span className="zahl text-[13px]" style={{ color: "var(--still)" }}>
-                      {(leader.gegner || []).filter((g) => g.m >= mindestGeg).length} of{" "}
-                      {(leader.gegner || []).length} opponents
-                    </span>
-                  </div>
-                  <p className="max-w-[74ch] pb-2 text-[13px]" style={{ color: "var(--still)" }}>
-                    These are the matchups of {(namen[kennung(leader.id)] || {}).n || kennung(leader.id)} alone, the leader selected
-                    on the left. For every leader against every other one, open the matchup
-                    matrix.
-                  </p>
-                  <Matchups leader={leader} mindest={mindestGeg} namen={namen} />
-                </>
-              ) : reiter === "matrix" ? (
-                <>
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-3 py-1">
-                    <span className="flex items-center gap-2">
-                      <span className="etikett">top</span>
-                      {[8, 12, 16, 20].map((n) => (
-                        <button
-                          key={n}
-                          type="button"
-                          className="rounded-md border px-2 py-1 text-xs font-semibold zahl"
-                          style={
-                            matrixTop === n
-                              ? { background: "var(--akzentweich)", borderColor: "var(--akzent)", color: "var(--akzent)" }
-                              : { background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--leise)" }
-                          }
-                          onClick={() => setMatrixTop(n)}
-                        >
-                          {n}
-                        </button>
-                      ))}
-                      <span className="etikett">leaders</span>
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <label className="etikett" htmlFor="matrixMindest">
-                        min
-                      </label>
-                      <input
-                        id="matrixMindest"
-                        type="range"
-                        min="1"
-                        max="500"
-                        value={matrixMindest}
-                        onChange={(e) => setMatrixMindest(+e.target.value)}
-                        className="w-32"
-                        style={{ accentColor: "var(--akzent)" }}
-                      />
-                      <span className="zahl w-10 text-sm">{matrixMindest}</span>
-                      <span className="etikett">games per cell</span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setSitzModus(!sitzModus)}
-                      aria-pressed={sitzModus}
-                      className="rounded-md border px-3 py-1.5 text-sm font-semibold"
-                      style={
-                        sitzModus
-                          ? { background: "var(--akzentweich)", borderColor: "var(--akzent)", color: "var(--akzent)" }
-                          : { background: "var(--flaeche2)", borderColor: "var(--linie)", color: "var(--leise)" }
-                      }
-                    >
-                      {sitzModus ? "Showing first and second" : "Show first and second"}
-                    </button>
-                  </div>
-                  <Matrix
-                    satz={satz}
-                    top={matrixTop}
-                    mindest={matrixMindest}
-                    namen={namen}
-                    sitzModus={sitzModus}
-                    setSitzModus={setSitzModus}
-                  />
-                </>
-              ) : reiter === "rang" ? (
-                <>
-                  <Rangliste satz={satz} namen={namen} />
-                </>
-              ) : reiter === "analyse" ? (
-                <Analyse leader={leader} namen={namen} />
-              ) : reiter === "book" ? (
-                <Book namen={namen} startLeader={gewaehlt ? kennung(gewaehlt) : null} />
-              ) : reiter === "eigenes" ? (
-                <EigenesReplay namen={namen} />
-              ) : reiter === "replay" ? (
-                <>
-                  {replayPfad ? (
-                    <Replay
-                      pfad={replayPfad}
-                      namen={namen}
-                      eigenerLeader={replayLeader}
-                      zurueck={() => setReiter(spielerId ? "spieler" : "beste")}
-                    />
-                  ) : (
-                    <p className="py-10 text-center" style={{ color: "var(--still)" }}>
-                      No replay selected.
-                    </p>
-                  )}
-                </>
-              ) : reiter === "spieler" ? (
-                <>
-                  {beste === null || spielerAlle === null ? (
-                    <p className="py-10 text-center" style={{ color: "var(--still)" }}>
-                      Loading ...
-                    </p>
-                  ) : (
-                    <Spieler
-                      eintrag={
-                        beste && beste.spieler
-                          ? beste.spieler.find(
-                              (e) => String(e.user_id) === String(spielerId)
-                            )
-                          : null
-                      }
-                      daten={
-                        spielerAlle && spielerAlle.spieler
-                          ? spielerAlle.spieler[String(spielerId)]
-                          : null
-                      }
-                      namen={namen}
-                      zurueck={() => setReiter("beste")}
-                      replayOeffnen={(pfad, ldr) => {
-                        setReplayPfad(pfad);
-                        setReplayLeader(ldr);
-                        setReiter("replay");
-                        window.scrollTo(0, 0);
-                      }}
-                    />
-                  )}
-                </>
-              ) : (
-                <>
-                  {beste === null ? (
-                    <p className="py-10 text-center" style={{ color: "var(--still)" }}>
-                      Loading the ladder ...
-                    </p>
-                  ) : beste === false ? (
-                    <p className="py-10 text-center" style={{ color: "var(--still)" }}>
-                      No ladder snapshot available yet.
-                    </p>
-                  ) : (
-                    <Bestenliste
-                      daten={beste}
-                      namen={namen}
-                      oeffnen={(id) => {
-                        setSpielerId(String(id));
-                        setReiter("spieler");
-                        window.scrollTo(0, 0);
-                      }}
-                    />
-                  )}
-                </>
-              )}
-            </>
-          ) : null}
+        <main className="inhalt">
+          {leaderbezogen && leader ? (
+            <div className="mit-leiste">
+              {leiste}
+              {buehne}
+            </div>
+          ) : buehne}
         </main>
+
+        <footer className="fuss">
+          <span>
+            Letacios Fiesta · {reiterName}
+            {satz ? <> · {satz.name}{satz.stand ? <>, data of {datumKurz(satz.stand)}</> : null}</> : null}
+          </span>
+          <span><span className="raute">◆</span> italic means estimate, upright means ladder</span>
+        </footer>
       </div>
-    </>
+    </div>
   );
 }

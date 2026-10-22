@@ -23,3 +23,9 @@ public/mulligan/*.json.gz
 
 # Referenzdaten: Wertnetz und Book der Referenz nicht ins Repo (book-auf-fiesta.md)
 tests/referenz/eingaben/
+
+# Designvorschau mit entschluesselten Daten, nie ins Repo
+.impeccable/vorschau/
+
+# Aufnahmen und Prüfwerkzeug der Umgestaltung, nur lokal
+.impeccable/review/
