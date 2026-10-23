@@ -150,7 +150,7 @@ KNOTEN_ANMELDUNG, METHODE_ANMELDUNG = 1, 0x2b    # login_request
 #
 # Ueber OPBOUNTY_VERSION laesst sich eine andere Zeichenkette setzen, ohne den Code zu
 # aendern. Das ist zum Probieren gedacht, nicht fuer den Betrieb.
-VERSION = os.environ.get("OPBOUNTY_VERSION", "2.6.7")
+VERSION = os.environ.get("OPBOUNTY_VERSION", "2.7.3")
 
 
 def anmeldung(benutzer: str, nummer: int, passwort: str, version: str) -> bytes:
@@ -293,7 +293,7 @@ def pfad_anmeldung_lesen(daten: bytes):
 # Methodenliste des Knotens ab und ist damit an die Spielversion gebunden, nicht an
 # das Konto oder die Sitzung; aus dem Mitschnitt vom 02.09.2026, Version 2.5.5.
 PRUEFSUMME_MAIN = os.environ.get("OPBOUNTY_PRUEFSUMME",
-                                 "91c4ad678657c145d2728256865dd01d")
+                                 "00449ff14084dad336a7675449b12d49")
 # Es ist die Pruefsumme des EIGENEN Knotens, nicht die des Servers. Beide melden
 # `root_main/Main` an, und beide schicken dabei ihre eigene; sie sind verschieden, weil
 # Client und Server verschiedene Methodenlisten auf dem Knoten haben. Am 21.09.2026
