@@ -3768,6 +3768,7 @@ export default function App() {
           </label>
           <span className="klein z" style={{ paddingBottom: 10 }}>
             {listen.length} of {leader.listen.length} lists
+            {satz.listenAlleGegner ? ", list stats count all opponents" : null}
           </span>
         </div>
         <Abschnitt titel={`Lists by ${SORT_LISTEN_TEXT[sortListen]}, at least ${mindest} games`}>

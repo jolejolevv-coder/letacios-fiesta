@@ -120,10 +120,19 @@ class Event(unittest.TestCase):
         self.assertEqual(robin["gsl"], [2, 3])
         self.assertEqual(self.event["leader"][1]["geg"], [])
 
-    def test_kopfzahlen_bleiben_und_partien_aus_sicht_der_leader(self):
-        self.assertEqual((self.event["leader"][0]["w"], self.event["leader"][0]["l"]), (6, 4))
-        self.assertEqual(self.event["partien"], 13)
+    def test_kopfzahlen_nur_gegen_erlaubte(self):
+        robin = self.event["leader"][0]
+        self.assertEqual((robin["w"], robin["l"], robin["sl"]), (5, 0, 5))   # nur Gegner 2 und 3
+        robin["gw"] = [1, 2]                    # gm bleibt [2, 3], also 2 Niederlagen
+        robin.update(A.kopfzahlen_aus_gegnern(robin))
+        self.assertEqual((robin["w"], robin["l"]), (3, 2))
+        self.assertEqual((robin["fw"], robin["fl"], robin["sw"], robin["sl"]), (5, 5, 5, 5))
+        self.assertEqual((self.event["leader"][1]["w"], self.event["leader"][1]["l"]), (0, 0))
+
+    def test_partien_aus_sicht_der_leader_und_hinweis(self):
+        self.assertEqual(self.event["partien"], 5)
         self.assertEqual(self.event["name"], "EB05 Heroines Event")
+        self.assertTrue(self.event["listen_alle_gegner"])
 
     def test_eingangssatz_unveraendert(self):
         self.assertEqual(len(self.satz["leader"][0]["geg"]), 3)

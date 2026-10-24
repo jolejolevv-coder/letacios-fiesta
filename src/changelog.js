@@ -8,6 +8,7 @@ export const CHANGELOG = [
     punkte: [
       "New data set EB05 Queue: every game of OPBounty's EB05 queue since October 10, all bounty ranges. The weekly set that was called Special Queue is now EB05 Queue, last week.",
       "New data set EB05 Heroines Event: the EB05 queue with only the 25 leaders allowed at the event, and matchups only against those leaders.",
+      "EB05 Heroines Event: every win rate, including going first and second, now counts only games against the 25 event leaders. Deck list stats still count all opponents, the Decks tab says so.",
       "The numbers above each leader and on player pages are right from the first moment, instead of counting up from zero. They still count when you switch leaders, unless your device asks for reduced motion.",
     ],
   },
