@@ -45,9 +45,10 @@ Bounty im Replay ist ohnehin nicht die Queue Bounty.
 
 ## Nächste Schritte
 
-1. Spec `specs/features/kartenquelle-tcgcsv.md` ist freigegeben (1000 px, alle Bilder
-   einmal ersetzen). Branch `claude/kartenquelle-tcgcsv`, Phase 1 bauen. Messdaten aus der
-   alten Sitzung neu erheben, die Endpunkte stehen in der Spec.
+1. Kartenquelle tcgcsv: Phase 2 (Bilder) ist gebaut und gemergt, siehe Stand in
+   `specs/features/kartenquelle-tcgcsv.md`. Nach dem ersten Lauf der Action im Log prüfen:
+   „alle ersetzt“, Zahl der offenen Karten. Dann Phase 1 (Daten aus tcgcsv, Kaizoku als
+   Ersatz) bauen.
 2. Freigabe für `zuordnung-leaderzahl.md` holen (hart oder nur Tiebreak), dann in
    `spieler_daten.py` bauen und gegen die Liste vom 24.10. nachrechnen.
 3. Offen aus der Designkritik, nur auf Wunsch: Signalfarben bei Winrates ohne Partienzahl im

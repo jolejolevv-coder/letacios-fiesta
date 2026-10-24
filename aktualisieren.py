@@ -616,8 +616,7 @@ def event_counter_holen(index: dict) -> dict:
 # hohe Bildschirmdichten. Die offizielle Kartenseite liefert Bilder in voller Groesse,
 # im Mittel 189 KB; ein voller Decklistenreiter waere damit ueber 80 MB gewesen.
 BREITE_KLEIN = 120
-# Kartenbilder, die die Action weder lokal noch offiziell findet, liegen fertig verkleinert
-# im Repo. Gefuellt von werkzeuge/bilder_nachtragen.py aus der lokalen OPTCGSim Installation.
+# Kartenbilder, die tcgcsv nicht hat, liegen fertig verkleinert im Repo. Gefuellt von werkzeuge/bilder_nachtragen.py aus der lokalen OPTCGSim Installation.
 NACHTRAG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bilder_nachtrag")
 
 
@@ -631,19 +630,66 @@ def bild_ablegen(roh: bytes, klein: str) -> None:
         bild.save(klein, "JPEG", quality=80, optimize=True)
 
 
-def bilder_kopieren(ziel: str) -> None:
-    """Kopiert jedes Kartenbild, das IRGENDEINE abgelegte Datei braucht.
+TCGCSV = "https://tcgcsv.com/tcgplayer/68/"      # Kategorie 68 ist One Piece
+# Ohne eigenen User-Agent antwortet tcgcsv mit 401.
+TCGCSV_KOPF = {"User-Agent": "letacios-fiesta (github.com/jolejolevv-coder/letacios-fiesta)"}
+# tcgcsv nennt das Bild in 200 px; dieselbe Adresse gibt es in 1000 px, verkleinert wird ohnehin.
+TCGCSV_KLEIN, TCGCSV_GROSS = "_200w.jpg", "_in_1000x1000.jpg"
+# Varianten sind eigene Produkte mit derselben Nummer. Das Grundmotiv hat keinen dieser Zusaetze.
+VARIANTE = re.compile(r"\((Alternate Art|Parallel|Manga|SP|Box Topper|Full Art|Pre-Release"
+                      r"|Jolly Roger Foil|Treasure Rare|Reprint|Wanted Poster)", re.I)
+# Steht in img/quelle.txt. Fehlt die Datei oder steht etwas anderes darin, ersetzt der Lauf
+# alle Bilder einmal durch die von tcgcsv (specs/features/kartenquelle-tcgcsv.md).
+BILD_KENNUNG = "tcgcsv-1000"
+BILD_PARALLEL = 16
+
+
+def tcgcsv_lesen(pfad: str):
+    anfrage = urllib.request.Request(TCGCSV + pfad, headers=TCGCSV_KOPF)
+    with urllib.request.urlopen(anfrage, timeout=120) as antwort:
+        return json.loads(antwort.read().decode("utf-8"))
+
+
+def kartennummer(produkt: dict):
+    for feld in produkt.get("extendedData", []):
+        if feld.get("name") == "Number":
+            return feld.get("value")
+    return None
+
+
+def tcgcsv_bilder(produkte: list) -> dict:
+    """Je Kartennummer die Bildadresse in 1000 px, vom Grundmotiv statt einer Variante."""
+    beste = {}
+    for produkt in produkte:
+        nummer, url = kartennummer(produkt), produkt.get("imageUrl")
+        if not nummer or not url:
+            continue
+        rang = (1 if VARIANTE.search(produkt.get("name", "")) else 0, produkt.get("productId", 0))
+        if nummer not in beste or rang < beste[nummer][0]:
+            beste[nummer] = (rang, url.replace(TCGCSV_KLEIN, TCGCSV_GROSS))
+    return {nummer: url for nummer, (_, url) in beste.items()}
+
+
+def tcgcsv_bilder_holen() -> dict:
+    """Alle Bildadressen von tcgcsv. Leer, wenn die Quelle nicht antwortet."""
+    try:
+        gruppen = tcgcsv_lesen("groups")["results"]
+        produkte = []
+        for gruppe in gruppen:
+            produkte += tcgcsv_lesen(f"{gruppe['groupId']}/products")["results"]
+    except Exception as fehler:
+        print(f"::warning::tcgcsv nicht erreichbar, Bilder bleiben wie sie sind: {fehler}")
+        return {}
+    return tcgcsv_bilder(produkte)
+
+
+def gebrauchte_karten(ziel: str) -> set:
+    """Jede Karte, die irgendeine abgelegte Datei nennt.
 
     Bewusst ueber die geschriebenen Dateien statt ueber die eben geladenen Saetze: die
     Tagesdateien nennen deutlich mehr Karten als die fertigen Saetze, und wer nur ueber
     letztere geht, laesst rund zwei Drittel der Bilder fehlen.
     """
-    quellen = sorted(glob.glob(BILDQUELLE))
-    basis = quellen[-1] if quellen else None
-    if basis is None:
-        print("  Keine lokale Kartenbibliothek, alle Bilder kommen von der offiziellen "
-              "Seite. Der erste Lauf dauert deshalb.")
-    os.makedirs(os.path.join(ziel, "img"), exist_ok=True)
     gebraucht = set()
     for pfad in (glob.glob(os.path.join(ziel, "saetze", "*.json.gz"))
                  + glob.glob(os.path.join(ziel, "tage", "*.json.gz"))):
@@ -653,55 +699,79 @@ def bilder_kopieren(ziel: str) -> None:
                          + [k for li in e.get("listen", []) for k in li["d"]]):
                 k = karte(text)
                 if k:
-                    gebraucht.add(k)
-    neu, geladen, fehlt = 0, 0, []
-    # Die Kartenvorschau ist entfallen, die grossen Bilder werden nicht mehr gebraucht.
-    # Aus aelteren Laeufen liegen sie noch im Zwischenspeicher, hier wandern sie weg.
-    grossordner = os.path.join(ziel, "img", "gross")
-    if os.path.isdir(grossordner):
-        shutil.rmtree(grossordner)
-        print("  alte Vorschaubilder entfernt")
-    offizielle = None
+                    # Kennungen mit vorangestelltem X meinen dieselbe Karte, siehe daten.js.
+                    gebraucht.add(k[1:] if re.match(r"^X[A-Z]{2,4}\d{2}-\d{3}$", k) else k)
+    return gebraucht
+
+
+def bild_laden(url: str, zieldatei: str) -> bool:
+    try:
+        anfrage = urllib.request.Request(url, headers=TCGCSV_KOPF)
+        with urllib.request.urlopen(anfrage, timeout=120) as antwort:
+            bild_ablegen(antwort.read(), zieldatei)
+        return True
+    except Exception:
+        return False
+
+
+def bilder_kopieren(ziel: str, adressen: dict | None = None) -> None:
+    """Legt jedes gebrauchte Kartenbild unter img/ ab, aus tcgcsv.
+
+    Ist der Bildspeicher noch nicht von tcgcsv (img/quelle.txt), werden alle Bilder einmal
+    ersetzt. Karten ohne Bild von tcgcsv behalten ihr altes Bild oder bekommen eins aus
+    bilder_nachtrag/; sie stehen in img/offen.txt und werden bei jedem Lauf neu versucht,
+    bis tcgcsv sie liefert (Vorverkauf: Bild noch gesperrt).
+    """
+    ordner = os.path.join(ziel, "img")
+    os.makedirs(ordner, exist_ok=True)
+    kennung_pfad = os.path.join(ordner, "quelle.txt")
+    offen_pfad = os.path.join(ordner, "offen.txt")
+    ersetzen = zeilen_lesen(kennung_pfad) != [BILD_KENNUNG]
+    offen = set(zeilen_lesen(offen_pfad))
+    if adressen is None:
+        adressen = tcgcsv_bilder_holen()
+
+    gebraucht = gebrauchte_karten(ziel)
+    datei = {k: os.path.join(ordner, k + ".jpg") for k in gebraucht}
+    laden = [k for k in sorted(gebraucht) if k in adressen
+             and (ersetzen or k in offen or not os.path.exists(datei[k]))]
+    with ThreadPoolExecutor(BILD_PARALLEL) as pool:
+        erfolg = list(pool.map(lambda k: bild_laden(adressen[k], datei[k]), laden))
+    neu = {k for k, ok in zip(laden, erfolg) if ok}
+
+    nachtrag, fehlt = 0, []
     for k in sorted(gebraucht):
-        # Kennungen mit vorangestelltem X meinen dieselbe Karte, siehe daten.js.
-        basiskennung = k[1:] if re.match(r"^X[A-Z]{2,4}\d{2}-\d{3}$", k) else k
-        zieldatei = os.path.join(ziel, "img", basiskennung + ".jpg")
-        if os.path.exists(zieldatei):
+        if os.path.exists(datei[k]):
             continue
-        nachtrag = os.path.join(NACHTRAG, basiskennung + ".jpg")
-        if os.path.exists(nachtrag):
-            shutil.copyfile(nachtrag, zieldatei)
-            neu += 1
-            continue
-        treffer = []
-        if basis is not None:
-            treffer = (glob.glob(os.path.join(basis, "*", basiskennung + "_small.*"))
-                       or glob.glob(os.path.join(basis, "*", basiskennung + ".*")))
-        if treffer:
-            with open(treffer[0], "rb") as datei:
-                bild_ablegen(datei.read(), zieldatei)
-            neu += 1
-            continue
-        # Karten aus Sets, die neuer sind als die lokale Installation. Punk Records
-        # nennt zu jeder Karte die offizielle Bild-URL, das schliesst die Luecke.
-        if offizielle is None:
-            with urllib.request.urlopen(NAMEN_QUELLE, timeout=180) as antwort:
-                offizielle = json.loads(antwort.read().decode("utf-8"))
-        url = (offizielle.get(basiskennung) or {}).get("img_url")
-        if not url:
-            fehlt.append(basiskennung)
-            continue
-        try:
-            with urllib.request.urlopen(url, timeout=120) as antwort:
-                daten = antwort.read()
-            bild_ablegen(daten, zieldatei)
-            geladen += 1
-        except Exception:
-            fehlt.append(basiskennung)
-    print(f"  Bilder: {neu} lokal kopiert, {geladen} offiziell nachgeladen, "
-          f"{len(gebraucht)} gebraucht")
+        if os.path.exists(os.path.join(NACHTRAG, k + ".jpg")):
+            shutil.copyfile(os.path.join(NACHTRAG, k + ".jpg"), datei[k])
+            nachtrag += 1
+        else:
+            fehlt.append(k)
+
+    # Von tcgcsv ist ein Bild, das eben kam oder schon vor diesem Lauf als neu galt.
+    schon_neu = set() if ersetzen else gebraucht - offen
+    noch_offen = sorted(gebraucht - neu - schon_neu)
+    if adressen:
+        zeilen_schreiben(kennung_pfad, [BILD_KENNUNG])
+        zeilen_schreiben(offen_pfad, noch_offen)
+    print(f"  Bilder: {len(neu)} von tcgcsv{' (alle ersetzt)' if ersetzen and adressen else ''}, "
+          f"{nachtrag} aus dem Nachtrag, {len(laden) - len(neu)} Abrufe fehlgeschlagen, "
+          f"{len(noch_offen)} noch nicht von tcgcsv")
     if fehlt:
         print(f"    ohne Bild: {fehlt}")
+
+
+def zeilen_lesen(pfad: str) -> list:
+    if not os.path.exists(pfad):
+        return []
+    with open(pfad) as datei:
+        return [z.strip() for z in datei if z.strip()]
+
+
+def zeilen_schreiben(pfad: str, zeilen: list) -> None:
+    with open(pfad, "w") as datei:
+        datei.write("".join(z + "\n" for z in zeilen))
 
 
 def main() -> None:

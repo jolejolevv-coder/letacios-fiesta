@@ -78,6 +78,13 @@ Out of scope:
       Bilder), muss aber unter dem Zeitlimit der Action bleiben.
 - [ ] Python Tests, `npm test` und `npx vite build` laufen durch.
 
+## Stand 24.10.2026
+
+Phase 2 (Bilder) zuerst gebaut, auf Wunsch des Nutzers. Lokal: voller Austausch 24 s,
+1.582 Bilder von tcgcsv, Folgelauf 9 s. Bilder aus dem OP18 Vorverkauf liefert TCGplayer
+noch mit 403; diese Karten nehmen den Nachtrag und stehen in `img/offen.txt`, bis tcgcsv
+sie liefert. Ohne Bild bleiben EB05-061 und OP18-091. Phase 1 (Daten) ist offen.
+
 ## Implementation plan
 
 Phase 1, Daten: `tcgcsv_holen` (Gruppen und Produkte), `kaizoku_holen`, `karte_aus_tcgcsv`
@@ -99,7 +106,7 @@ ihr Ausfall kostet also höchstens die neuesten Karten. Die Bilder sind wie heut
 von Bandai.
 
 Der Austausch aller Bilder kostet einmal rund 2.900 Abrufe. Er macht das Aussehen
-einheitlich, und das Repo bekommt dabei einen großen Commit mit allen Bildern.
+einheitlich. Die Bilder liegen im Zwischenspeicher der Action, nicht im Repo.
 
 ## Entschieden
 
