@@ -605,6 +605,9 @@ def event_counter_holen(index: dict) -> dict:
 # hohe Bildschirmdichten. Die offizielle Kartenseite liefert Bilder in voller Groesse,
 # im Mittel 189 KB; ein voller Decklistenreiter waere damit ueber 80 MB gewesen.
 BREITE_KLEIN = 120
+# Kartenbilder, die die Action weder lokal noch offiziell findet, liegen fertig verkleinert
+# im Repo. Gefuellt von werkzeuge/bilder_nachtragen.py aus der lokalen OPTCGSim Installation.
+NACHTRAG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bilder_nachtrag")
 
 
 def bild_ablegen(roh: bytes, klein: str) -> None:
@@ -653,6 +656,11 @@ def bilder_kopieren(ziel: str) -> None:
         basiskennung = k[1:] if re.match(r"^X[A-Z]{2,4}\d{2}-\d{3}$", k) else k
         zieldatei = os.path.join(ziel, "img", basiskennung + ".jpg")
         if os.path.exists(zieldatei):
+            continue
+        nachtrag = os.path.join(NACHTRAG, basiskennung + ".jpg")
+        if os.path.exists(nachtrag):
+            shutil.copyfile(nachtrag, zieldatei)
+            neu += 1
             continue
         treffer = []
         if basis is not None:

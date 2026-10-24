@@ -59,3 +59,8 @@ niemandem zustellen. Die lange Fehlersuche steht in
 
 Aenderungen gehoeren ins Simulatorprojekt und werden hierher kopiert, nicht
 umgekehrt.
+
+Kartenbilder:
+
+- `bilder_nachtragen.py` legt Bilder, die auf der Liveseite fehlen, aus der lokalen
+  OPTCGSim Installation verkleinert nach `bilder_nachtrag/`; die Action kopiert sie von dort

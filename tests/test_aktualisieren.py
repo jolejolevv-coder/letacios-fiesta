@@ -147,5 +147,20 @@ class Event(unittest.TestCase):
             "Stats_lw", A.EB05_SCHLUESSEL, A.EB05_EVENT_SCHLUESSEL, "Stats_Special_Queue"])
 
 
+class Nachtrag(unittest.TestCase):
+    def test_bild_kommt_aus_dem_repo_ohne_sim_und_ohne_netz(self):
+        import tempfile
+        kennung = sorted(os.listdir(A.NACHTRAG))[0].replace(".jpg", "")
+        with tempfile.TemporaryDirectory() as ziel:
+            A.schreiben(os.path.join(ziel, "saetze", "s.json.gz"),
+                        {"leader": [{"id": "1x" + kennung, "geg": [], "listen": []}]})
+            alt, A.BILDQUELLE = A.BILDQUELLE, "/gibt/es/nicht/*"
+            try:
+                A.bilder_kopieren(ziel)
+            finally:
+                A.BILDQUELLE = alt
+            self.assertTrue(os.path.exists(os.path.join(ziel, "img", kennung + ".jpg")))
+
+
 if __name__ == "__main__":
     unittest.main()
