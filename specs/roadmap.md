@@ -4,13 +4,13 @@ Stand 24.10.2026. Ausführlich in `docs/uebergabe.md`.
 
 ## Erledigt
 
+* EB05 Queue: Sätze „EB05 Queue“ und „EB05 Heroines Event“, fehlende Kartenbilder aus
+  dem Sim (`specs/features/eb05-queue.md`). Rangliste und Replays gestrichen.
 * Ladder per Bildschirmfoto und OCR vom Bazzite, mit Plausibilitätsschutz (PR 2).
 * Zähler zeigen sofort den Endwert (PR 3).
 
-## In Planung, wartet auf Freigabe
+## In Arbeit und in Planung
 
-* EB05 Queue: Statistik, Rangliste, Replays, Filter auf Event Leader
-  (`specs/features/eb05-queue.md`). Eilt, Event etwa am 7.11.2026.
 * Zuordnung der user_id über die Leaderzahl (`specs/features/zuordnung-leaderzahl.md`).
 
 ## Später, nur auf Wunsch

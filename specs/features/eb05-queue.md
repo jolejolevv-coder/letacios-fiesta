@@ -8,11 +8,13 @@ nur gegen Leader derselben Liste, Kopfzahlen über alle Gegner. Erster Lauf: 25 
 Leadern, 14.260 Partien aus Sicht der erlaubten Leader, 127 KB. Damit ist der Leaderfilter
 für die Statistik erledigt; für die Rangliste bleibt er Teil von Phase 3.
 
-Phase 2 in Arbeit: `eb05_holen.py` (Rangliste und Partien aus den Replays, nur der Kopf
-jedes Logs per Range Anfrage, Namen gemerkt in `~/.opbounty_replays/eb05_namen.json`),
-`replays_holen.py` packt die Replays der Top 50 aus `public/eb05.json.gz` mit, Schritt in
-der Action vor „Replays holen“. Tests in `tests/test_eb05_holen.py`. Der erste echte Lauf
-war bei der Übergabe noch nicht ausgewertet.
+Abgeschlossen am 24.10.2026. Phase 2 und 3 (Rangliste, Spielerseiten, Replays, Umschalter)
+hat der Nutzer gestrichen: für die Vorbereitung reichen Decklists und Matchup Matrix der
+beiden Sätze, sortiert nach Winrate wie bei den anderen Sätzen. Gebaut und gemessen war
+Phase 2 schon: Die Bounty im Replay ist nicht die Bounty der Queue (Rang 1 hatte 6.134,8
+nach einer einzigen Partie), eine Rangliste danach taugt nicht. Wer sie später doch will,
+braucht eine andere Sortierung, etwa nach Bilanz ab einer Mindestzahl Partien. Der Kopf
+eines Logs (8 KB per Range Anfrage) reicht für beide Namen.
 
 Ergebnis Phase 1 am 24.10.2026, echter Lauf gegen das CDN: 101 Rohdateien aus 15 Tagen,
 29.830 Partien, 438 KB, EB05 Anteil 78 %, Laufzeit des ganzen Skripts ohne Tagesdateien 16 s.
@@ -90,12 +92,12 @@ Out of scope:
 
 - [x] In der Satzauswahl steht „EB05 Queue“ mit allen Partien ab 10.10.2026, getrennt vom
       Western Ladder. Partienzahl und Stand sind sichtbar.
-- [ ] Ein eigener Reiter oder Umschalter zeigt die EB05 Rangliste, sortiert nach Bounty.
-- [ ] Ein Klick auf einen Spieler der Top 50 öffnet seine EB05 Partien mit Deck und Replay.
-- [ ] Mit gesetzter Leaderliste lassen sich Statistik und Rangliste auf diese Leader
-      beschränken.
-- [ ] Die Western Daten sind unverändert, die Tests laufen durch.
-- [ ] Der tägliche Lauf der Action bleibt unter 20 Minuten.
+- [ ] ~~Ein eigener Reiter oder Umschalter zeigt die EB05 Rangliste.~~ Gestrichen.
+- [ ] ~~Spieler der Top 50 mit EB05 Partien und Replay.~~ Gestrichen.
+- [x] Die Statistik lässt sich auf die Event Leader beschränken (Satz „EB05 Heroines
+      Event“).
+- [x] Die Western Daten sind unverändert, die Tests laufen durch.
+- [x] Der tägliche Lauf der Action bleibt unter 20 Minuten (der EB05 Satz kostet Sekunden).
 - [x] Fällt der EB05 Anteil in `mode_1` unter 30 %, steht eine Warnung im Log der Action
       (`::warning::`, getestet in `tests/test_aktualisieren.py`).
 
