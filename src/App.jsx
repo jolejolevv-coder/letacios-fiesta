@@ -28,6 +28,7 @@ import { eigeneNummer, partieLesen } from "./zuglager.js";
 import { netzBauen } from "./wertnetz.js";
 import { NOTENFOLGE, partieAnalysieren } from "./spielbewertung.js";
 import { CHANGELOG } from "./changelog.js";
+import { animieren, DAUER, NACHLAUF_MS, zahlText } from "./zaehler.js";
 import { fokusOrdnen, GUT, matrixOrdnen, SCHWACH, seite as wrSeite, sortAusText, ton as wrTon, wrKlasse } from "./winrate.js";
 import { ankerBauen, fehlerSuchen, FEHLERNOTEN, kurveBauen, markenBauen, spielerZuordnen } from "./analyse.js";
 
@@ -258,30 +259,49 @@ function VorschauBuehne({ children }) {
   );
 }
 
-/** Zahl, die beim Wechsel hochzaehlt. Ein bewusster Einsatz von GSAP, kein Zierrat. */
+/** Zahl, die beim Wechsel hochzaehlt. Ein bewusster Einsatz von GSAP, kein Zierrat.
+    Der erste Wert steht sofort da; wann gezaehlt wird, entscheidet animieren() in
+    src/zaehler.js. Den Text schreibt nur der Effekt, nie React, damit sich beide nicht um
+    denselben Textknoten streiten. */
 function Zaehler({ wert, nachkomma = 0, suffix = "" }) {
   const knoten = useRef(null);
-  const alt = useRef(0);
-  useEffect(() => {
+  const gezeigt = useRef(null);
+  useLayoutEffect(() => {
     const el = knoten.current;
     if (!el) return;
-    const objekt = { n: alt.current };
+    const zeigen = (n) => {
+      gezeigt.current = n;
+      el.textContent = zahlText(n, nachkomma, suffix);
+    };
+    const alt = gezeigt.current;
+    const zaehlen = alt !== null && animieren({
+      reduziert: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      versteckt: document.hidden,
+      alt,
+      neu: wert,
+    });
+    if (!zaehlen) {
+      zeigen(wert);
+      return;
+    }
+    // Vom gerade sichtbaren Wert aus, auch wenn ein Wechsel die letzte Animation abbrach.
+    const objekt = { n: alt };
     const anim = gsap.to(objekt, {
       n: wert,
-      duration: 0.5,
+      duration: DAUER,
       ease: "power2.out",
-      onUpdate: () => {
-        el.textContent =
-          (nachkomma ? objekt.n.toFixed(nachkomma) : Math.round(objekt.n).toLocaleString("en-US")) +
-          suffix;
-      },
-      onComplete: () => {
-        alt.current = wert;
-      },
+      onUpdate: () => zeigen(objekt.n),
     });
-    return () => anim.kill();
+    const sicher = setTimeout(() => {
+      anim.kill();
+      zeigen(wert);
+    }, DAUER * 1000 + NACHLAUF_MS);
+    return () => {
+      clearTimeout(sicher);
+      anim.kill();
+    };
   }, [wert, nachkomma, suffix]);
-  return <span ref={knoten} className="z">0{suffix}</span>;
+  return <span ref={knoten} className="z" />;
 }
 
 /** Ein Paar aus Label und Wert in der Kennzeile unter dem Titel. */

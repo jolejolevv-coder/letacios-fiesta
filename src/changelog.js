@@ -4,6 +4,12 @@
    Git Historie zusammengefasst. */
 export const CHANGELOG = [
   {
+    tag: "2026-10-24",
+    punkte: [
+      "The numbers above each leader and on player pages are right from the first moment, instead of counting up from zero. They still count when you switch leaders, unless your device asks for reduced motion.",
+    ],
+  },
+  {
     tag: "2026-10-22",
     punkte: [
       "Tap a card in an open deck list, in the Guide or in the Mulligan tab to see it large and read its text.",
