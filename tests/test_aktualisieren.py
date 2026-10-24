@@ -42,5 +42,57 @@ class Tagesdateien(unittest.TestCase):
         self.assertEqual(s["leader"][0]["hand"], {})     # alle acht Zaehler null
 
 
+INDEX = [
+    "2026-10-09/mode_1/25_1000/stats0001.json",
+    "2026-10-10/mode_1/25_1000/stats0002.json",
+    "2026-10-10/mode_1/3000/stats0002.json",
+    "2026-10-11/mode_0/25_1000/stats0003.json",
+    "2026-10-11/mode_1/1000_2000/stats0003.json",
+]
+
+
+def satz_mit(listen):
+    return {"leader": [{"listen": [{"d": d, "w": w, "l": l} for d, w, l in listen]}]}
+
+
+class Eb05(unittest.TestCase):
+    def test_tage_ab_start(self):
+        self.assertEqual(A.tage_ab(INDEX, "2026-10-10"), ["2026-10-10", "2026-10-11"])
+
+    def test_teile_aller_bereiche_nur_modus_1(self):
+        tage = A.tage_ab(INDEX, A.EB05_START)
+        self.assertEqual(A.roh_teile(INDEX, tage, A.EB05_MODUS, list(A.BOUNTY)), [
+            "2026-10-10/mode_1/25_1000/stats0002.json",
+            "2026-10-10/mode_1/3000/stats0002.json",
+            "2026-10-11/mode_1/1000_2000/stats0003.json",
+        ])
+
+    def test_teile_eines_bereichs_wie_bisher(self):
+        self.assertEqual(A.roh_teile(INDEX, ["2026-10-10"], "mode_1", ["3000"]),
+                         ["2026-10-10/mode_1/3000/stats0002.json"])
+
+    def test_anteil_nach_partien(self):
+        satz = satz_mit([(["4xEB05-001", "4xOP13-016"], 3, 1), (["4xOP13-016"], 0, 4)])
+        self.assertAlmostEqual(A.eb05_anteil(satz), 0.5)
+
+    def test_keine_warnung_bei_genug_eb05(self):
+        self.assertIsNone(A.eb05_warnung(satz_mit([(["4xEB05-001"], 2, 1)])))
+
+    def test_warnung_wenn_eb05_fehlt(self):
+        satz = satz_mit([(["4xEB05-001"], 1, 0), (["4xOP13-016"], 5, 4)])
+        self.assertIn("10%", A.eb05_warnung(satz))
+
+    def test_warnung_bei_leerem_satz(self):
+        self.assertIsNotNone(A.eb05_warnung({"leader": []}))
+
+    def test_eb05_vor_dem_wochensatz(self):
+        saetze = dict.fromkeys(["Stats_lw", "Stats_LWS1BillionBounty", "Stats_LWS2BillionBounty",
+                                "Stats_Special_Queue", "Stats_OP17", "Roh_mode_0_3000",
+                                A.EB05_SCHLUESSEL])
+        self.assertEqual(A.satz_reihenfolge(saetze), [
+            "Stats_lw", "Stats_LWS1BillionBounty", "Stats_LWS2BillionBounty",
+            "Roh_mode_0_3000", A.EB05_SCHLUESSEL, "Stats_Special_Queue", "Stats_OP17"])
+
+
 if __name__ == "__main__":
     unittest.main()

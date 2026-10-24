@@ -66,6 +66,18 @@ BOUNTY_NAME = {
 ROH_TAGE = 7
 ROH_SAETZE = {"3000": "Last Week 3B Bounty"}
 
+# Die "Play EB05 Queue" ist seit dem 10.10.2026 Modus 1, der Platz der frueheren Special
+# Queue (specs/features/eb05-queue.md). Ihr Satz umfasst alle Tage ab dem Start und alle
+# Bountybereiche, denn die Queue hat eine eigene Bounty, die bei etwa 25 beginnt.
+EB05_MODUS = "mode_1"
+EB05_START = "2026-10-10"
+EB05_SCHLUESSEL = "Roh_mode_1_eb05"
+EB05_NAME = "EB05 Queue"
+EB05_KARTE = "EB05-"
+# Unter diesem Anteil an Partien mit EB05 Karten im Deck hat das Spiel Modus 1 wohl neu
+# belegt, und der Name des Satzes stimmt nicht mehr.
+EB05_MIN_ANTEIL = 0.30
+
 
 def bounty_name(bereich: str) -> str:
     """Anzeigename eines Bountybereichs, auch fuer einen, den wir noch nicht kennen."""
@@ -80,7 +92,7 @@ ANZEIGE = {
     "Stats_lw": "Last Week Standard",
     "Stats_LWS1BillionBounty": "Last Week 1B Bounty",
     "Stats_LWS2BillionBounty": "Last Week 2B Bounty",
-    "Stats_Special_Queue": "Special Queue, Webcam",
+    "Stats_Special_Queue": "EB05 Queue, last week",
     "Stats_OP17": "OP17 overall",
     "Stats_OP17-1BillionBounty": "OP17, 1B Bounty",
 }
@@ -293,18 +305,32 @@ def satz_reihenfolge(saetze: dict) -> list:
 
     Sonst haengen sie hinter den Saisonsaetzen am Ende der Auswahl, obwohl sie
     denselben Zuschnitt haben wie "Last Week 2B Bounty" direkt darueber.
+
+    Der EB05 Satz steht direkt vor dem Wochensatz derselben Queue.
     """
     reihenfolge = list(saetze)
-    for schluessel in [k for k in reihenfolge if k.startswith("Roh_")]:
+    for schluessel in [k for k in reihenfolge
+                       if k.startswith("Roh_") and k != EB05_SCHLUESSEL]:
         reihenfolge.remove(schluessel)
         letzte = max((i for i, k in enumerate(reihenfolge) if k.startswith("Stats_LWS")),
                      default=len(reihenfolge) - 1)
         reihenfolge.insert(letzte + 1, schluessel)
+    if EB05_SCHLUESSEL in reihenfolge and "Stats_Special_Queue" in reihenfolge:
+        reihenfolge.remove(EB05_SCHLUESSEL)
+        reihenfolge.insert(reihenfolge.index("Stats_Special_Queue"), EB05_SCHLUESSEL)
     return reihenfolge
 
 
+def roh_teile(schluessel_alle: list, tage: list, modus: str, bereiche: list) -> list:
+    """Die Rohdateien eines Modus in den genannten Tagen und Bountybereichen."""
+    tage, bereiche = set(tage), set(bereiche)
+    return sorted(k for k in schluessel_alle
+                  if (t := k.split("/")) and len(t) >= 4 and t[0] in tage
+                  and t[1] == modus and t[2] in bereiche)
+
+
 def roh_satz(ziel: str, schluessel_alle: list, tage: list, modus: str,
-             bereich: str, schluessel: str, name: str) -> dict | None:
+             bereiche: list, schluessel: str, name: str) -> dict | None:
     """Einen benannten Satz aus der Rohebene bauen, ueber das ganze Fenster.
 
     Die fertigen Saetze des Spiels decken den obersten Bountybereich nicht ab, es gibt
@@ -315,9 +341,7 @@ def roh_satz(ziel: str, schluessel_alle: list, tage: list, modus: str,
     Gerechnet wird aus den Rohdateien, nicht aus den Tagesdateien unter `tage/`: die
     sind schon eingedampft und lassen sich nicht verlustfrei weiteraddieren.
     """
-    passend = sorted(k for k in schluessel_alle
-                     if (t := k.split("/")) and len(t) >= 4 and t[0] in set(tage)
-                     and t[1] == modus and t[2] == bereich)
+    passend = roh_teile(schluessel_alle, tage, modus, bereiche)
     if not passend:
         print(f"  {schluessel}: keine Rohdateien im Fenster, uebersprungen")
         return None
@@ -328,9 +352,56 @@ def roh_satz(ziel: str, schluessel_alle: list, tage: list, modus: str,
     except Exception as fehler:
         print(f"    fehlgeschlagen: {fehler}")
         return None
-    satz = eindampfen(zusammenfuehren(teile), name, modus, bereich)
+    satz = eindampfen(zusammenfuehren(teile), name, modus, ",".join(bereiche))
     groesse = schreiben(os.path.join(ziel, "saetze", schluessel + ".json.gz"), satz)
     print(f"    {groesse/1e3:.0f} KB, {satz['partien']} Partien")
+    return satz
+
+
+def tage_ab(schluessel_alle: list, start: str) -> list:
+    """Alle Tage ab `start` (YYYY-MM-DD), fuer die es Rohdaten gibt."""
+    return sorted({k.split("/")[0] for k in schluessel_alle if k.split("/")[0] >= start})
+
+
+def eb05_anteil(satz: dict) -> float:
+    """Anteil der Partien, deren Deck mindestens eine EB05 Karte enthaelt.
+
+    Gezaehlt ueber die Decklisten des Satzes, jede mit ihren Siegen und Niederlagen.
+    """
+    alle = mit_eb05 = 0
+    for leader in satz.get("leader", []):
+        for liste in leader.get("listen", []):
+            spiele = liste["w"] + liste["l"]
+            alle += spiele
+            if any(EB05_KARTE in karte_ for karte_ in liste["d"]):
+                mit_eb05 += spiele
+    return mit_eb05 / alle if alle else 0.0
+
+
+def eb05_warnung(satz: dict) -> str | None:
+    """Ein Warntext, wenn Modus 1 nicht mehr nach EB05 Queue aussieht, sonst None."""
+    anteil = eb05_anteil(satz)
+    if anteil >= EB05_MIN_ANTEIL:
+        return None
+    return (f"Nur {anteil:.0%} der Partien in {EB05_MODUS} mit EB05 Karten, erwartet "
+            f"mindestens {EB05_MIN_ANTEIL:.0%}. Ist der Modus neu belegt?")
+
+
+def eb05_satz(ziel: str) -> dict | None:
+    """Der Satz der EB05 Queue: Modus 1, alle Bountybereiche, alle Tage ab dem Start."""
+    try:
+        schluessel_alle = index_schluessel()
+    except Exception as fehler:
+        print(f"  Index nicht geladen, {EB05_NAME} uebersprungen: {fehler}")
+        return None
+    satz = roh_satz(ziel, schluessel_alle, tage_ab(schluessel_alle, EB05_START),
+                    EB05_MODUS, list(BOUNTY), EB05_SCHLUESSEL, EB05_NAME)
+    if satz:
+        print(f"    EB05 Anteil {eb05_anteil(satz):.0%}")
+        warnung = eb05_warnung(satz)
+        if warnung:
+            # So erscheint die Warnung in der Zusammenfassung der Action.
+            print(f"::warning::{warnung}")
     return satz
 
 
@@ -619,9 +690,14 @@ def main() -> None:
             continue
         print(f"\nSatz aus der Rohebene, {anzeige}:")
         satz = roh_satz(ziel, index_schluessel(), fenster(ROH_TAGE), modi[0],
-                        bereich, roh_schluessel(modi[0], bereich), anzeige)
+                        [bereich], roh_schluessel(modi[0], bereich), anzeige)
         if satz:
             saetze[roh_schluessel(modi[0], bereich)] = satz
+
+    print(f"\nSatz aus der Rohebene, {EB05_NAME}:")
+    satz = eb05_satz(ziel)
+    if satz:
+        saetze[EB05_SCHLUESSEL] = satz
 
     verzeichnis = {
         "erstellt": max((s["stand"] for s in saetze.values()), default=""),

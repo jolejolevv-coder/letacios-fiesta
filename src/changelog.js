@@ -6,6 +6,7 @@ export const CHANGELOG = [
   {
     tag: "2026-10-24",
     punkte: [
+      "New data set EB05 Queue: every game of OPBounty's EB05 queue since October 10, all bounty ranges. The weekly set that was called Special Queue is now EB05 Queue, last week.",
       "The numbers above each leader and on player pages are right from the first moment, instead of counting up from zero. They still count when you switch leaders, unless your device asks for reduced motion.",
     ],
   },

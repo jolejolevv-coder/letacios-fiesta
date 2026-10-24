@@ -171,6 +171,11 @@ Vollstaendig ist nur Western. Bei Eastern und Webcam gibt es zuletzt nur `25_100
 Arena nichts. Und der Bereich `3000` ist praktisch leer, dort liegen zwei bis acht Partien
 am Tag; die Masse spielt in `25_1000`.
 
+Seit dem 10.10.2026 ist `mode_1` die „Play EB05 Queue“ mit eigener Bounty, davor war es die
+Special Queue. `aktualisieren.py` rechnet daraus den Satz „EB05 Queue“ über alle Tage ab dem
+10.10. und alle Bountybereiche und warnt in der Action, wenn der Anteil an Partien mit EB05
+Karten unter 30 % fällt (`specs/features/eb05-queue.md`).
+
 ## Drei Fallstricke, die schon zugeschlagen haben
 
 **Die Partienzahl je Gegner steht in `presence`, nicht in `subject_matches`.** Letzteres ist
