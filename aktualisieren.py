@@ -77,6 +77,12 @@ EB05_KARTE = "EB05-"
 # Unter diesem Anteil an Partien mit EB05 Karten im Deck hat das Spiel Modus 1 wohl neu
 # belegt, und der Name des Satzes stimmt nicht mehr.
 EB05_MIN_ANTEIL = 0.30
+# Das Event Anfang November 2026 erlaubt nur bestimmte Leader. Der Event Satz ist der EB05
+# Satz, beschraenkt auf diese Leader und in den Matchups auf Gegner aus derselben Liste.
+EB05_EVENT_DATEI = os.path.join(os.path.dirname(os.path.abspath(__file__)), "eb05_leader.json")
+EB05_EVENT_SCHLUESSEL = "Roh_mode_1_eb05_event"
+# Felder eines Leaders, die je Gegner eine Spalte tragen, parallel zu `geg`.
+GEGNER_FELDER = ("geg", "gm", "gw", "gfw", "gfl", "gsw", "gsl")
 
 
 def bounty_name(bereich: str) -> str:
@@ -310,14 +316,17 @@ def satz_reihenfolge(saetze: dict) -> list:
     """
     reihenfolge = list(saetze)
     for schluessel in [k for k in reihenfolge
-                       if k.startswith("Roh_") and k != EB05_SCHLUESSEL]:
+                       if k.startswith("Roh_")
+                       and k not in (EB05_SCHLUESSEL, EB05_EVENT_SCHLUESSEL)]:
         reihenfolge.remove(schluessel)
         letzte = max((i for i, k in enumerate(reihenfolge) if k.startswith("Stats_LWS")),
                      default=len(reihenfolge) - 1)
         reihenfolge.insert(letzte + 1, schluessel)
-    if EB05_SCHLUESSEL in reihenfolge and "Stats_Special_Queue" in reihenfolge:
-        reihenfolge.remove(EB05_SCHLUESSEL)
-        reihenfolge.insert(reihenfolge.index("Stats_Special_Queue"), EB05_SCHLUESSEL)
+    if "Stats_Special_Queue" in reihenfolge:
+        for schluessel in (EB05_SCHLUESSEL, EB05_EVENT_SCHLUESSEL):
+            if schluessel in reihenfolge:
+                reihenfolge.remove(schluessel)
+                reihenfolge.insert(reihenfolge.index("Stats_Special_Queue"), schluessel)
     return reihenfolge
 
 
@@ -403,6 +412,56 @@ def eb05_satz(ziel: str) -> dict | None:
             # So erscheint die Warnung in der Zusammenfassung der Action.
             print(f"::warning::{warnung}")
     return satz
+
+
+def leader_ohne_anzahl(kennung: str) -> str:
+    """"1xOP09-042" wird "OP09-042", so wie die Leader in eb05_leader.json stehen."""
+    return kennung.split("x", 1)[1] if re.match(r"\d+x", kennung or "") else kennung
+
+
+def event_leader_lesen(pfad: str) -> tuple[str, set] | None:
+    """(Name, erlaubte Leader) aus der Event Datei, None wenn sie fehlt oder kaputt ist."""
+    try:
+        with open(pfad, encoding="utf-8") as datei:
+            daten = json.load(datei)
+        return daten["name"], set(daten["leader"])
+    except (OSError, ValueError, KeyError) as fehler:
+        print(f"  Event Leader nicht gelesen ({pfad}): {fehler}")
+        return None
+
+
+def event_satz(satz: dict, erlaubt: set, name: str) -> dict:
+    """Ein Satz nur mit den erlaubten Leadern, in den Matchups nur gegen erlaubte Gegner.
+
+    Die Kopfzahlen eines Leaders (Siege, Niederlagen, Listen) bleiben ueber alle Gegner,
+    sonst waeren sie fuer die selteneren Leader zu duenn. `partien` zaehlt die Partien aus
+    Sicht der erlaubten Leader; treffen zwei aufeinander, zaehlt die Partie zweimal.
+    """
+    leader = []
+    for eintrag in satz["leader"]:
+        if leader_ohne_anzahl(eintrag["id"]) not in erlaubt:
+            continue
+        behalten = [i for i, g in enumerate(eintrag["geg"])
+                    if leader_ohne_anzahl(g) in erlaubt]
+        neu = dict(eintrag)
+        for feld in GEGNER_FELDER:
+            neu[feld] = [eintrag[feld][i] for i in behalten]
+        leader.append(neu)
+    return {**satz, "name": name, "leader": leader,
+            "partien": sum(e["w"] + e["l"] for e in leader)}
+
+
+def eb05_event_satz(ziel: str, satz: dict) -> dict | None:
+    """Den Event Satz aus dem EB05 Satz bauen und schreiben."""
+    gelesen = event_leader_lesen(EB05_EVENT_DATEI)
+    if not gelesen:
+        return None
+    name, erlaubt = gelesen
+    event = event_satz(satz, erlaubt, name)
+    groesse = schreiben(os.path.join(ziel, "saetze", EB05_EVENT_SCHLUESSEL + ".json.gz"), event)
+    print(f"  {EB05_EVENT_SCHLUESSEL}  {len(event['leader'])} von {len(erlaubt)} Leadern, "
+          f"{event['partien']} Partien, {groesse/1e3:.0f} KB")
+    return event
 
 
 def tage_laden(ziel: str, anzahl: int, modi: list, bereiche: list) -> list:
@@ -698,6 +757,9 @@ def main() -> None:
     satz = eb05_satz(ziel)
     if satz:
         saetze[EB05_SCHLUESSEL] = satz
+        event = eb05_event_satz(ziel, satz)
+        if event:
+            saetze[EB05_EVENT_SCHLUESSEL] = event
 
     verzeichnis = {
         "erstellt": max((s["stand"] for s in saetze.values()), default=""),

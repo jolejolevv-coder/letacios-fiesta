@@ -94,5 +94,58 @@ class Eb05(unittest.TestCase):
             "Roh_mode_0_3000", A.EB05_SCHLUESSEL, "Stats_Special_Queue", "Stats_OP17"])
 
 
+def leader_zeile(kennung, w, l, gegner):
+    zeile = {"id": kennung, "w": w, "l": l, "listen": []}
+    for feld in A.GEGNER_FELDER:
+        zeile[feld] = [g if feld == "geg" else n for n, g in enumerate(gegner, 1)]
+    return zeile
+
+
+class Event(unittest.TestCase):
+    def setUp(self):
+        self.satz = {"name": "EB05 Queue", "partien": 99, "stand": "2026-10-24", "leader": [
+            leader_zeile("1xEB05-010", 6, 4, ["1xOP09-042", "1xOP11-022", "1xEB05-010"]),
+            leader_zeile("1xOP09-042", 9, 1, ["1xEB05-010"]),
+            leader_zeile("1xP-117", 1, 2, ["1xOP09-042"]),
+        ]}
+        self.event = A.event_satz(self.satz, {"EB05-010", "OP11-022", "P-117"}, "EB05 Heroines Event")
+
+    def test_nur_erlaubte_leader(self):
+        self.assertEqual([e["id"] for e in self.event["leader"]], ["1xEB05-010", "1xP-117"])
+
+    def test_matchups_nur_gegen_erlaubte_parallel_gekuerzt(self):
+        robin = self.event["leader"][0]
+        self.assertEqual(robin["geg"], ["1xOP11-022", "1xEB05-010"])
+        self.assertEqual(robin["gm"], [2, 3])
+        self.assertEqual(robin["gsl"], [2, 3])
+        self.assertEqual(self.event["leader"][1]["geg"], [])
+
+    def test_kopfzahlen_bleiben_und_partien_aus_sicht_der_leader(self):
+        self.assertEqual((self.event["leader"][0]["w"], self.event["leader"][0]["l"]), (6, 4))
+        self.assertEqual(self.event["partien"], 13)
+        self.assertEqual(self.event["name"], "EB05 Heroines Event")
+
+    def test_eingangssatz_unveraendert(self):
+        self.assertEqual(len(self.satz["leader"][0]["geg"]), 3)
+
+    def test_leader_ohne_anzahl(self):
+        self.assertEqual(A.leader_ohne_anzahl("1xP-117"), "P-117")
+        self.assertEqual(A.leader_ohne_anzahl("Mobile"), "Mobile")
+
+    def test_event_datei_im_repo(self):
+        name, erlaubt = A.event_leader_lesen(A.EB05_EVENT_DATEI)
+        self.assertEqual(name, "EB05 Heroines Event")
+        self.assertEqual(len(erlaubt), 25)
+
+    def test_fehlende_event_datei(self):
+        self.assertIsNone(A.event_leader_lesen("/gibt/es/nicht.json"))
+
+    def test_event_direkt_nach_eb05(self):
+        saetze = dict.fromkeys(["Stats_lw", "Stats_Special_Queue", A.EB05_SCHLUESSEL,
+                                A.EB05_EVENT_SCHLUESSEL])
+        self.assertEqual(A.satz_reihenfolge(saetze), [
+            "Stats_lw", A.EB05_SCHLUESSEL, A.EB05_EVENT_SCHLUESSEL, "Stats_Special_Queue"])
+
+
 if __name__ == "__main__":
     unittest.main()

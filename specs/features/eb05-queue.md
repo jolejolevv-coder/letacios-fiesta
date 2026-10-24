@@ -2,6 +2,18 @@
 
 Entwurf vom 24.10.2026, am selben Tag freigegeben, Filter wie vorgeschlagen. Phase 1 gebaut.
 
+Nachtrag 24.10.2026 auf Wunsch des Nutzers: ein eigener Satz „EB05 Heroines Event“
+(`Roh_mode_1_eb05_event`) aus dem EB05 Satz, nur die Leader aus `eb05_leader.json`, Matchups
+nur gegen Leader derselben Liste, Kopfzahlen über alle Gegner. Erster Lauf: 25 von 25
+Leadern, 14.260 Partien aus Sicht der erlaubten Leader, 127 KB. Damit ist der Leaderfilter
+für die Statistik erledigt; für die Rangliste bleibt er Teil von Phase 3.
+
+Phase 2 in Arbeit: `eb05_holen.py` (Rangliste und Partien aus den Replays, nur der Kopf
+jedes Logs per Range Anfrage, Namen gemerkt in `~/.opbounty_replays/eb05_namen.json`),
+`replays_holen.py` packt die Replays der Top 50 aus `public/eb05.json.gz` mit, Schritt in
+der Action vor „Replays holen“. Tests in `tests/test_eb05_holen.py`. Der erste echte Lauf
+war bei der Übergabe noch nicht ausgewertet.
+
 Ergebnis Phase 1 am 24.10.2026, echter Lauf gegen das CDN: 101 Rohdateien aus 15 Tagen,
 29.830 Partien, 438 KB, EB05 Anteil 78 %, Laufzeit des ganzen Skripts ohne Tagesdateien 16 s.
 In der lokalen Vorschau steht „EB05 Queue (29,830 games)“ direkt vor „EB05 Queue, last week“
