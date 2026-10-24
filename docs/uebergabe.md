@@ -29,7 +29,8 @@ Bounty im Replay ist ohnehin nicht die Queue Bounty.
 ## Entscheidungen des Nutzers am 24.10.2026
 
 * PR 4 (EB05) ist gemergt und live geprüft: beide Sätze und 55 Bilder.
-* Im Event Satz will der Nutzer nur Winrates gegen Heroines sehen, ohne Rückfrage zu Details.
+* Im Event Satz will der Nutzer nur Winrates gegen Heroines sehen. Gebaut und live (PR 5).
+* Kartenpipeline: eine Quelle statt vieler. Gewählt tcgcsv, Kaizoku nur als Ersatz für Daten.
 * Car D. Kaizoku (cardkaizoku.com/matchhistory) bekommt Partien direkt vom Sim, auch private
   Lobbys. Replays über `POST api.cardkaizoku.com/match-replay` nur mit Patreon (403
   `patreon_required`). Empfehlung: nicht scrapen, Kaizoku nach Datenzugang fragen. Offen.
@@ -44,9 +45,10 @@ Bounty im Replay ist ohnehin nicht die Queue Bounty.
 
 ## Nächste Schritte
 
-1. Branch `claude/eb05-event-heroines` (Commit 27e734c, nicht gepusht): Im Event Satz gelten
-   alle Winrates nur gegen die 25 Event Leader, Decklisten weiter über alle Gegner mit Hinweis.
-   Tests grün, lokal geprüft (Robin 1.152 Partien, 53,6 %). Wartet auf Ok zum Push und PR.
+1. Kartenquelle tcgcsv: Phase 2 (Bilder) ist gebaut und gemergt, siehe Stand in
+   `specs/features/kartenquelle-tcgcsv.md`. Nach dem ersten Lauf der Action im Log prüfen:
+   „alle ersetzt“, Zahl der offenen Karten. Dann Phase 1 (Daten aus tcgcsv, Kaizoku als
+   Ersatz) bauen.
 2. Freigabe für `zuordnung-leaderzahl.md` holen (hart oder nur Tiebreak), dann in
    `spieler_daten.py` bauen und gegen die Liste vom 24.10. nachrechnen.
 3. Offen aus der Designkritik, nur auf Wunsch: Signalfarben bei Winrates ohne Partienzahl im

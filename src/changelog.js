@@ -6,6 +6,7 @@ export const CHANGELOG = [
   {
     tag: "2026-10-24",
     punkte: [
+      "All card images now come from one source in sharper quality, and new cards get their image as soon as it is published.",
       "New data set EB05 Queue: every game of OPBounty's EB05 queue since October 10, all bounty ranges. The weekly set that was called Special Queue is now EB05 Queue, last week.",
       "New data set EB05 Heroines Event: the EB05 queue with only the 25 leaders allowed at the event, and matchups only against those leaders.",
       "EB05 Heroines Event: every win rate, including going first and second, now counts only games against the 25 event leaders. Deck list stats still count all opponents, the Decks tab says so.",

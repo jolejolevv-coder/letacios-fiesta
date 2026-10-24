@@ -156,19 +156,93 @@ class Event(unittest.TestCase):
             "Stats_lw", A.EB05_SCHLUESSEL, A.EB05_EVENT_SCHLUESSEL, "Stats_Special_Queue"])
 
 
-class Nachtrag(unittest.TestCase):
-    def test_bild_kommt_aus_dem_repo_ohne_sim_und_ohne_netz(self):
+def produkt(pid, name, nummer):
+    return {"productId": pid, "name": name,
+            "imageUrl": f"https://tcgplayer-cdn.tcgplayer.com/product/{pid}_200w.jpg",
+            "extendedData": [{"name": "Number", "value": nummer}]}
+
+
+class Tcgcsv(unittest.TestCase):
+    def test_grundmotiv_statt_variante_und_1000_px(self):
+        adressen = A.tcgcsv_bilder([
+            produkt(9, "Nico Robin (010) (Alternate Art)", "EB05-010"),
+            produkt(8, "Nico Robin (010)", "EB05-010"),
+            produkt(5, "Nico Robin (Manga)", "OP18-031"),
+            produkt(7, "Nico Robin", "OP18-031"),
+            {"productId": 1, "name": "Booster Box", "extendedData": []},
+        ])
+        self.assertEqual(adressen, {
+            "EB05-010": "https://tcgplayer-cdn.tcgplayer.com/product/8_in_1000x1000.jpg",
+            "OP18-031": "https://tcgplayer-cdn.tcgplayer.com/product/7_in_1000x1000.jpg"})
+
+
+class Bilder(unittest.TestCase):
+    """bilder_kopieren ohne Netz: bild_laden wird ersetzt und merkt sich die Abrufe."""
+
+    def setUp(self):
         import tempfile
-        kennung = sorted(os.listdir(A.NACHTRAG))[0].replace(".jpg", "")
-        with tempfile.TemporaryDirectory() as ziel:
-            A.schreiben(os.path.join(ziel, "saetze", "s.json.gz"),
-                        {"leader": [{"id": "1x" + kennung, "geg": [], "listen": []}]})
-            alt, A.BILDQUELLE = A.BILDQUELLE, "/gibt/es/nicht/*"
-            try:
-                A.bilder_kopieren(ziel)
-            finally:
-                A.BILDQUELLE = alt
-            self.assertTrue(os.path.exists(os.path.join(ziel, "img", kennung + ".jpg")))
+        self.ordner = tempfile.TemporaryDirectory()
+        self.ziel = self.ordner.name
+        self.nachtrag = sorted(os.listdir(A.NACHTRAG))[0].replace(".jpg", "")
+        A.schreiben(os.path.join(self.ziel, "saetze", "s.json.gz"), {"leader": [{
+            "id": "1xOP01-001", "geg": ["1x" + self.nachtrag], "listen": [{"d": ["4xOP01-002"]}]}]})
+        os.makedirs(os.path.join(self.ziel, "img"))
+        self.bild("OP01-001", b"alt")
+        self.abrufe = []
+        self.alt_laden = A.bild_laden
+        A.bild_laden = self.laden
+
+    def tearDown(self):
+        A.bild_laden = self.alt_laden
+        self.ordner.cleanup()
+
+    def bild(self, k, inhalt):
+        with open(os.path.join(self.ziel, "img", k + ".jpg"), "wb") as datei:
+            datei.write(inhalt)
+
+    def laden(self, url, zieldatei):
+        self.abrufe.append(url)
+        with open(zieldatei, "wb") as datei:
+            datei.write(b"neu")
+        return True
+
+    def test_erster_lauf_ersetzt_alle_und_merkt_es_sich(self):
+        A.bilder_kopieren(self.ziel, {"OP01-001": "u1", "OP01-002": "u2"})
+        self.assertEqual(sorted(self.abrufe), ["u1", "u2"])
+        with open(os.path.join(self.ziel, "img", "OP01-001.jpg"), "rb") as datei:
+            self.assertEqual(datei.read(), b"neu")
+        with open(os.path.join(self.ziel, "img", "quelle.txt")) as datei:
+            self.assertEqual(datei.read().strip(), A.BILD_KENNUNG)
+
+    def test_spaeterer_lauf_laedt_nur_fehlende(self):
+        with open(os.path.join(self.ziel, "img", "quelle.txt"), "w") as datei:
+            datei.write(A.BILD_KENNUNG)
+        A.bilder_kopieren(self.ziel, {"OP01-001": "u1", "OP01-002": "u2"})
+        self.assertEqual(self.abrufe, ["u2"])
+
+    def test_nachtrag_fuer_karten_ohne_tcgcsv(self):
+        A.bilder_kopieren(self.ziel, {})
+        self.assertTrue(os.path.exists(os.path.join(self.ziel, "img", self.nachtrag + ".jpg")))
+        self.assertFalse(os.path.exists(os.path.join(self.ziel, "img", "quelle.txt")))
+
+    def test_fehlgeschlagener_abruf_nimmt_nachtrag_und_bleibt_offen(self):
+        A.bild_laden = lambda url, zieldatei: False
+        A.bilder_kopieren(self.ziel, {self.nachtrag: "u", "OP01-002": "u2"})
+        self.assertTrue(os.path.exists(os.path.join(self.ziel, "img", self.nachtrag + ".jpg")))
+        self.assertEqual(A.zeilen_lesen(os.path.join(self.ziel, "img", "offen.txt")),
+                         sorted(["OP01-001", "OP01-002", self.nachtrag]))
+
+    def test_offene_karte_wird_spaeter_ersetzt(self):
+        A.zeilen_schreiben(os.path.join(self.ziel, "img", "quelle.txt"), [A.BILD_KENNUNG])
+        A.zeilen_schreiben(os.path.join(self.ziel, "img", "offen.txt"), ["OP01-001"])
+        A.bilder_kopieren(self.ziel, {"OP01-001": "u1"})
+        self.assertEqual(self.abrufe, ["u1"])
+        self.assertEqual(A.zeilen_lesen(os.path.join(self.ziel, "img", "offen.txt")), [])
+
+    def test_karte_ohne_tcgcsv_behaelt_ihr_bild(self):
+        A.bilder_kopieren(self.ziel, {"OP01-002": "u2"})
+        with open(os.path.join(self.ziel, "img", "OP01-001.jpg"), "rb") as datei:
+            self.assertEqual(datei.read(), b"alt")
 
 
 if __name__ == "__main__":

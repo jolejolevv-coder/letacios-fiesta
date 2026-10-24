@@ -8,9 +8,12 @@ Stand 24.10.2026. Ausführlich in `docs/uebergabe.md`.
   dem Sim (`specs/features/eb05-queue.md`). Rangliste und Replays gestrichen.
 * Ladder per Bildschirmfoto und OCR vom Bazzite, mit Plausibilitätsschutz (PR 2).
 * Zähler zeigen sofort den Endwert (PR 3).
+* EB05 Heroines Event: alle Winrates nur gegen Event Leader (PR 5).
 
 ## In Arbeit und in Planung
 
+* Kartenquelle tcgcsv mit Kaizoku als Ersatz (`specs/features/kartenquelle-tcgcsv.md`),
+  freigegeben, Bau in neuer Sitzung.
 * Zuordnung der user_id über die Leaderzahl (`specs/features/zuordnung-leaderzahl.md`).
 
 ## Später, nur auf Wunsch
