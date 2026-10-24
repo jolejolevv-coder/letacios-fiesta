@@ -8,6 +8,14 @@ nur gegen Leader derselben Liste, Kopfzahlen über alle Gegner. Erster Lauf: 25 
 Leadern, 14.260 Partien aus Sicht der erlaubten Leader, 127 KB. Damit ist der Leaderfilter
 für die Statistik erledigt; für die Rangliste bleibt er Teil von Phase 3.
 
+Nachtrag 24.10.2026 abends auf Wunsch des Nutzers: Im Event Satz gelten jetzt auch die
+Kopfzahlen (Siege, Niederlagen, First, Second) nur gegen Event Leader, summiert aus den
+gefilterten Gegnerspalten (`kopfzahlen_aus_gegnern`). Die Summen der Spalten ergeben im
+vollen Satz genau die alten Kopfzahlen, auch die etwa 13 % ohne Zugreihenfolge. Decklisten,
+Starthände und Kopien führt die Quelle nicht je Gegner; sie bleiben über alle Gegner, der
+Satz trägt `listen_alle_gegner` und der Reiter Decks sagt es an. Der Satz schrumpft damit von
+14.260 auf rund 3.600 Partien, neun Leader haben unter 20.
+
 Abgeschlossen am 24.10.2026. Phase 2 und 3 (Rangliste, Spielerseiten, Replays, Umschalter)
 hat der Nutzer gestrichen: für die Vorbereitung reichen Decklists und Matchup Matrix der
 beiden Sätze, sortiert nach Winrate wie bei den anderen Sätzen. Gebaut und gemessen war

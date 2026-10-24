@@ -431,11 +431,13 @@ def event_leader_lesen(pfad: str) -> tuple[str, set] | None:
 
 
 def event_satz(satz: dict, erlaubt: set, name: str) -> dict:
-    """Ein Satz nur mit den erlaubten Leadern, in den Matchups nur gegen erlaubte Gegner.
+    """Ein Satz nur mit den erlaubten Leadern und nur mit Partien gegen erlaubte Gegner.
 
-    Die Kopfzahlen eines Leaders (Siege, Niederlagen, Listen) bleiben ueber alle Gegner,
-    sonst waeren sie fuer die selteneren Leader zu duenn. `partien` zaehlt die Partien aus
-    Sicht der erlaubten Leader; treffen zwei aufeinander, zaehlt die Partie zweimal.
+    Die Kopfzahlen eines Leaders (Siege, Niederlagen, First, Second) kommen aus den
+    gefilterten Gegnerspalten, damit jede Winrate nur gegen die Event Leader gilt.
+    Decklisten, Starthaende und Kopien fuehrt die Quelle nicht je Gegner; sie bleiben ueber
+    alle Gegner, und `listen_alle_gegner` sagt das der Seite. `partien` zaehlt die Partien
+    aus Sicht der erlaubten Leader; treffen zwei aufeinander, zaehlt die Partie zweimal.
     """
     leader = []
     for eintrag in satz["leader"]:
@@ -446,9 +448,18 @@ def event_satz(satz: dict, erlaubt: set, name: str) -> dict:
         neu = dict(eintrag)
         for feld in GEGNER_FELDER:
             neu[feld] = [eintrag[feld][i] for i in behalten]
+        neu.update(kopfzahlen_aus_gegnern(neu))
         leader.append(neu)
-    return {**satz, "name": name, "leader": leader,
+    return {**satz, "name": name, "leader": leader, "listen_alle_gegner": True,
             "partien": sum(e["w"] + e["l"] for e in leader)}
+
+
+def kopfzahlen_aus_gegnern(eintrag: dict) -> dict:
+    """Siege, Niederlagen, First und Second eines Leaders als Summe seiner Gegnerspalten."""
+    siege = sum(eintrag["gw"])
+    return {"w": siege, "l": sum(eintrag["gm"]) - siege,
+            "fw": sum(eintrag["gfw"]), "fl": sum(eintrag["gfl"]),
+            "sw": sum(eintrag["gsw"]), "sl": sum(eintrag["gsl"])}
 
 
 def eb05_event_satz(ziel: str, satz: dict) -> dict | None:
