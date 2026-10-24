@@ -1,7 +1,55 @@
 # Übergabe Letacios Fiesta
 
-Stand 23.10.2026. Ersetzt den Gesprächsverlauf der langen Sitzung bis 23.10.2026. Neue Sitzungen
-lesen zuerst diese Datei, dann `README.md`, `PRODUCT.md` und `DESIGN.md`.
+Stand 24.10.2026 abends. Neue Sitzungen lesen zuerst diese Datei und `specs/roadmap.md`, dann
+bei Bedarf `README.md`, `PRODUCT.md` und `DESIGN.md`.
+
+## Stand 24.10.2026
+
+Gemergt: PR 2 (Schutz gegen verdeckte Namen in `werkzeuge/plausibel.py`, Grenze 6 verdächtige
+Namen) und PR 3 (Zähler zeigen sofort den Endwert, `src/zaehler.js`). Die Ursache der kaputten
+Namen am 23. und 24.10. war die Update Notice im Spiel. Der Wert `seen_update_notice_v` in
+`~/.local/share/godot/app_userdata/OPBounty/uinf.tres` auf dem Bazzite steht auf 2.7.4. Der Lauf
+von 17:02 mit Commit 0d028e5 ist sauber online. Kommt eine neue Spielversion, blockt
+`plausibel.py` den Push. Dann den Wert auf die neue Version setzen, den Tagesmarker
+`~/mitschnitt/erledigt_<datum>` löschen und neu laufen lassen.
+
+Unversioniert im Worktree `trusting-knuth-88e5d4` liegt `specs/features/zuordnung-leaderzahl.md`,
+noch ohne Freigabe: Eine user_id wird über den Abdruck nur vergeben, wenn die Zahl der
+Leader passt. Damit bekommt Rang 1 MircoMorscio wieder die Id 17751 (`mirco4thewin`), die er
+vom 12. bis 22.10. hatte. Empfehlung: als harte Bedingung, nicht nur als Tiebreak.
+
+## EB05 Queue, abgeschlossen 24.10.2026
+
+Branch `claude/eb05-queue`: Sätze „EB05 Queue“ (alle Partien von `mode_1` seit 10.10.) und
+„EB05 Heroines Event“ (nur die 25 Leader aus `eb05_leader.json`), dazu 55 Kartenbilder aus
+dem Sim in `bilder_nachtrag/` (Werkzeug `werkzeuge/bilder_nachtragen.py`). EB05-026 und
+OP18-091 fehlen auch im Sim. Rangliste und Replays für EB05 hat der Nutzer gestrichen, die
+Bounty im Replay ist ohnehin nicht die Queue Bounty.
+
+## Entscheidungen des Nutzers am 24.10.2026
+
+* Grenze 6 im Plausibilitätsschutz, weil saubere Tage 2 bis 4 verdächtige Namen haben und
+  Tage mit der Notice 18 bis 19.
+* Die Zählanimation beim Leaderwechsel bleibt, nur der erste Wert steht sofort.
+* Für die EB05 Queue reichen ihm am Ende Decklists und Matchup Matrix nach Winrate,
+  Rangliste und Replays gestrichen. Zuerst wollte er Rangliste, Decks, Statistik und Replays. Grund: Etwa
+  am 7.11.2026 ist ein Event mit EB05 Decks, auf dem nur die 25 Leader der Liste erlaubt sind.
+  Ein Filter nur mit diesen Leadern in der EB05 Meta ist ausdrücklich gewünscht.
+
+## Nächste Schritte
+
+1. Nach dem Merge der EB05 PR prüfen, ob beide Sätze und die neuen Bilder live sind.
+2. Freigabe für `zuordnung-leaderzahl.md` holen (hart oder nur Tiebreak), dann in
+   `spieler_daten.py` bauen und gegen die Liste vom 24.10. nachrechnen.
+3. Offen aus der Designkritik, nur auf Wunsch: Signalfarben bei Winrates ohne Partienzahl im
+   Ladder, Umbruch der Kartenleiste am Handy, gleichnamige Leader.
+
+## Werkzeuge dieser Sitzung
+
+Firestore Abfragen auf Replays gehen lokal mit `firestore.Db()` und
+`frische_partien.replays_suchen(db, ende, tage)`. Das CDN liefert Rohdateien unter
+`stats/raw/<key>`, den Index unter `stats/files.json`. Zum Entschlüsseln fehlt im lokalen
+Python das Paket `cryptography`, Node mit `crypto` geht.
 
 ## Was es ist
 
