@@ -10,11 +10,27 @@ import argparse
 import datetime
 import gzip
 import json
+import re
 import sys
 
 # Fuenf Seiten zu je 20 Spielern ergeben 100. Unter 90 hat der Mitschnitt mindestens
 # eine Seite verfehlt, und eine Liste mit Loch soll nicht die volle ersetzen.
 MIN_SPIELER = 90
+
+# Verdeckt ein Fenster des Spiels die Namensspalte, liest die OCR Bruchstuecke wie
+# "| pstisx" statt AnestisX. So am 23. und 24.10.2026 durch die UPDATE NOTICE von 2.7.3:
+# 18 und 19 verdaechtige Namen, an sauberen Tagen 2 bis 4. Siehe
+# specs/features/bestenliste-ocr-schutz.md.
+MAX_VERDAECHTIG = 6
+MIN_NAMENSLAENGE = 3
+FREMDES_ZEICHEN = re.compile(r"[^A-Za-z0-9_.#\- ]")
+BEISPIELE = 5
+
+
+def verdaechtig(name):
+    """Sieht der gelesene Name nach einem Bildfehler aus?"""
+    name = name or ""
+    return len(name) < MIN_NAMENSLAENGE or bool(FREMDES_ZEICHEN.search(name))
 
 
 def pruefen(daten, heute, min_spieler=MIN_SPIELER):
@@ -30,6 +46,11 @@ def pruefen(daten, heute, min_spieler=MIN_SPIELER):
         gruende.append("Raenge sind doppelt vergeben")
     if any("discord" in e for e in spieler):
         gruende.append("ein Discordfeld ist in den Daten, das darf nie ins Repo")
+    schlecht = [e.get("name") or "" for e in spieler if verdaechtig(e.get("name"))]
+    if len(schlecht) > MAX_VERDAECHTIG:
+        gruende.append(f"{len(schlecht)} Namen sehen nach Bildfehlern aus, erlaubt sind "
+                       f"{MAX_VERDAECHTIG}, etwa {schlecht[:BEISPIELE]}; verdeckt ein Fenster "
+                       f"die Liste?")
     return gruende
 
 
