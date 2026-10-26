@@ -6,15 +6,15 @@ bei Bedarf `README.md`, `PRODUCT.md` und `DESIGN.md`.
 ## Formatwechsel, 26.10.2026
 
 OPBounty hat am 26.10. mittags die normale Queue (`mode_0`) auf OP17 plus EB05 umgestellt.
-Gebaut auf Branch `claude/format-op17-eb05`, committet, noch nicht gepusht: Satz
+Live seit PR 7 (374d741): Satz
 „OP17 + EB05 Standard“ (`Roh_mode_0_op17eb05`, alle Bereiche, ab `FORMAT_START` 2026-10-27)
-ganz oben und als Startsatz der Seite. EB05 Queue, `Stats_Special_Queue`, Heroines Event und
-`eb05_leader.json` sind entfernt. OP17 Sätze heißen „OP17 format (old)“. Wochensätze tragen
+ganz oben und als Startsatz der Seite. EB05 Queue und `Stats_Special_Queue` sind entfernt. Das Heroines Event
+bleibt, gebaut aus dem neuen Satz (`Roh_mode_0_op17eb05_event`, PR 8). OP17 Sätze heißen „OP17 format (old)“. Wochensätze tragen
 bis 03.11. „mixed formats“, „Last Week 3B Bounty“ zählt nur neue Tage. Die Rohdaten reichten
 am 26.10. bis zum 25.10., der neue Satz erscheint also frühestens mit dem Lauf vom 28.10.
 
-Nächste Schritte: Push und PR nach OK des Nutzers. Ab 28.10. live prüfen, ob der Satz da ist
-und der EB05 Anteil im Log über 30 % liegt. Danach Phase 1 von tcgcsv (Kartendaten).
+Nächste Schritte: Ab 28.10. live prüfen, ob der Satz da ist
+und der EB05 Anteil im Log über 30 % liegt und das Heroines Event darunter steht. Danach Phase 1 von tcgcsv (Kartendaten).
 
 ## Stand 24.10.2026
 

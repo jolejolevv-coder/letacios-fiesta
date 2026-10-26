@@ -69,8 +69,8 @@ ROH_SAETZE = {"3000": "Last Week 3B Bounty"}
 
 # Seit dem 26.10.2026 mittags ist die normale Queue (Modus 0) das Format OP17 plus EB05
 # (specs/features/format-op17-eb05.md). Der Tag der Umstellung mischt beide Formate, der
-# Satz beginnt deshalb mit dem ersten vollen Tag. Die EB05 Queue (Modus 1) und ihr Event
-# Satz sind damit entfallen.
+# Satz beginnt deshalb mit dem ersten vollen Tag. Die EB05 Queue (Modus 1) ist entfallen,
+# der Event Satz kommt seitdem aus dem Formatsatz.
 FORMAT_START = "2026-10-27"
 FORMAT_MODUS = "mode_0"
 FORMAT_SCHLUESSEL = "Roh_mode_0_op17eb05"
@@ -84,6 +84,12 @@ EB05_MIN_ANTEIL = 0.30
 MISCH_ENDE = "2026-11-03"
 MISCH_ZUSATZ = ", mixed formats"
 WOCHENSAETZE = ("Stats_lw", "Stats_LWS1BillionBounty", "Stats_LWS2BillionBounty")
+# Das Event Anfang November 2026 erlaubt nur bestimmte Leader. Der Event Satz ist der
+# Formatsatz, beschraenkt auf diese Leader und in den Matchups auf Gegner aus derselben Liste.
+EVENT_DATEI = os.path.join(os.path.dirname(os.path.abspath(__file__)), "eb05_leader.json")
+EVENT_SCHLUESSEL = "Roh_mode_0_op17eb05_event"
+# Felder eines Leaders, die je Gegner eine Spalte tragen, parallel zu `geg`.
+GEGNER_FELDER = ("geg", "gm", "gw", "gfw", "gfl", "gsw", "gsl")
 # Fertige Saetze, die das Spiel noch liefert, die wir aber nicht mehr zeigen.
 AUSGEBLENDET = {"Stats_Special_Queue"}
 
@@ -326,19 +332,19 @@ def satz_reihenfolge(saetze: dict) -> list:
     Sonst haengen sie hinter den Saisonsaetzen am Ende der Auswahl, obwohl sie
     denselben Zuschnitt haben wie "Last Week 2B Bounty" direkt darueber.
 
-    Der Satz des aktuellen Formats steht ganz oben.
+    Der Satz des aktuellen Formats steht ganz oben, sein Event Satz direkt darunter.
     """
     reihenfolge = list(saetze)
+    oben = [k for k in (FORMAT_SCHLUESSEL, EVENT_SCHLUESSEL) if k in reihenfolge]
     for schluessel in [k for k in reihenfolge
-                       if k.startswith("Roh_") and k != FORMAT_SCHLUESSEL]:
+                       if k.startswith("Roh_") and k not in oben]:
         reihenfolge.remove(schluessel)
         letzte = max((i for i, k in enumerate(reihenfolge) if k.startswith("Stats_LWS")),
                      default=len(reihenfolge) - 1)
         reihenfolge.insert(letzte + 1, schluessel)
-    if FORMAT_SCHLUESSEL in reihenfolge:
-        reihenfolge.remove(FORMAT_SCHLUESSEL)
-        reihenfolge.insert(0, FORMAT_SCHLUESSEL)
-    return reihenfolge
+    for schluessel in oben:
+        reihenfolge.remove(schluessel)
+    return oben + reihenfolge
 
 
 def roh_teile(schluessel_alle: list, tage: list, modus: str, bereiche: list) -> list:
@@ -432,6 +438,67 @@ def wochentage(alle_tage: list) -> list:
     """
     neu = [t for t in alle_tage if t >= FORMAT_START]
     return neu or alle_tage
+
+
+def leader_ohne_anzahl(kennung: str) -> str:
+    """"1xOP09-042" wird "OP09-042", so wie die Leader in eb05_leader.json stehen."""
+    return kennung.split("x", 1)[1] if re.match(r"\d+x", kennung or "") else kennung
+
+
+def event_leader_lesen(pfad: str) -> tuple[str, set] | None:
+    """(Name, erlaubte Leader) aus der Event Datei, None wenn sie fehlt oder kaputt ist."""
+    try:
+        with open(pfad, encoding="utf-8") as datei:
+            daten = json.load(datei)
+        return daten["name"], set(daten["leader"])
+    except (OSError, ValueError, KeyError) as fehler:
+        print(f"  Event Leader nicht gelesen ({pfad}): {fehler}")
+        return None
+
+
+def event_satz(satz: dict, erlaubt: set, name: str) -> dict:
+    """Ein Satz nur mit den erlaubten Leadern und nur mit Partien gegen erlaubte Gegner.
+
+    Die Kopfzahlen eines Leaders (Siege, Niederlagen, First, Second) kommen aus den
+    gefilterten Gegnerspalten, damit jede Winrate nur gegen die Event Leader gilt.
+    Decklisten, Starthaende und Kopien fuehrt die Quelle nicht je Gegner; sie bleiben ueber
+    alle Gegner, und `listen_alle_gegner` sagt das der Seite. `partien` zaehlt die Partien
+    aus Sicht der erlaubten Leader; treffen zwei aufeinander, zaehlt die Partie zweimal.
+    """
+    leader = []
+    for eintrag in satz["leader"]:
+        if leader_ohne_anzahl(eintrag["id"]) not in erlaubt:
+            continue
+        behalten = [i for i, g in enumerate(eintrag["geg"])
+                    if leader_ohne_anzahl(g) in erlaubt]
+        neu = dict(eintrag)
+        for feld in GEGNER_FELDER:
+            neu[feld] = [eintrag[feld][i] for i in behalten]
+        neu.update(kopfzahlen_aus_gegnern(neu))
+        leader.append(neu)
+    return {**satz, "name": name, "leader": leader, "listen_alle_gegner": True,
+            "partien": sum(e["w"] + e["l"] for e in leader)}
+
+
+def kopfzahlen_aus_gegnern(eintrag: dict) -> dict:
+    """Siege, Niederlagen, First und Second eines Leaders als Summe seiner Gegnerspalten."""
+    siege = sum(eintrag["gw"])
+    return {"w": siege, "l": sum(eintrag["gm"]) - siege,
+            "fw": sum(eintrag["gfw"]), "fl": sum(eintrag["gfl"]),
+            "sw": sum(eintrag["gsw"]), "sl": sum(eintrag["gsl"])}
+
+
+def format_event_satz(ziel: str, satz: dict) -> dict | None:
+    """Den Event Satz aus dem Formatsatz bauen und schreiben."""
+    gelesen = event_leader_lesen(EVENT_DATEI)
+    if not gelesen:
+        return None
+    name, erlaubt = gelesen
+    event = event_satz(satz, erlaubt, name)
+    groesse = schreiben(os.path.join(ziel, "saetze", EVENT_SCHLUESSEL + ".json.gz"), event)
+    print(f"  {EVENT_SCHLUESSEL}  {len(event['leader'])} von {len(erlaubt)} Leadern, "
+          f"{event['partien']} Partien, {groesse/1e3:.0f} KB")
+    return event
 
 
 def tage_laden(ziel: str, anzahl: int, modi: list, bereiche: list) -> list:
@@ -805,6 +872,9 @@ def main() -> None:
     satz = format_satz(ziel)
     if satz:
         saetze[FORMAT_SCHLUESSEL] = satz
+        event = format_event_satz(ziel, satz)
+        if event:
+            saetze[EVENT_SCHLUESSEL] = event
 
     verzeichnis = {
         "erstellt": max((s["stand"] for s in saetze.values()), default=""),
