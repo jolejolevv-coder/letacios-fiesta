@@ -3319,7 +3319,7 @@ export default function App() {
   const [fehlerText, setFehlerText] = useState("");
   const [wahl, setWahl] = useState({
     art: "satz",
-    satz: "Stats_lw",
+    satz: "Roh_mode_0_op17eb05",
     modus: "mode_0",
     bounty: "25_1000",
     von: "",
@@ -3768,7 +3768,6 @@ export default function App() {
           </label>
           <span className="klein z" style={{ paddingBottom: 10 }}>
             {listen.length} of {leader.listen.length} lists
-            {satz.listenAlleGegner ? ", list stats count all opponents" : null}
           </span>
         </div>
         <Abschnitt titel={`Lists by ${SORT_LISTEN_TEXT[sortListen]}, at least ${mindest} games`}>
