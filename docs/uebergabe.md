@@ -1,7 +1,20 @@
 # Übergabe Letacios Fiesta
 
-Stand 24.10.2026 spätabends. Neue Sitzungen lesen zuerst diese Datei und `specs/roadmap.md`, dann
+Stand 26.10.2026. Neue Sitzungen lesen zuerst diese Datei und `specs/roadmap.md`, dann
 bei Bedarf `README.md`, `PRODUCT.md` und `DESIGN.md`.
+
+## Formatwechsel, 26.10.2026
+
+OPBounty hat am 26.10. mittags die normale Queue (`mode_0`) auf OP17 plus EB05 umgestellt.
+Gebaut auf Branch `claude/format-op17-eb05`, committet, noch nicht gepusht: Satz
+„OP17 + EB05 Standard“ (`Roh_mode_0_op17eb05`, alle Bereiche, ab `FORMAT_START` 2026-10-27)
+ganz oben und als Startsatz der Seite. EB05 Queue, `Stats_Special_Queue`, Heroines Event und
+`eb05_leader.json` sind entfernt. OP17 Sätze heißen „OP17 format (old)“. Wochensätze tragen
+bis 03.11. „mixed formats“, „Last Week 3B Bounty“ zählt nur neue Tage. Die Rohdaten reichten
+am 26.10. bis zum 25.10., der neue Satz erscheint also frühestens mit dem Lauf vom 28.10.
+
+Nächste Schritte: Push und PR nach OK des Nutzers. Ab 28.10. live prüfen, ob der Satz da ist
+und der EB05 Anteil im Log über 30 % liegt. Danach Phase 1 von tcgcsv (Kartendaten).
 
 ## Stand 24.10.2026
 
@@ -45,10 +58,10 @@ Bounty im Replay ist ohnehin nicht die Queue Bounty.
 
 ## Nächste Schritte
 
-1. Kartenquelle tcgcsv: Phase 2 (Bilder) ist gebaut und gemergt, siehe Stand in
-   `specs/features/kartenquelle-tcgcsv.md`. Nach dem ersten Lauf der Action im Log prüfen:
-   „alle ersetzt“, Zahl der offenen Karten. Dann Phase 1 (Daten aus tcgcsv, Kaizoku als
-   Ersatz) bauen.
+1. Kartenquelle tcgcsv: Phase 2 (Bilder) ist live seit PR 6 (c887775). Erster Lauf der
+   Action: 2.218 Bilder ersetzt, 49 noch nicht von tcgcsv (`img/offen.txt`, Vorverkauf OP18
+   und alte Promos), 16 ganz ohne Bild (OP18-065, OP18-091, P-087 bis P-151). Als Nächstes
+   Phase 1 (Daten aus tcgcsv, Kaizoku als Ersatz) in einer frischen Sitzung bauen.
 2. Freigabe für `zuordnung-leaderzahl.md` holen (hart oder nur Tiebreak), dann in
    `spieler_daten.py` bauen und gegen die Liste vom 24.10. nachrechnen.
 3. Offen aus der Designkritik, nur auf Wunsch: Signalfarben bei Winrates ohne Partienzahl im

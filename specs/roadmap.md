@@ -1,6 +1,6 @@
 # Roadmap Letacios Fiesta
 
-Stand 24.10.2026. Ausführlich in `docs/uebergabe.md`.
+Stand 26.10.2026. Ausführlich in `docs/uebergabe.md`.
 
 ## Erledigt
 
@@ -8,12 +8,15 @@ Stand 24.10.2026. Ausführlich in `docs/uebergabe.md`.
   dem Sim (`specs/features/eb05-queue.md`). Rangliste und Replays gestrichen.
 * Ladder per Bildschirmfoto und OCR vom Bazzite, mit Plausibilitätsschutz (PR 2).
 * Zähler zeigen sofort den Endwert (PR 3).
-* EB05 Heroines Event: alle Winrates nur gegen Event Leader (PR 5).
+* EB05 Heroines Event: alle Winrates nur gegen Event Leader (PR 5). Am 26.10. mit der
+  ganzen EB05 Queue entfernt.
+* Format OP17 plus EB05 (`specs/features/format-op17-eb05.md`): Satz „OP17 + EB05 Standard“
+  ab 27.10., OP17 als „format (old)“. Branch `claude/format-op17-eb05`, Push offen.
 
 ## In Arbeit und in Planung
 
-* Kartenquelle tcgcsv mit Kaizoku als Ersatz (`specs/features/kartenquelle-tcgcsv.md`),
-  freigegeben, Bau in neuer Sitzung.
+* Kartenquelle tcgcsv (`specs/features/kartenquelle-tcgcsv.md`): Bilder live (PR 6),
+  Daten aus tcgcsv mit Kaizoku als Ersatz offen.
 * Zuordnung der user_id über die Leaderzahl (`specs/features/zuordnung-leaderzahl.md`).
 
 ## Später, nur auf Wunsch

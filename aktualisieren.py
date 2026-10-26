@@ -32,6 +32,7 @@ import os
 import re
 import shutil
 import sys
+import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -66,23 +67,25 @@ BOUNTY_NAME = {
 ROH_TAGE = 7
 ROH_SAETZE = {"3000": "Last Week 3B Bounty"}
 
-# Die "Play EB05 Queue" ist seit dem 10.10.2026 Modus 1, der Platz der frueheren Special
-# Queue (specs/features/eb05-queue.md). Ihr Satz umfasst alle Tage ab dem Start und alle
-# Bountybereiche, denn die Queue hat eine eigene Bounty, die bei etwa 25 beginnt.
-EB05_MODUS = "mode_1"
-EB05_START = "2026-10-10"
-EB05_SCHLUESSEL = "Roh_mode_1_eb05"
-EB05_NAME = "EB05 Queue"
+# Seit dem 26.10.2026 mittags ist die normale Queue (Modus 0) das Format OP17 plus EB05
+# (specs/features/format-op17-eb05.md). Der Tag der Umstellung mischt beide Formate, der
+# Satz beginnt deshalb mit dem ersten vollen Tag. Die EB05 Queue (Modus 1) und ihr Event
+# Satz sind damit entfallen.
+FORMAT_START = "2026-10-27"
+FORMAT_MODUS = "mode_0"
+FORMAT_SCHLUESSEL = "Roh_mode_0_op17eb05"
+FORMAT_NAME = "OP17 + EB05 Standard"
 EB05_KARTE = "EB05-"
-# Unter diesem Anteil an Partien mit EB05 Karten im Deck hat das Spiel Modus 1 wohl neu
-# belegt, und der Name des Satzes stimmt nicht mehr.
+# Unter diesem Anteil an Partien mit EB05 Karten im Deck sieht der Satz nicht nach dem
+# neuen Format aus, und sein Name stimmt nicht mehr.
 EB05_MIN_ANTEIL = 0.30
-# Das Event Anfang November 2026 erlaubt nur bestimmte Leader. Der Event Satz ist der EB05
-# Satz, beschraenkt auf diese Leader und in den Matchups auf Gegner aus derselben Liste.
-EB05_EVENT_DATEI = os.path.join(os.path.dirname(os.path.abspath(__file__)), "eb05_leader.json")
-EB05_EVENT_SCHLUESSEL = "Roh_mode_1_eb05_event"
-# Felder eines Leaders, die je Gegner eine Spalte tragen, parallel zu `geg`.
-GEGNER_FELDER = ("geg", "gm", "gw", "gfw", "gfl", "gsw", "gsl")
+# Die Wochensaetze des Spiels reichen sieben Tage zurueck und mischen bis dahin altes und
+# neues Format. Bis zu diesem Tag (ausschliesslich) tragen sie den Zusatz.
+MISCH_ENDE = "2026-11-03"
+MISCH_ZUSATZ = ", mixed formats"
+WOCHENSAETZE = ("Stats_lw", "Stats_LWS1BillionBounty", "Stats_LWS2BillionBounty")
+# Fertige Saetze, die das Spiel noch liefert, die wir aber nicht mehr zeigen.
+AUSGEBLENDET = {"Stats_Special_Queue"}
 
 
 def bounty_name(bereich: str) -> str:
@@ -98,9 +101,8 @@ ANZEIGE = {
     "Stats_lw": "Last Week Standard",
     "Stats_LWS1BillionBounty": "Last Week 1B Bounty",
     "Stats_LWS2BillionBounty": "Last Week 2B Bounty",
-    "Stats_Special_Queue": "EB05 Queue, last week",
-    "Stats_OP17": "OP17 overall",
-    "Stats_OP17-1BillionBounty": "OP17, 1B Bounty",
+    "Stats_OP17": "OP17 format (old)",
+    "Stats_OP17-1BillionBounty": "OP17 format (old), 1B Bounty",
 }
 
 
@@ -268,16 +270,28 @@ def lesen(pfad: str):
         return json.loads(datei.read().decode("utf-8"))
 
 
+def anzeigename(schluessel: str, heute: str) -> str:
+    """Name eines fertigen Satzes; Wochensaetze sagen bis MISCH_ENDE, dass sie mischen."""
+    name = ANZEIGE.get(schluessel, schluessel.replace("Stats_", ""))
+    if schluessel in WOCHENSAETZE and heute < MISCH_ENDE:
+        name += MISCH_ZUSATZ
+    return name
+
+
 def fertige_saetze(ziel: str) -> dict:
     index = hole("regular/timestamps.json")
+    heute = time.strftime("%Y-%m-%d")
     saetze = {}
     for eintrag in index.get("stats", []):
         datei = eintrag["file"]
         name = datei.rsplit(".", 1)[0]
+        if name in AUSGEBLENDET:
+            print(f"  {datei} ausgeblendet")
+            continue
         print(f"  {datei} ...", flush=True)
         try:
             roh = zusammenfuehren([hole("regular/" + datei)])
-            saetze[name] = eindampfen(roh, ANZEIGE.get(name, name.replace("Stats_", "")))
+            saetze[name] = eindampfen(roh, anzeigename(name, heute))
         except Exception as fehler:
             print(f"    fehlgeschlagen: {fehler}")
     for name, satz in saetze.items():
@@ -312,21 +326,18 @@ def satz_reihenfolge(saetze: dict) -> list:
     Sonst haengen sie hinter den Saisonsaetzen am Ende der Auswahl, obwohl sie
     denselben Zuschnitt haben wie "Last Week 2B Bounty" direkt darueber.
 
-    Der EB05 Satz steht direkt vor dem Wochensatz derselben Queue.
+    Der Satz des aktuellen Formats steht ganz oben.
     """
     reihenfolge = list(saetze)
     for schluessel in [k for k in reihenfolge
-                       if k.startswith("Roh_")
-                       and k not in (EB05_SCHLUESSEL, EB05_EVENT_SCHLUESSEL)]:
+                       if k.startswith("Roh_") and k != FORMAT_SCHLUESSEL]:
         reihenfolge.remove(schluessel)
         letzte = max((i for i, k in enumerate(reihenfolge) if k.startswith("Stats_LWS")),
                      default=len(reihenfolge) - 1)
         reihenfolge.insert(letzte + 1, schluessel)
-    if "Stats_Special_Queue" in reihenfolge:
-        for schluessel in (EB05_SCHLUESSEL, EB05_EVENT_SCHLUESSEL):
-            if schluessel in reihenfolge:
-                reihenfolge.remove(schluessel)
-                reihenfolge.insert(reihenfolge.index("Stats_Special_Queue"), schluessel)
+    if FORMAT_SCHLUESSEL in reihenfolge:
+        reihenfolge.remove(FORMAT_SCHLUESSEL)
+        reihenfolge.insert(0, FORMAT_SCHLUESSEL)
     return reihenfolge
 
 
@@ -388,23 +399,23 @@ def eb05_anteil(satz: dict) -> float:
 
 
 def eb05_warnung(satz: dict) -> str | None:
-    """Ein Warntext, wenn Modus 1 nicht mehr nach EB05 Queue aussieht, sonst None."""
+    """Ein Warntext, wenn der Formatsatz nicht nach OP17 plus EB05 aussieht, sonst None."""
     anteil = eb05_anteil(satz)
     if anteil >= EB05_MIN_ANTEIL:
         return None
-    return (f"Nur {anteil:.0%} der Partien in {EB05_MODUS} mit EB05 Karten, erwartet "
-            f"mindestens {EB05_MIN_ANTEIL:.0%}. Ist der Modus neu belegt?")
+    return (f"Nur {anteil:.0%} der Partien in {FORMAT_MODUS} mit EB05 Karten, erwartet "
+            f"mindestens {EB05_MIN_ANTEIL:.0%}. Stimmt das Format noch?")
 
 
-def eb05_satz(ziel: str) -> dict | None:
-    """Der Satz der EB05 Queue: Modus 1, alle Bountybereiche, alle Tage ab dem Start."""
+def format_satz(ziel: str) -> dict | None:
+    """Der Satz des aktuellen Formats: Modus 0, alle Bountybereiche, alle Tage ab dem Start."""
     try:
         schluessel_alle = index_schluessel()
     except Exception as fehler:
-        print(f"  Index nicht geladen, {EB05_NAME} uebersprungen: {fehler}")
+        print(f"  Index nicht geladen, {FORMAT_NAME} uebersprungen: {fehler}")
         return None
-    satz = roh_satz(ziel, schluessel_alle, tage_ab(schluessel_alle, EB05_START),
-                    EB05_MODUS, list(BOUNTY), EB05_SCHLUESSEL, EB05_NAME)
+    satz = roh_satz(ziel, schluessel_alle, tage_ab(schluessel_alle, FORMAT_START),
+                    FORMAT_MODUS, list(BOUNTY), FORMAT_SCHLUESSEL, FORMAT_NAME)
     if satz:
         print(f"    EB05 Anteil {eb05_anteil(satz):.0%}")
         warnung = eb05_warnung(satz)
@@ -414,65 +425,13 @@ def eb05_satz(ziel: str) -> dict | None:
     return satz
 
 
-def leader_ohne_anzahl(kennung: str) -> str:
-    """"1xOP09-042" wird "OP09-042", so wie die Leader in eb05_leader.json stehen."""
-    return kennung.split("x", 1)[1] if re.match(r"\d+x", kennung or "") else kennung
+def wochentage(alle_tage: list) -> list:
+    """Das Fenster der selbst gerechneten Wochensaetze, ohne Tage vor dem Format.
 
-
-def event_leader_lesen(pfad: str) -> tuple[str, set] | None:
-    """(Name, erlaubte Leader) aus der Event Datei, None wenn sie fehlt oder kaputt ist."""
-    try:
-        with open(pfad, encoding="utf-8") as datei:
-            daten = json.load(datei)
-        return daten["name"], set(daten["leader"])
-    except (OSError, ValueError, KeyError) as fehler:
-        print(f"  Event Leader nicht gelesen ({pfad}): {fehler}")
-        return None
-
-
-def event_satz(satz: dict, erlaubt: set, name: str) -> dict:
-    """Ein Satz nur mit den erlaubten Leadern und nur mit Partien gegen erlaubte Gegner.
-
-    Die Kopfzahlen eines Leaders (Siege, Niederlagen, First, Second) kommen aus den
-    gefilterten Gegnerspalten, damit jede Winrate nur gegen die Event Leader gilt.
-    Decklisten, Starthaende und Kopien fuehrt die Quelle nicht je Gegner; sie bleiben ueber
-    alle Gegner, und `listen_alle_gegner` sagt das der Seite. `partien` zaehlt die Partien
-    aus Sicht der erlaubten Leader; treffen zwei aufeinander, zaehlt die Partie zweimal.
+    Solange es noch keinen Tag im neuen Format gibt, bleibt das ganze Fenster.
     """
-    leader = []
-    for eintrag in satz["leader"]:
-        if leader_ohne_anzahl(eintrag["id"]) not in erlaubt:
-            continue
-        behalten = [i for i, g in enumerate(eintrag["geg"])
-                    if leader_ohne_anzahl(g) in erlaubt]
-        neu = dict(eintrag)
-        for feld in GEGNER_FELDER:
-            neu[feld] = [eintrag[feld][i] for i in behalten]
-        neu.update(kopfzahlen_aus_gegnern(neu))
-        leader.append(neu)
-    return {**satz, "name": name, "leader": leader, "listen_alle_gegner": True,
-            "partien": sum(e["w"] + e["l"] for e in leader)}
-
-
-def kopfzahlen_aus_gegnern(eintrag: dict) -> dict:
-    """Siege, Niederlagen, First und Second eines Leaders als Summe seiner Gegnerspalten."""
-    siege = sum(eintrag["gw"])
-    return {"w": siege, "l": sum(eintrag["gm"]) - siege,
-            "fw": sum(eintrag["gfw"]), "fl": sum(eintrag["gfl"]),
-            "sw": sum(eintrag["gsw"]), "sl": sum(eintrag["gsl"])}
-
-
-def eb05_event_satz(ziel: str, satz: dict) -> dict | None:
-    """Den Event Satz aus dem EB05 Satz bauen und schreiben."""
-    gelesen = event_leader_lesen(EB05_EVENT_DATEI)
-    if not gelesen:
-        return None
-    name, erlaubt = gelesen
-    event = event_satz(satz, erlaubt, name)
-    groesse = schreiben(os.path.join(ziel, "saetze", EB05_EVENT_SCHLUESSEL + ".json.gz"), event)
-    print(f"  {EB05_EVENT_SCHLUESSEL}  {len(event['leader'])} von {len(erlaubt)} Leadern, "
-          f"{event['partien']} Partien, {groesse/1e3:.0f} KB")
-    return event
+    neu = [t for t in alle_tage if t >= FORMAT_START]
+    return neu or alle_tage
 
 
 def tage_laden(ziel: str, anzahl: int, modi: list, bereiche: list) -> list:
@@ -837,18 +796,15 @@ def main() -> None:
         if bereich not in bereiche or not modi:
             continue
         print(f"\nSatz aus der Rohebene, {anzeige}:")
-        satz = roh_satz(ziel, index_schluessel(), fenster(ROH_TAGE), modi[0],
+        satz = roh_satz(ziel, index_schluessel(), wochentage(fenster(ROH_TAGE)), modi[0],
                         [bereich], roh_schluessel(modi[0], bereich), anzeige)
         if satz:
             saetze[roh_schluessel(modi[0], bereich)] = satz
 
-    print(f"\nSatz aus der Rohebene, {EB05_NAME}:")
-    satz = eb05_satz(ziel)
+    print(f"\nSatz aus der Rohebene, {FORMAT_NAME}:")
+    satz = format_satz(ziel)
     if satz:
-        saetze[EB05_SCHLUESSEL] = satz
-        event = eb05_event_satz(ziel, satz)
-        if event:
-            saetze[EB05_EVENT_SCHLUESSEL] = event
+        saetze[FORMAT_SCHLUESSEL] = satz
 
     verzeichnis = {
         "erstellt": max((s["stand"] for s in saetze.values()), default=""),
