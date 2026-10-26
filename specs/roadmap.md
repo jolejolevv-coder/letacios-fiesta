@@ -8,10 +8,10 @@ Stand 26.10.2026. Ausführlich in `docs/uebergabe.md`.
   dem Sim (`specs/features/eb05-queue.md`). Rangliste und Replays gestrichen.
 * Ladder per Bildschirmfoto und OCR vom Bazzite, mit Plausibilitätsschutz (PR 2).
 * Zähler zeigen sofort den Endwert (PR 3).
-* EB05 Heroines Event: alle Winrates nur gegen Event Leader (PR 5). Am 26.10. mit der
-  ganzen EB05 Queue entfernt.
+* EB05 Heroines Event: alle Winrates nur gegen Event Leader (PR 5). Seit 26.10. aus dem
+  neuen Formatsatz.
 * Format OP17 plus EB05 (`specs/features/format-op17-eb05.md`): Satz „OP17 + EB05 Standard“
-  ab 27.10., OP17 als „format (old)“. Branch `claude/format-op17-eb05`, Push offen.
+  ab 27.10., OP17 als „format (old)“ (PR 7). Heroines Event aus dem neuen Satz (PR 8).
 
 ## In Arbeit und in Planung
 

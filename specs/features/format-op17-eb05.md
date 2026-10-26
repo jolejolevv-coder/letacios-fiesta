@@ -70,6 +70,10 @@ Phase 2: Nach dem ersten Lauf mit Daten der Umstellung prüfen, live und in der 
 - Die Wochensätze des Spiels tragen bis zum 03.11.2026 den Zusatz „mixed formats“.
 - Die Seite öffnet mit dem neuen Satz; solange er fehlt, mit dem ersten der Liste.
 
+- Nachtrag am selben Tag: Der Satz „EB05 Heroines Event“ bleibt, gebaut aus dem neuen
+  Formatsatz statt aus der EB05 Queue (`Roh_mode_0_op17eb05_event`, Leader aus
+  `eb05_leader.json`, Winrates nur gegen Event Leader). Er steht direkt unter dem Formatsatz.
+
 ## Tradeoffs
 
 Ein festes Datum ist einfacher und genau, solange der Nutzer den Tag kennt; beim nächsten

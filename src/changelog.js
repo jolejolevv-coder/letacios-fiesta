@@ -9,7 +9,8 @@ export const CHANGELOG = [
       "OPBounty's normal queue now plays OP17 plus EB05. New data set OP17 + EB05 Standard at the top of the list: every game of the new format from October 27 on, all bounty ranges. It fills up from the first full day of data.",
       "The OP17 sets are now called OP17 format (old) and show the format before the switch.",
       "The weekly sets still mix old and new format until November 3 and say so in their name. Last Week 3B Bounty counts only days in the new format.",
-      "The EB05 Queue, its weekly set and the EB05 Heroines Event are gone, now that EB05 is part of the normal queue.",
+      "The EB05 Queue and its weekly set are gone, now that EB05 is part of the normal queue.",
+      "EB05 Heroines Event stays: it now filters the new OP17 + EB05 Standard set to the 25 event leaders, with every win rate counted only against them. It sits right below the new set.",
     ],
   },
   {

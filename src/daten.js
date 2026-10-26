@@ -404,7 +404,10 @@ export function verschmelzen(saetze, name) {
       .sort((a, b) => b.w + b.l - (a.w + a.l)),
   }));
   fertig.sort((a, b) => b.w + b.l - (a.w + a.l));
-  return { name, stand, partien, leader: fertig };
+  // Der Heroines Event Satz zaehlt Winrates nur gegen Event Leader, Decklisten aber gegen
+  // alle Gegner (aktualisieren.py, event_satz). Die Seite sagt das an den Listen.
+  const listenAlleGegner = saetze.some((s) => s && s.listen_alle_gegner);
+  return { name, stand, partien, leader: fertig, listenAlleGegner };
 }
 
 /** Ein fertiger Satz aus saetze/ hat schon die richtige Form, wird aber gleich behandelt. */
