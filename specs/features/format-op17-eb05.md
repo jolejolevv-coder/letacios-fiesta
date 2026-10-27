@@ -67,7 +67,10 @@ Phase 2: Nach dem ersten Lauf mit Daten der Umstellung prüfen, live und in der 
   „EB05 Heroines Event“ entfallen, samt `eb05_leader.json` und dem Hinweis an den
   Decklisten. Damit sind beide offenen Fragen erledigt.
 - „Last Week 3B Bounty“ zählt nur Tage im neuen Format, sobald es einen gibt.
-- Die Wochensätze des Spiels tragen bis zum 03.11.2026 den Zusatz „mixed formats“.
+- ~~Die Wochensätze des Spiels tragen bis zum 03.11.2026 den Zusatz „mixed formats“.~~
+  Geändert am 27.10.2026 (Nutzer): Die Wochensätze des Spiels fehlen bis zum 03.11.2026
+  (`WOCHE_AB`), statt gemischt angezeigt zu werden. Das neue Format steht nur im Formatsatz
+  mit den Tagen, die es schon gibt. „Last Week 3B Bounty“ fehlt, bis es einen neuen Tag gibt.
 - Die Seite öffnet mit dem neuen Satz; solange er fehlt, mit dem ersten der Liste.
 
 - Nachtrag am selben Tag: Der Satz „EB05 Heroines Event“ bleibt, gebaut aus dem neuen

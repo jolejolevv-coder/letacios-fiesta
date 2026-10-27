@@ -80,9 +80,9 @@ EB05_KARTE = "EB05-"
 # neuen Format aus, und sein Name stimmt nicht mehr.
 EB05_MIN_ANTEIL = 0.30
 # Die Wochensaetze des Spiels reichen sieben Tage zurueck und mischen bis dahin altes und
-# neues Format. Bis zu diesem Tag (ausschliesslich) tragen sie den Zusatz.
-MISCH_ENDE = "2026-11-03"
-MISCH_ZUSATZ = ", mixed formats"
+# neues Format. Bis zu diesem Tag (ausschliesslich) zeigen wir sie gar nicht; das neue
+# Format steht dann nur im Formatsatz, mit den Tagen, die es schon gibt.
+WOCHE_AB = "2026-11-03"
 WOCHENSAETZE = ("Stats_lw", "Stats_LWS1BillionBounty", "Stats_LWS2BillionBounty")
 # Das Event Anfang November 2026 erlaubt nur bestimmte Leader. Der Event Satz ist der
 # Formatsatz, beschraenkt auf diese Leader und in den Matchups auf Gegner aus derselben Liste.
@@ -276,12 +276,14 @@ def lesen(pfad: str):
         return json.loads(datei.read().decode("utf-8"))
 
 
-def anzeigename(schluessel: str, heute: str) -> str:
-    """Name eines fertigen Satzes; Wochensaetze sagen bis MISCH_ENDE, dass sie mischen."""
-    name = ANZEIGE.get(schluessel, schluessel.replace("Stats_", ""))
-    if schluessel in WOCHENSAETZE and heute < MISCH_ENDE:
-        name += MISCH_ZUSATZ
-    return name
+def anzeigename(schluessel: str) -> str:
+    """Anzeigename eines fertigen Satzes."""
+    return ANZEIGE.get(schluessel, schluessel.replace("Stats_", ""))
+
+
+def ausgeblendet(schluessel: str, heute: str) -> bool:
+    """Ob ein fertiger Satz fehlen soll: dauerhaft oder als Wochensatz vor WOCHE_AB."""
+    return schluessel in AUSGEBLENDET or (schluessel in WOCHENSAETZE and heute < WOCHE_AB)
 
 
 def fertige_saetze(ziel: str) -> dict:
@@ -291,13 +293,13 @@ def fertige_saetze(ziel: str) -> dict:
     for eintrag in index.get("stats", []):
         datei = eintrag["file"]
         name = datei.rsplit(".", 1)[0]
-        if name in AUSGEBLENDET:
+        if ausgeblendet(name, heute):
             print(f"  {datei} ausgeblendet")
             continue
         print(f"  {datei} ...", flush=True)
         try:
             roh = zusammenfuehren([hole("regular/" + datei)])
-            saetze[name] = eindampfen(roh, anzeigename(name, heute))
+            saetze[name] = eindampfen(roh, anzeigename(name))
         except Exception as fehler:
             print(f"    fehlgeschlagen: {fehler}")
     for name, satz in saetze.items():
@@ -434,10 +436,9 @@ def format_satz(ziel: str) -> dict | None:
 def wochentage(alle_tage: list) -> list:
     """Das Fenster der selbst gerechneten Wochensaetze, ohne Tage vor dem Format.
 
-    Solange es noch keinen Tag im neuen Format gibt, bleibt das ganze Fenster.
+    Gibt es noch keinen Tag im neuen Format, ist das Fenster leer und der Satz fehlt.
     """
-    neu = [t for t in alle_tage if t >= FORMAT_START]
-    return neu or alle_tage
+    return [t for t in alle_tage if t >= FORMAT_START]
 
 
 def leader_ohne_anzahl(kennung: str) -> str:
@@ -825,9 +826,9 @@ def main() -> None:
         return
 
     print("Fertige Saetze:")
+    # Leer sein darf das hier: bis WOCHE_AB sind die Wochensaetze ausgeblendet. Geprueft
+    # wird erst, wenn auch die selbst gerechneten Saetze da sind.
     saetze = fertige_saetze(ziel)
-    if not saetze:
-        sys.exit("  Kein Satz geladen.")
 
     print("\nKartennamen:")
     try:
@@ -875,6 +876,9 @@ def main() -> None:
         event = format_event_satz(ziel, satz)
         if event:
             saetze[EVENT_SCHLUESSEL] = event
+
+    if not saetze:
+        sys.exit("  Kein Satz geladen.")
 
     verzeichnis = {
         "erstellt": max((s["stand"] for s in saetze.values()), default=""),

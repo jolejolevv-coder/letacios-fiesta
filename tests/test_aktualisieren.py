@@ -92,16 +92,17 @@ class Format(unittest.TestCase):
             A.FORMAT_SCHLUESSEL, "Stats_lw", "Stats_LWS1BillionBounty",
             "Stats_LWS2BillionBounty", "Roh_mode_0_3000", "Stats_OP17"])
 
-    def test_wochensatz_mischt_bis_misch_ende(self):
-        self.assertEqual(A.anzeigename("Stats_lw", "2026-11-02"),
-                         "Last Week Standard, mixed formats")
-        self.assertEqual(A.anzeigename("Stats_lw", A.MISCH_ENDE), "Last Week Standard")
+    def test_wochensatz_fehlt_bis_woche_ab(self):
+        self.assertTrue(A.ausgeblendet("Stats_lw", "2026-11-02"))
+        self.assertFalse(A.ausgeblendet("Stats_lw", A.WOCHE_AB))
+        self.assertEqual(A.anzeigename("Stats_lw"), "Last Week Standard")
 
-    def test_altes_format_heisst_old(self):
-        self.assertEqual(A.anzeigename("Stats_OP17", "2026-10-27"), "OP17 format (old)")
+    def test_altes_format_bleibt_sichtbar(self):
+        self.assertFalse(A.ausgeblendet("Stats_OP17", "2026-10-27"))
+        self.assertEqual(A.anzeigename("Stats_OP17"), "OP17 format (old)")
 
     def test_special_queue_ausgeblendet(self):
-        self.assertIn("Stats_Special_Queue", A.AUSGEBLENDET)
+        self.assertTrue(A.ausgeblendet("Stats_Special_Queue", A.WOCHE_AB))
 
     def test_wochenfenster_ohne_altes_format(self):
         tage = ["2026-10-24", "2026-10-25", "2026-10-26", "2026-10-27", "2026-10-28"]
@@ -109,7 +110,7 @@ class Format(unittest.TestCase):
 
     def test_wochenfenster_vor_dem_ersten_neuen_tag(self):
         tage = ["2026-10-24", "2026-10-25", "2026-10-26"]
-        self.assertEqual(A.wochentage(tage), tage)
+        self.assertEqual(A.wochentage(tage), [])
 
 
 def leader_zeile(kennung, w, l, gegner):
