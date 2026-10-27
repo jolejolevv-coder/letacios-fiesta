@@ -4,6 +4,13 @@
    Git Historie zusammengefasst. */
 export const CHANGELOG = [
   {
+    tag: "2026-10-27",
+    punkte: [
+      "No more mixed formats: the weekly sets Last Week Standard, 1B and 2B are hidden until November 3, when their week holds only the new format. Until then, OP17 + EB05 Standard shows the new meta with the days played so far.",
+      "Last Week 3B Bounty counts only days in the new format and appears with the first one.",
+    ],
+  },
+  {
     tag: "2026-10-26",
     punkte: [
       "OPBounty's normal queue now plays OP17 plus EB05. New data set OP17 + EB05 Standard at the top of the list: every game of the new format from October 27 on, all bounty ranges. It fills up from the first full day of data.",

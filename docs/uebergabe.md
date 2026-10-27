@@ -9,8 +9,8 @@ OPBounty hat am 26.10. mittags die normale Queue (`mode_0`) auf OP17 plus EB05 u
 Live seit PR 7 (374d741): Satz
 „OP17 + EB05 Standard“ (`Roh_mode_0_op17eb05`, alle Bereiche, ab `FORMAT_START` 2026-10-27)
 ganz oben und als Startsatz der Seite. EB05 Queue und `Stats_Special_Queue` sind entfernt. Das Heroines Event
-bleibt, gebaut aus dem neuen Satz (`Roh_mode_0_op17eb05_event`, PR 8). OP17 Sätze heißen „OP17 format (old)“. Wochensätze tragen
-bis 03.11. „mixed formats“, „Last Week 3B Bounty“ zählt nur neue Tage. Die Rohdaten reichten
+bleibt, gebaut aus dem neuen Satz (`Roh_mode_0_op17eb05_event`, PR 8). OP17 Sätze heißen „OP17 format (old)“. Wochensätze des Spiels
+fehlen bis 03.11. (`WOCHE_AB`, PR 9), „Last Week 3B Bounty“ zählt nur neue Tage. Die Rohdaten reichten
 am 26.10. bis zum 25.10., der neue Satz erscheint also frühestens mit dem Lauf vom 28.10.
 
 Nächste Schritte: Ab 28.10. live prüfen, ob der Satz da ist
