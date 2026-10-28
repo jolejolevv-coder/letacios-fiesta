@@ -1,6 +1,8 @@
 # Formatsatz aus den Replays
 
-Entwurf vom 28.10.2026, wartet auf Freigabe.
+Entwurf vom 28.10.2026, am selben Tag freigegeben (Phase 1 und 2) und gebaut. Name mit
+Zusatz „(from replays)“; Decklisten nur von der Seite, die ihr Deck hochlud; First und
+Second aus `Chose to go First|Second` im Log, Zwischenspeicher `tage/replay_start.zwischen.gz`.
 
 ## Goal
 

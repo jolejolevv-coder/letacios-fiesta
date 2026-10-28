@@ -79,7 +79,15 @@ jobs:
 
       - run: pip install --quiet cryptography pillow
 
+      # Der Formatsatz kommt aus den Replays in Firestore, dazu braucht der Schritt
+      # dieselben Zugangsdaten wie die Spielerdaten.
       - name: Daten und Bilder holen
+        env:
+          OPBOUNTY_API_KEY: ${{ secrets.OPBOUNTY_API_KEY }}
+          OPBOUNTY_PROJECT: ${{ secrets.OPBOUNTY_PROJECT }}
+          OPBOUNTY_BUCKET: ${{ secrets.OPBOUNTY_BUCKET }}
+          OPBOUNTY_EMAIL: ${{ secrets.OPBOUNTY_EMAIL }}
+          OPBOUNTY_PASSWORT: ${{ secrets.OPBOUNTY_PASSWORT }}
         run: |
           python3 aktualisieren.py \
             --ziel public \

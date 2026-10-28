@@ -4,6 +4,12 @@
    Git Historie zusammengefasst. */
 export const CHANGELOG = [
   {
+    tag: "2026-10-28",
+    punkte: [
+      "OP17 + EB05 Standard and EB05 Heroines Event are back, counted from game replays since October 27, because OPBounty stopped publishing its statistics on October 26. Replays cover about half of all games and carry no mulligan data, so those columns stay empty for now.",
+    ],
+  },
+  {
     tag: "2026-10-27",
     punkte: [
       "No more mixed formats: the weekly sets Last Week Standard, 1B and 2B are hidden until November 3, when their week holds only the new format. Until then, OP17 + EB05 Standard shows the new meta with the days played so far.",

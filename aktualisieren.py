@@ -23,6 +23,7 @@ Client in `merge_statlists`, und genau das macht `zusammenfuehren` hier.
 """
 import argparse
 import base64
+import datetime
 import io
 import glob
 import gzip
@@ -36,6 +37,11 @@ import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from firestore import Db  # noqa: E402
+from frische_partien import log_spieler, replays_suchen  # noqa: E402
+from replays_holen import adresse, UNSICHTBAR  # noqa: E402
 
 CDN = "https://d2spmnr3w7rm2f.cloudfront.net/stats/"
 BILDQUELLE = ("/Volumes/*/Downloads/*_Mac/OPTCGSim.app/Contents/Resources/Data/"
@@ -75,6 +81,22 @@ FORMAT_START = "2026-10-27"
 FORMAT_MODUS = "mode_0"
 FORMAT_SCHLUESSEL = "Roh_mode_0_op17eb05"
 FORMAT_NAME = "OP17 + EB05 Standard"
+# Seit dem 26.10.2026 veroeffentlicht OPBounty keine Statistik mehr. Der Formatsatz kommt
+# deshalb aus den Replays in Firestore (specs/features/format-aus-replays.md). Das Wort
+# steht im Namen, damit die Seite es ohne Aenderung unter dem Satz zeigt.
+REPLAY_ZUSATZ = " (from replays)"
+REPLAY_MODUS = "0"
+# Wer anfaengt, steht nur im Log. Je Replay einmal gelesen und hier gemerkt, in der Datei
+# im Zwischenspeicher der Action (public/tage). Die Endung schuetzt sie vor dem Aufraeumen
+# der Tagesdateien (*.json.gz).
+START_ZWISCHEN = "replay_start.zwischen.gz"
+START_SCHLUESSEL_LAENGE = 16
+LOG_PARALLEL = 8
+# Reihenfolge und Leader stehen in den ersten Zeilen; mehr als den Anfang braucht es nicht.
+LOG_ANFANG_BYTES = 16384
+LOG_TIMEOUT = 30
+FEHLT = object()    # Log gibt es nicht (404): endgueltig, wird nicht nochmal versucht
+ZUG_ZEILE = re.compile(r"\[([^\]]+)\] Chose to go (First|Second)")
 EB05_KARTE = "EB05-"
 # Unter diesem Anteil an Partien mit EB05 Karten im Deck sieht der Satz nicht nach dem
 # neuen Format aus, und sein Name stimmt nicht mehr.
@@ -415,21 +437,196 @@ def eb05_warnung(satz: dict) -> str | None:
             f"mindestens {EB05_MIN_ANTEIL:.0%}. Stimmt das Format noch?")
 
 
-def format_satz(ziel: str) -> dict | None:
-    """Der Satz des aktuellen Formats: Modus 0, alle Bountybereiche, alle Tage ab dem Start."""
-    try:
-        schluessel_alle = index_schluessel()
-    except Exception as fehler:
-        print(f"  Index nicht geladen, {FORMAT_NAME} uebersprungen: {fehler}")
+def wer_wahl_traf(text: str) -> tuple[str, bool] | None:
+    """(Name, geht zuerst) aus der Zeile "Chose to go First|Second", None wenn sie fehlt."""
+    treffer = ZUG_ZEILE.search(text or "")
+    if not treffer:
         return None
-    satz = roh_satz(ziel, schluessel_alle, tage_ab(schluessel_alle, FORMAT_START),
-                    FORMAT_MODUS, list(BOUNTY), FORMAT_SCHLUESSEL, FORMAT_NAME)
-    if satz:
-        print(f"    EB05 Anteil {eb05_anteil(satz):.0%}")
-        warnung = eb05_warnung(satz)
-        if warnung:
-            # So erscheint die Warnung in der Zusammenfassung der Action.
-            print(f"::warning::{warnung}")
+    return UNSICHTBAR.sub("", treffer.group(1)), treffer.group(2) == "First"
+
+
+def sieger_zuerst(text: str, sieger_leader: str, verlierer_leader: str) -> bool | None:
+    """Ob der Sieger anfing, aus dem Log. None, wenn das Log es nicht hergibt.
+
+    Im Log waehlt ein Spieler die Reihenfolge. Welcher Seite er gehoert, sagen die
+    "Leader is" Zeilen. Im Mirror ist das nicht zu trennen, dort bleibt es None.
+    """
+    if not sieger_leader or sieger_leader == verlierer_leader:
+        return None
+    wahl = wer_wahl_traf(text)
+    seiten = dict(log_spieler(text))
+    if not wahl or wahl[0] not in seiten:
+        return None
+    waehler_leader = seiten[wahl[0]]
+    if waehler_leader == sieger_leader:
+        return wahl[1]
+    if waehler_leader == verlierer_leader:
+        return not wahl[1]
+    return None
+
+
+def log_anfang(pfad: str, eimer: str):
+    """Der Anfang eines Logs als Text; FEHLT bei 404, None bei einem anderen Fehler.
+
+    Anders als `replays_holen.laden` ohne Platte: Tausende Logs von je 60 KB gehoeren
+    nicht in den Zwischenspeicher, hier zaehlt nur der Beginn.
+    """
+    anfrage = urllib.request.Request(adresse(pfad, eimer), headers={
+        "Range": f"bytes=0-{LOG_ANFANG_BYTES - 1}"})
+    try:
+        with urllib.request.urlopen(anfrage, timeout=LOG_TIMEOUT) as antwort:
+            return antwort.read(LOG_ANFANG_BYTES).decode("utf-8", "replace")
+    except urllib.error.HTTPError as fehler:
+        return FEHLT if fehler.code == 404 else None
+    except (urllib.error.URLError, OSError):
+        return None
+
+
+def start_schluessel(pfad: str) -> str:
+    """Kurzer Schluessel je Replaypfad; der Pfad endet auf einen 64 stelligen Hash."""
+    return pfad.rsplit("_", 1)[-1].removesuffix(".log")[:START_SCHLUESSEL_LAENGE]
+
+
+def start_lesen(pfad: str) -> dict:
+    """{Schluessel: Sieger zuerst (True/False) oder None}, leer wenn die Datei fehlt."""
+    try:
+        with gzip.open(pfad, "rt", encoding="utf-8") as datei:
+            return json.load(datei)
+    except (OSError, ValueError):
+        return {}
+
+
+def starts_ermitteln(docs: list, eimer: str, zwischen: str) -> dict:
+    """{Replaypfad: Sieger zuerst} fuer alle Replays, deren Log lesbar ist.
+
+    Jedes Log wird nur einmal geladen: das Ergebnis steht in der Zwischendatei, auch
+    "nicht erkennbar" (None). Ein Log, das sich wegen eines Netzfehlers nicht laden
+    laesst, wird nicht gemerkt und beim naechsten Lauf wieder versucht. Die Datei behaelt nur Replays aus `docs`.
+    """
+    bekannt = start_lesen(zwischen)
+    neu = {}
+    offen = []
+    for doc in docs:
+        pfad = doc.get("path")
+        if not pfad:
+            continue
+        schluessel = start_schluessel(pfad)
+        if schluessel in bekannt:
+            neu[schluessel] = bekannt[schluessel]
+        elif doc["winner_leader"] == doc["loser_leader"]:
+            neu[schluessel] = None
+        else:
+            offen.append(doc)
+    with ThreadPoolExecutor(max_workers=LOG_PARALLEL) as pool:
+        texte = list(pool.map(lambda d: log_anfang(d["path"], eimer), offen))
+    for doc, text in zip(offen, texte):
+        if text is FEHLT:
+            neu[start_schluessel(doc["path"])] = None
+        elif text is not None:
+            neu[start_schluessel(doc["path"])] = sieger_zuerst(
+                text, doc["winner_leader"], doc["loser_leader"])
+    os.makedirs(os.path.dirname(zwischen), exist_ok=True)
+    with gzip.open(zwischen, "wt", encoding="utf-8") as datei:
+        json.dump(neu, datei, separators=(",", ":"))
+    print(f"    Start: {len(offen)} Logs neu gelesen, {len(neu)} gemerkt")
+    return {d["path"]: neu[start_schluessel(d["path"])] for d in docs
+            if d.get("path") and start_schluessel(d["path"]) in neu}
+
+
+def format_replays_filtern(docs: list) -> list:
+    """Nur die Replays der normalen Queue ab FORMAT_START, mit beiden Leadern."""
+    return [d for d in docs
+            if str(d.get("game_mode")) == REPLAY_MODUS
+            and str(d.get("timestamp") or "") >= FORMAT_START
+            and d.get("winner_leader") and d.get("loser_leader")]
+
+
+def _leader_neu() -> dict:
+    return {f: 0 for f in ZAEHLER} | {"gegner": {}}
+
+
+def _seite_zaehlen(roh: dict, leader: str, gegner: str, deck: str, gewonnen: bool,
+                   zuerst: bool | None) -> None:
+    """Eine Seite einer Partie in die Rohstruktur von `zusammenfuehren` eintragen."""
+    kennung, gegner_kennung = "1x" + leader, "1x" + gegner
+    sieg = "w" if gewonnen else "l"
+    ziel = roh["praesenz"].setdefault(kennung, _leader_neu())
+    # `eindampfen` laeuft ueber die Decks; ein Leader ohne hochgeladene Liste braucht
+    # trotzdem einen Eintrag, sonst fehlt er mitsamt seinen Siegen.
+    eimer = roh["decks"].setdefault(kennung, {})
+    g = ziel["gegner"].setdefault(gegner_kennung, {"m": 0, "w": 0, "fw": 0, "fl": 0,
+                                                    "sw": 0, "sl": 0})
+    felder = ["wins" if gewonnen else "losses"]
+    g["m"] += 1
+    g["w"] += gewonnen
+    if zuerst is not None:
+        felder.append(("first_" if zuerst else "second_") + felder[0])
+        g[("f" if zuerst else "s") + sieg] += 1
+    ziel["number_of_matches"] += 1
+    for f in felder:
+        ziel[f] += 1
+    liste = [z.strip() for z in deck.splitlines() if z.strip()]
+    if liste:
+        eintrag = eimer.setdefault("|".join(sorted(liste)), {"deck": liste, **{f: 0 for f in ZAEHLER}})
+        for f in felder + ["number_of_matches"]:
+            eintrag[f] += 1
+
+
+def roh_aus_replays(docs: list, starts: dict) -> dict:
+    """Die Replays in dieselbe Rohstruktur wie `zusammenfuehren`, damit `eindampfen` bleibt.
+
+    `starts` sagt je Replaypfad, ob der Sieger anfing (True/False), sonst gilt die Partie
+    ohne First und Second. Decks stehen im Replay nur fuer die Seite, die sie hochlud;
+    Hand, Kopien und Dauer fehlen und bleiben leer.
+    """
+    roh = {"decks": {}, "praesenz": {}, "karten": {}, "partien": 0, "stand": ""}
+    for doc in docs:
+        zuerst = starts.get(doc.get("path"))
+        sieger, verlierer = doc["winner_leader"], doc["loser_leader"]
+        _seite_zaehlen(roh, sieger, verlierer, doc.get("winner_deck") or "", True, zuerst)
+        _seite_zaehlen(roh, verlierer, sieger, doc.get("loser_deck") or "", False,
+                       None if zuerst is None else not zuerst)
+        roh["partien"] += 1
+        roh["stand"] = max(roh["stand"], str(doc.get("timestamp") or ""))
+    return roh
+
+
+def replay_satz(docs: list, starts: dict) -> dict:
+    """Der Formatsatz aus Replays, im Format der Seite."""
+    roh = roh_aus_replays(format_replays_filtern(docs), starts)
+    return eindampfen(roh, FORMAT_NAME + REPLAY_ZUSATZ, FORMAT_MODUS, ",".join(BOUNTY))
+
+
+def format_satz(ziel: str) -> dict | None:
+    """Der Satz des aktuellen Formats: Modus 0, alle Tage ab dem Start, aus den Replays.
+
+    Faellt Firestore aus, entfaellt der Satz und der Lauf geht weiter.
+    """
+    try:
+        db = Db()
+        jetzt = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        tage = (jetzt - datetime.datetime.fromisoformat(FORMAT_START)).days + 1
+        docs = format_replays_filtern(replays_suchen(db, jetzt, tage))
+    except (Exception, SystemExit) as fehler:
+        print(f"::warning::Replays nicht gelesen, {FORMAT_NAME} uebersprungen: {fehler}")
+        return None
+    print(f"  {len(docs)} Replays im Modus {REPLAY_MODUS} ab {FORMAT_START}", flush=True)
+    zwischen = os.path.join(ziel, "tage", START_ZWISCHEN)
+    try:
+        starts = starts_ermitteln(docs, db.c["storageBucket"], zwischen)
+    except Exception as fehler:
+        print(f"::warning::First und Second nicht gelesen: {fehler}")
+        starts = {}
+    satz = replay_satz(docs, starts)
+    groesse = schreiben(os.path.join(ziel, "saetze", FORMAT_SCHLUESSEL + ".json.gz"), satz)
+    mit_start = sum(1 for v in starts.values() if v is not None)
+    print(f"    {groesse/1e3:.0f} KB, {satz['partien']} Partien, First/Second bei "
+          f"{mit_start}")
+    print(f"    EB05 Anteil {eb05_anteil(satz):.0%}")
+    warnung = eb05_warnung(satz)
+    if warnung:
+        # So erscheint die Warnung in der Zusammenfassung der Action.
+        print(f"::warning::{warnung}")
     return satz
 
 
@@ -495,7 +692,7 @@ def format_event_satz(ziel: str, satz: dict) -> dict | None:
     if not gelesen:
         return None
     name, erlaubt = gelesen
-    event = event_satz(satz, erlaubt, name)
+    event = event_satz(satz, erlaubt, name + REPLAY_ZUSATZ)
     groesse = schreiben(os.path.join(ziel, "saetze", EVENT_SCHLUESSEL + ".json.gz"), event)
     print(f"  {EVENT_SCHLUESSEL}  {len(event['leader'])} von {len(erlaubt)} Leadern, "
           f"{event['partien']} Partien, {groesse/1e3:.0f} KB")

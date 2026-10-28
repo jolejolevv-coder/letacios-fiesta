@@ -176,6 +176,122 @@ class Event(unittest.TestCase):
             "Roh_mode_0_3000"])
 
 
+def replay(sieger, verlierer, zeit="2026-10-27T10:00:00", pfad=None, sieger_deck="", verlierer_deck="",
+           modus="0"):
+    return {"timestamp": zeit, "game_mode": modus, "winner_leader": sieger,
+            "loser_leader": verlierer, "winner_deck": sieger_deck, "loser_deck": verlierer_deck,
+            "path": pfad or f"Replays/W/0/{sieger}/{verlierer}_{sieger}{zeit}.log"}
+
+
+def log(waehler, wahl, a=("Anna#1", "OP17-039"), b=("Ben#2", "OP13-004")):
+    zeile = '[{}] Leader is X [<mark><link="{}">{}</link></mark>]'
+    return "\n".join([zeile.format(a[0], a[1], a[1]), zeile.format(b[0], b[1], b[1]),
+                      f"[{waehler}] Will select turn order", f"[{waehler}] Chose to go {wahl}"])
+
+
+class Replays(unittest.TestCase):
+    def setUp(self):
+        deck = "1xOP17-039\r\n4xEB05-001\r\n"
+        self.docs = [
+            replay("OP17-039", "OP13-004", sieger_deck=deck, pfad="a_h1.log"),
+            replay("OP17-039", "OP13-004", sieger_deck=deck, pfad="a_h2.log"),
+            replay("OP13-004", "OP17-039", verlierer_deck=deck, pfad="a_h3.log"),
+            replay("OP17-039", "OP17-039", pfad="a_h4.log"),
+            replay("OP17-039", "OP13-004", zeit="2026-10-26T23:59:59"),
+            replay("OP17-039", "OP13-004", modus="1"),
+        ]
+        self.starts = {"a_h1.log": True, "a_h2.log": False, "a_h3.log": None}
+
+    def satz(self):
+        return A.replay_satz(self.docs, self.starts)
+
+    def leader(self, satz, kennung):
+        return next(e for e in satz["leader"] if e["id"] == kennung)
+
+    def test_nur_modus_0_ab_formatstart(self):
+        self.assertEqual(self.satz()["partien"], 4)
+        self.assertEqual(self.satz()["name"], "OP17 + EB05 Standard (from replays)")
+
+    def test_siege_niederlagen_und_gegner(self):
+        e = self.leader(self.satz(), "1xOP17-039")
+        # 2 Siege, 1 Niederlage gegen OP13-004, dazu der Mirror als Sieg und Niederlage
+        self.assertEqual((e["w"], e["l"]), (3, 2))
+        i = e["geg"].index("1xOP13-004")
+        self.assertEqual((e["gm"][i], e["gw"][i]), (3, 2))
+        self.assertEqual(len({len(e[f]) for f in A.GEGNER_FELDER}), 1)
+
+    def test_first_und_second_nur_wo_bekannt(self):
+        e = self.leader(self.satz(), "1xOP17-039")
+        i = e["geg"].index("1xOP13-004")
+        # h1: Sieger zuerst; h2: Sieger zweiter; h3: unbekannt
+        self.assertEqual((e["fw"], e["fl"], e["sw"], e["sl"]), (1, 0, 1, 0))
+        self.assertEqual((e["gfw"][i], e["gsw"][i]), (1, 1))
+        gegner = self.leader(self.satz(), "1xOP13-004")
+        self.assertEqual((gegner["fl"], gegner["sl"]), (1, 1))
+
+    def test_decklisten_je_seite_die_eine_hat(self):
+        e = self.leader(self.satz(), "1xOP17-039")
+        self.assertEqual(len(e["listen"]), 1)
+        liste = e["listen"][0]
+        self.assertEqual(liste["d"], ["1xOP17-039", "4xEB05-001"])
+        self.assertEqual((liste["w"], liste["l"], liste["fw"], liste["sw"]), (2, 1, 1, 1))
+        self.assertEqual(A.eb05_anteil(self.satz()), 1.0)
+
+    def test_ohne_hand_und_dauer(self):
+        e = self.leader(self.satz(), "1xOP17-039")
+        self.assertEqual((e["hand"], e["kopien"], e["dur"]), ({}, {}, 0))
+
+    def test_heroines_filter_auf_dem_ergebnis(self):
+        event = A.event_satz(self.satz(), {"OP17-039"}, "Event")
+        self.assertEqual([e["id"] for e in event["leader"]], ["1xOP17-039"])
+        self.assertEqual(event["leader"][0]["geg"], ["1xOP17-039"])
+        self.assertEqual(event["partien"], 2)
+
+
+class Reihenfolge(unittest.TestCase):
+    def test_waehler_ist_sieger(self):
+        self.assertTrue(A.sieger_zuerst(log("Anna#1", "First"), "OP17-039", "OP13-004"))
+        self.assertFalse(A.sieger_zuerst(log("Anna#1", "Second"), "OP17-039", "OP13-004"))
+
+    def test_waehler_ist_verlierer(self):
+        self.assertFalse(A.sieger_zuerst(log("Ben#2", "First"), "OP17-039", "OP13-004"))
+        self.assertTrue(A.sieger_zuerst(log("Ben#2", "Second"), "OP17-039", "OP13-004"))
+
+    def test_unsichtbares_zeichen_im_namen(self):
+        text = log("Anna#1", "First").replace("Anna#1", "Anna\u200b#1", 2)
+        self.assertTrue(A.sieger_zuerst(text, "OP17-039", "OP13-004"))
+
+    def test_mirror_ohne_wahl_und_kaputtes_log_geben_none(self):
+        self.assertIsNone(A.sieger_zuerst(log("Anna#1", "First"), "OP17-039", "OP17-039"))
+        self.assertIsNone(A.sieger_zuerst("", "OP17-039", "OP13-004"))
+        self.assertIsNone(A.sieger_zuerst(None, "OP17-039", "OP13-004"))
+        self.assertIsNone(A.sieger_zuerst(log("Zoe#9", "First"), "OP17-039", "OP13-004"))
+
+    def test_zwischenspeicher_laedt_jedes_log_einmal(self):
+        import tempfile
+        docs = [replay("OP17-039", "OP13-004", pfad="Replays/x_" + "a" * 64 + ".log"),
+                replay("OP17-039", "OP17-039", pfad="Replays/y_" + "b" * 64 + ".log")]
+        geladen = []
+
+        def fake(pfad, eimer):
+            geladen.append(pfad)
+            return log("Anna#1", "First")
+
+        alt = A.log_anfang
+        A.log_anfang = fake
+        try:
+            with tempfile.TemporaryDirectory() as ordner:
+                datei = os.path.join(ordner, "tage", A.START_ZWISCHEN)
+                erste = A.starts_ermitteln(docs, "eimer", datei)
+                zweite = A.starts_ermitteln(docs, "eimer", datei)
+        finally:
+            A.log_anfang = alt
+        self.assertEqual(geladen, [docs[0]["path"]])        # Mirror gar nicht, Rest einmal
+        self.assertEqual(erste, zweite)
+        self.assertEqual(erste[docs[0]["path"]], True)
+        self.assertIsNone(erste[docs[1]["path"]])
+
+
 def produkt(pid, name, nummer):
     return {"productId": pid, "name": name,
             "imageUrl": f"https://tcgplayer-cdn.tcgplayer.com/product/{pid}_200w.jpg",
