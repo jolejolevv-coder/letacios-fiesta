@@ -1,7 +1,19 @@
 # Übergabe Letacios Fiesta
 
-Stand 26.10.2026. Neue Sitzungen lesen zuerst diese Datei und `specs/roadmap.md`, dann
+Stand 28.10.2026. Neue Sitzungen lesen zuerst diese Datei und `specs/roadmap.md`, dann
 bei Bedarf `README.md`, `PRODUCT.md` und `DESIGN.md`.
+
+## Stand 28.10.2026
+
+OPBounty veröffentlicht seit dem 26.10. 18:28 UTC keine Statistik mehr (Rohdateien und
+fertige Sätze stehen still). Deshalb fehlen „OP17 + EB05 Standard“ und das Heroines Event
+weiter. Die Replays in Firestore laufen und zeigen die Umstellung (27.10.: 57 % EB05 in
+`game_mode` 0). Spec `specs/features/format-aus-replays.md` wartet auf Freigabe.
+
+Bazzite: Update Notice v2.7.7 blockierte die Bestenliste seit 27.10. früh. Am 28.10.
+`seen_update_notice_v` auf 2.7.7 gesetzt (Sicherung `uinf.tres.bak_2026-10-28`) und
+`mitschnitt.service` neu gestartet. Laut Notice läuft das alte Format jetzt in der Special
+Queue (`mode_1`).
 
 ## Formatwechsel, 26.10.2026
 
