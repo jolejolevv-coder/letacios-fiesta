@@ -1,6 +1,9 @@
 """Tests fuer das Zusammenfuehren der Kartenwerte, siehe aktualisieren.py (Format 2)."""
+import fnmatch
 import os
+import shutil
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -93,16 +96,17 @@ class Format(unittest.TestCase):
             "Stats_LWS2BillionBounty", "Roh_mode_0_3000", "Stats_OP17"])
 
     def test_wochensatz_fehlt_bis_woche_ab(self):
-        self.assertTrue(A.ausgeblendet("Stats_lw", "2026-11-02"))
-        self.assertFalse(A.ausgeblendet("Stats_lw", A.WOCHE_AB))
+        woche_ab = "2026-11-03"
+        self.assertTrue(A.ausgeblendet("Stats_lw", "2026-11-02", woche_ab))
+        self.assertFalse(A.ausgeblendet("Stats_lw", woche_ab, woche_ab))
         self.assertEqual(A.anzeigename("Stats_lw"), "Last Week Standard")
 
     def test_altes_format_bleibt_sichtbar(self):
-        self.assertFalse(A.ausgeblendet("Stats_OP17", "2026-10-27"))
+        self.assertFalse(A.ausgeblendet("Stats_OP17", "2026-10-27", "2026-11-03"))
         self.assertEqual(A.anzeigename("Stats_OP17"), "OP17 format (old)")
 
     def test_special_queue_ausgeblendet(self):
-        self.assertTrue(A.ausgeblendet("Stats_Special_Queue", A.WOCHE_AB))
+        self.assertTrue(A.ausgeblendet("Stats_Special_Queue", "2026-11-03", "2026-11-03"))
 
     def test_wochenfenster_ohne_altes_format(self):
         tage = ["2026-10-24", "2026-10-25", "2026-10-26", "2026-10-27", "2026-10-28"]
@@ -379,6 +383,161 @@ class Bilder(unittest.TestCase):
         A.bilder_kopieren(self.ziel, {"OP01-002": "u2"})
         with open(os.path.join(self.ziel, "img", "OP01-001.jpg"), "rb") as datei:
             self.assertEqual(datei.read(), b"alt")
+
+
+def tag_docs(tag, partien, mit_neu, karte_neu="OP18-001", deck_alt="4xOP17-039"):
+    """`partien` Replays an einem Tag, davon `mit_neu` mit einer Karte aus `karte_neu`."""
+    return [replay("OP17-039", "OP13-004", zeit=f"{tag}T10:{n % 60:02d}:00",
+                   sieger_deck=("4x" + karte_neu if n < mit_neu else deck_alt),
+                   pfad=f"{tag}_{n}.log")
+            for n in range(partien)]
+
+
+class Formaterkennung(unittest.TestCase):
+    def setUp(self):
+        self.zustand = A.standard_zustand()
+        self.alt = tag_docs("2026-10-28", 100, 0)
+
+    def erkennen(self, *tage):
+        return A.format_wechsel_erkennen(self.alt + [d for t in tage for d in t], self.zustand)
+
+    def test_vier_prozent_loesen_nichts_aus(self):
+        self.assertIsNone(self.erkennen(tag_docs("2026-10-29", 100, 4),
+                                        tag_docs("2026-10-30", 100, 60)))
+
+    def test_mischtag_dann_dreissig_prozent_folgetag(self):
+        self.assertEqual(self.erkennen(tag_docs("2026-10-29", 100, 10),
+                                       tag_docs("2026-10-30", 100, 30)),
+                         ("2026-10-30", {"OP18"}))
+
+    def test_folgetag_unter_dreissig_prozent_noch_kein_wechsel(self):
+        self.assertIsNone(self.erkennen(tag_docs("2026-10-29", 100, 10),
+                                        tag_docs("2026-10-30", 100, 29)))
+
+    def test_umstellungstag_ohne_folgetag_noch_kein_wechsel(self):
+        self.assertIsNone(self.erkennen(tag_docs("2026-10-29", 100, 40)))
+
+    def test_starter_und_promos_zaehlen_nicht(self):
+        docs = [tag_docs("2026-10-29", 100, 100, "ST30-001"),
+                tag_docs("2026-10-30", 100, 100, "P-045")]
+        self.assertIsNone(self.erkennen(*docs))
+
+    def test_nicht_hoehere_sets_zaehlen_nicht(self):
+        self.assertIsNone(self.erkennen(tag_docs("2026-10-29", 100, 100, "EB05-002"),
+                                        tag_docs("2026-10-30", 100, 100, "OP16-001")))
+
+    def test_andere_modi_zaehlen_nicht(self):
+        docs = [dict(d, game_mode="1") for d in tag_docs("2026-10-29", 100, 100)]
+        self.assertIsNone(self.erkennen(docs, tag_docs("2026-10-30", 100, 100)))
+
+    def test_decks_als_liste_und_verlierer_seite(self):
+        docs = [dict(d, winner_deck=["4xOP17-039"], loser_deck=["1xOP18-001"])
+                for d in tag_docs("2026-10-29", 100, 0)]
+        self.assertEqual(self.erkennen(docs, docs and [dict(d, timestamp="2026-10-30T10:00:00")
+                                                       for d in docs]),
+                         ("2026-10-30", {"OP18"}))
+
+    def test_eb06_kommt_dazu_op18_ersetzt(self):
+        eb = A.format_nach_wechsel(self.zustand, "2026-11-10", {"EB06"})
+        self.assertEqual(eb["sets"], ["OP17", "EB06"])
+        self.assertEqual(eb["name"], "OP17 + EB06 Standard")
+        self.assertEqual(eb["schluessel"], "Roh_mode_0_op17eb06")
+        op = A.format_nach_wechsel(self.zustand, "2026-11-10", {"OP18"})
+        self.assertEqual((op["sets"], op["name"], op["schluessel"]),
+                         (["OP18"], "OP18 Standard", "Roh_mode_0_op18"))
+        beide = A.format_nach_wechsel(self.zustand, "2026-11-10", {"OP18", "EB06"})
+        self.assertEqual(beide["sets"], ["OP18", "EB06"])
+        self.assertEqual(beide["name"], "OP18 + EB06 Standard")
+
+    def test_schluessel_des_heutigen_formats_unveraendert(self):
+        self.assertEqual(A.format_schluessel(["OP17", "EB05"]), A.FORMAT_SCHLUESSEL)
+        self.assertEqual(A.format_name(["OP17", "EB05"]), A.FORMAT_NAME)
+
+
+class Zustand(unittest.TestCase):
+    def setUp(self):
+        self.ziel = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.ziel)
+
+    def test_ohne_datei_aus_den_konstanten(self):
+        self.assertEqual(A.zustand_lesen(self.ziel), {
+            "start": A.FORMAT_START, "name": A.FORMAT_NAME,
+            "schluessel": A.FORMAT_SCHLUESSEL, "sets": ["OP17", "EB05"], "alte": []})
+
+    def test_kaputte_datei_aus_den_konstanten(self):
+        os.makedirs(os.path.join(self.ziel, "tage"))
+        with open(os.path.join(self.ziel, "tage", A.ZUSTAND_DATEI), "w") as datei:
+            datei.write("{kaputt")
+        self.assertEqual(A.zustand_lesen(self.ziel), A.standard_zustand())
+
+    def test_unvollstaendige_datei_aus_den_konstanten(self):
+        os.makedirs(os.path.join(self.ziel, "tage"))
+        with open(os.path.join(self.ziel, "tage", A.ZUSTAND_DATEI), "w") as datei:
+            datei.write('{"start": "2026-11-10"}')
+        self.assertEqual(A.zustand_lesen(self.ziel), A.standard_zustand())
+
+    def test_hin_und_zurueck(self):
+        zustand = A.format_nach_wechsel(A.standard_zustand(), "2026-11-10", {"OP18"})
+        zustand["alte"] = [{"schluessel": "k_alt", "name": "n", "datei": "k_alt.zwischen.gz"}]
+        A.zustand_schreiben(self.ziel, zustand)
+        self.assertEqual(A.zustand_lesen(self.ziel), zustand)
+
+
+class Wechsel(unittest.TestCase):
+    """Ein simulierter Wechsel auf OP18, ohne Codeaenderung."""
+
+    def setUp(self):
+        self.ziel = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.ziel)
+        self.docs = (tag_docs("2026-10-28", 50, 0) + tag_docs("2026-11-09", 50, 0)
+                     + tag_docs("2026-11-10", 50, 10) + tag_docs("2026-11-11", 50, 40)
+                     + tag_docs("2026-11-12", 50, 45))
+        self.alt = A.standard_zustand()
+        self.neu = A.format_wechsel_anwenden(self.ziel, self.docs, {}, self.alt)
+
+    def test_neues_format(self):
+        self.assertEqual((self.neu["start"], self.neu["sets"], self.neu["name"],
+                          self.neu["schluessel"]),
+                         ("2026-11-11", ["OP18"], "OP18 Standard", "Roh_mode_0_op18"))
+
+    def test_neuer_satz_ab_dem_start(self):
+        satz = A.replay_satz(self.docs, {}, self.neu)
+        self.assertEqual(satz["partien"], 100)
+        self.assertEqual(satz["name"], "OP18 Standard (from replays)")
+        self.assertAlmostEqual(A.eb05_anteil(satz, "OP18"), 85 / 100)
+        self.assertIsNone(A.eb05_warnung(satz, self.neu))
+
+    def test_alter_satz_bis_zum_vortag_der_umstellung(self):
+        alte = A.alte_saetze(self.ziel, self.neu)
+        self.assertEqual(list(alte), ["Roh_mode_0_op17eb05_alt"])
+        satz = alte["Roh_mode_0_op17eb05_alt"]
+        self.assertEqual(satz["partien"], 100)      # 28.10. und 09.11., ohne den Mischtag
+        self.assertEqual(satz["name"], "OP17 + EB05 format (old) (from replays)")
+        self.assertTrue(os.path.exists(os.path.join(
+            self.ziel, "tage", "Roh_mode_0_op17eb05_alt" + A.ALT_ZWISCHEN)))
+        self.assertTrue(os.path.exists(os.path.join(
+            self.ziel, "saetze", "Roh_mode_0_op17eb05_alt.json.gz")))
+
+    def test_alter_satz_bleibt_ueber_die_zustandsdatei(self):
+        A.zustand_schreiben(self.ziel, self.neu)
+        gelesen = A.zustand_lesen(self.ziel)
+        self.assertEqual(list(A.alte_saetze(self.ziel, gelesen)), ["Roh_mode_0_op17eb05_alt"])
+
+    def test_zwischendatei_bleibt_beim_aufraeumen(self):
+        self.assertFalse(fnmatch.fnmatch("Roh_mode_0_op17eb05_alt" + A.ALT_ZWISCHEN, "*.json.gz"))
+
+    def test_kein_zweiter_wechsel(self):
+        self.assertIsNone(A.format_wechsel_erkennen(self.docs, self.neu))
+
+    def test_wochengrenze_und_reihenfolge_folgen_dem_zustand(self):
+        self.assertEqual(A.wochentage(["2026-11-10", "2026-11-11", "2026-11-12"], self.neu),
+                         ["2026-11-11", "2026-11-12"])
+        saetze = dict.fromkeys(["Stats_lw", "Roh_mode_0_op17eb05_alt", self.neu["schluessel"]])
+        self.assertEqual(A.satz_reihenfolge(saetze, self.neu)[0], "Roh_mode_0_op18")
+
+    def test_warnung_nennt_das_neueste_set(self):
+        satz = satz_mit([(["4xOP17-039"], 5, 5)])
+        self.assertIn("OP18", A.eb05_warnung(satz, self.neu))
 
 
 if __name__ == "__main__":

@@ -3469,6 +3469,9 @@ export default function App() {
     holen("verzeichnis.json.gz")
       .then((v) => {
         setVerzeichnis(v);
+        if (v.start && (v.saetze || []).some((s) => s.schluessel === v.start)) {
+          setWahl((w) => ({ ...w, satz: v.start }));
+        }
         const tage = (v.tage || []).filter((t) => t.modus === "mode_0" && t.bounty === "25_1000");
         const letzter = tage.length ? tage[tage.length - 1].tag : "";
         const start = tage.length ? tage[Math.max(0, tage.length - 7)].tag : "";

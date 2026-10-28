@@ -97,14 +97,26 @@ LOG_ANFANG_BYTES = 16384
 LOG_TIMEOUT = 30
 FEHLT = object()    # Log gibt es nicht (404): endgueltig, wird nicht nochmal versucht
 ZUG_ZEILE = re.compile(r"\[([^\]]+)\] Chose to go (First|Second)")
-EB05_KARTE = "EB05-"
-# Unter diesem Anteil an Partien mit EB05 Karten im Deck sieht der Satz nicht nach dem
-# neuen Format aus, und sein Name stimmt nicht mehr.
+# Unter diesem Anteil an Partien mit Karten des neuesten Sets im Deck sieht der Satz nicht
+# nach dem Format aus, und sein Name stimmt nicht mehr. Derselbe Wert entscheidet, ab wann
+# ein neues Format als eingefuehrt gilt (specs/features/selbstlauf.md, Phase 1).
 EB05_MIN_ANTEIL = 0.30
+# Format des Zustands: Anfangssets, Zustandsdatei und Endungen der abgelegten Dateien.
+FORMAT_SETS = ("OP17", "EB05")
+ZUSTAND_DATEI = "format.zustand.json"
+ALT_SUFFIX = "_alt"
+# Endung *.zwischen.gz, nicht *.json.gz: letzteres raeumt `main` bei den Tagesdateien weg.
+ALT_ZWISCHEN = ".zwischen.gz"
+ALT_ZUSATZ = " format (old)"
+SCHLUESSEL_VORSATZ = "Roh_mode_0_"
+SET_NAME = re.compile(r"^(OP|EB)(\d+)$")
+# Ab diesem Anteil an Partien mit Karten eines neuen Sets beginnt die Umstellung. Der Tag
+# mischt beide Formate; das neue Format beginnt am Tag danach (siehe EB05_MIN_ANTEIL).
+UMSTELL_ANTEIL = 0.05
 # Die Wochensaetze des Spiels reichen sieben Tage zurueck und mischen bis dahin altes und
-# neues Format. Bis zu diesem Tag (ausschliesslich) zeigen wir sie gar nicht; das neue
-# Format steht dann nur im Formatsatz, mit den Tagen, die es schon gibt.
-WOCHE_AB = "2026-11-03"
+# neues Format. Bis zum Formatstart plus WOCHE_TAGE (ausschliesslich) zeigen wir sie gar
+# nicht; das neue Format steht dann nur im Formatsatz, mit den Tagen, die es schon gibt.
+WOCHE_TAGE = 7
 WOCHENSAETZE = ("Stats_lw", "Stats_LWS1BillionBounty", "Stats_LWS2BillionBounty")
 # Das Event Anfang November 2026 erlaubt nur bestimmte Leader. Der Event Satz ist der
 # Formatsatz, beschraenkt auf diese Leader und in den Matchups auf Gegner aus derselben Liste.
@@ -303,19 +315,19 @@ def anzeigename(schluessel: str) -> str:
     return ANZEIGE.get(schluessel, schluessel.replace("Stats_", ""))
 
 
-def ausgeblendet(schluessel: str, heute: str) -> bool:
-    """Ob ein fertiger Satz fehlen soll: dauerhaft oder als Wochensatz vor WOCHE_AB."""
-    return schluessel in AUSGEBLENDET or (schluessel in WOCHENSAETZE and heute < WOCHE_AB)
+def ausgeblendet(schluessel: str, heute: str, woche_ab: str) -> bool:
+    """Ob ein fertiger Satz fehlen soll: dauerhaft oder als Wochensatz vor `woche_ab`."""
+    return schluessel in AUSGEBLENDET or (schluessel in WOCHENSAETZE and heute < woche_ab)
 
 
-def fertige_saetze(ziel: str) -> dict:
+def fertige_saetze(ziel: str, woche_ab: str) -> dict:
     index = hole("regular/timestamps.json")
     heute = time.strftime("%Y-%m-%d")
     saetze = {}
     for eintrag in index.get("stats", []):
         datei = eintrag["file"]
         name = datei.rsplit(".", 1)[0]
-        if ausgeblendet(name, heute):
+        if ausgeblendet(name, heute, woche_ab):
             print(f"  {datei} ausgeblendet")
             continue
         print(f"  {datei} ...", flush=True)
@@ -350,7 +362,7 @@ def fenster(anzahl: int) -> list:
     return sorted({k.split("/")[0] for k in index_schluessel()})[-anzahl:]
 
 
-def satz_reihenfolge(saetze: dict) -> list:
+def satz_reihenfolge(saetze: dict, zustand: dict | None = None) -> list:
     """Die selbst gerechneten Saetze neben die Wochensaetze des Spiels stellen.
 
     Sonst haengen sie hinter den Saisonsaetzen am Ende der Auswahl, obwohl sie
@@ -359,7 +371,8 @@ def satz_reihenfolge(saetze: dict) -> list:
     Der Satz des aktuellen Formats steht ganz oben, sein Event Satz direkt darunter.
     """
     reihenfolge = list(saetze)
-    oben = [k for k in (FORMAT_SCHLUESSEL, EVENT_SCHLUESSEL) if k in reihenfolge]
+    schluessel_format = (zustand or standard_zustand())["schluessel"]
+    oben = [k for k in (schluessel_format, EVENT_SCHLUESSEL) if k in reihenfolge]
     for schluessel in [k for k in reihenfolge
                        if k.startswith("Roh_") and k not in oben]:
         reihenfolge.remove(schluessel)
@@ -413,8 +426,8 @@ def tage_ab(schluessel_alle: list, start: str) -> list:
     return sorted({k.split("/")[0] for k in schluessel_alle if k.split("/")[0] >= start})
 
 
-def eb05_anteil(satz: dict) -> float:
-    """Anteil der Partien, deren Deck mindestens eine EB05 Karte enthaelt.
+def eb05_anteil(satz: dict, set_name: str = "EB05") -> float:
+    """Anteil der Partien, deren Deck mindestens eine Karte des Sets enthaelt.
 
     Gezaehlt ueber die Decklisten des Satzes, jede mit ihren Siegen und Niederlagen.
     """
@@ -423,17 +436,21 @@ def eb05_anteil(satz: dict) -> float:
         for liste in leader.get("listen", []):
             spiele = liste["w"] + liste["l"]
             alle += spiele
-            if any(EB05_KARTE in karte_ for karte_ in liste["d"]):
+            if any(set_name + "-" in karte_ for karte_ in liste["d"]):
                 mit_eb05 += spiele
     return mit_eb05 / alle if alle else 0.0
 
 
-def eb05_warnung(satz: dict) -> str | None:
-    """Ein Warntext, wenn der Formatsatz nicht nach OP17 plus EB05 aussieht, sonst None."""
-    anteil = eb05_anteil(satz)
+def eb05_warnung(satz: dict, zustand: dict | None = None) -> str | None:
+    """Ein Warntext, wenn der Formatsatz nicht nach dem Format aussieht, sonst None.
+
+    Massstab ist das neueste Set des Formats, bei OP17 plus EB05 also EB05.
+    """
+    neuestes = (zustand or standard_zustand())["sets"][-1]
+    anteil = eb05_anteil(satz, neuestes)
     if anteil >= EB05_MIN_ANTEIL:
         return None
-    return (f"Nur {anteil:.0%} der Partien in {FORMAT_MODUS} mit EB05 Karten, erwartet "
+    return (f"Nur {anteil:.0%} der Partien in {FORMAT_MODUS} mit {neuestes} Karten, erwartet "
             f"mindestens {EB05_MIN_ANTEIL:.0%}. Stimmt das Format noch?")
 
 
@@ -533,11 +550,16 @@ def starts_ermitteln(docs: list, eimer: str, zwischen: str) -> dict:
             if d.get("path") and start_schluessel(d["path"]) in neu}
 
 
-def format_replays_filtern(docs: list) -> list:
-    """Nur die Replays der normalen Queue ab FORMAT_START, mit beiden Leadern."""
+def format_replays_filtern(docs: list, zustand: dict | None = None, bis: str = "") -> list:
+    """Nur die Replays der normalen Queue ab dem Formatstart, mit beiden Leadern.
+
+    `bis` (ausschliesslich, ISO Zeit oder Tag) schneidet hinten ab, fuer den alten Satz.
+    """
+    start = (zustand or standard_zustand())["start"]
     return [d for d in docs
             if str(d.get("game_mode")) == REPLAY_MODUS
-            and str(d.get("timestamp") or "") >= FORMAT_START
+            and str(d.get("timestamp") or "") >= start
+            and (not bis or str(d.get("timestamp") or "") < bis)
             and d.get("winner_leader") and d.get("loser_leader")]
 
 
@@ -591,51 +613,231 @@ def roh_aus_replays(docs: list, starts: dict) -> dict:
     return roh
 
 
-def replay_satz(docs: list, starts: dict) -> dict:
-    """Der Formatsatz aus Replays, im Format der Seite."""
-    roh = roh_aus_replays(format_replays_filtern(docs), starts)
-    return eindampfen(roh, FORMAT_NAME + REPLAY_ZUSATZ, FORMAT_MODUS, ",".join(BOUNTY))
+def replay_satz(docs: list, starts: dict, zustand: dict | None = None, bis: str = "",
+                name: str = "") -> dict:
+    """Der Formatsatz aus Replays, im Format der Seite.
+
+    Ohne `name` heisst er wie das Format im Zustand.
+    """
+    zustand = zustand or standard_zustand()
+    roh = roh_aus_replays(format_replays_filtern(docs, zustand, bis), starts)
+    return eindampfen(roh, (name or zustand["name"]) + REPLAY_ZUSATZ, FORMAT_MODUS,
+                      ",".join(BOUNTY))
 
 
-def format_satz(ziel: str) -> dict | None:
+def set_nummer(name: str):
+    """(Art, Nummer) eines Sets wie "OP17" oder "EB05", sonst None (ST, P, PRB, ...)."""
+    treffer = SET_NAME.match(name)
+    return (treffer.group(1), int(treffer.group(2))) if treffer else None
+
+
+def format_name(sets: list) -> str:
+    """Name des Formats aus seinen Sets, z.B. "OP17 + EB05 Standard"."""
+    return " + ".join(sets) + " Standard"
+
+
+def format_schluessel(sets: list) -> str:
+    """Schluessel des Formatsatzes, z.B. Roh_mode_0_op17eb05."""
+    return SCHLUESSEL_VORSATZ + "".join(sets).lower()
+
+
+def standard_zustand() -> dict:
+    """Der Zustand aus den Konstanten; gilt, wenn es keine Zustandsdatei gibt."""
+    return {"start": FORMAT_START, "name": FORMAT_NAME, "schluessel": FORMAT_SCHLUESSEL,
+            "sets": list(FORMAT_SETS), "alte": []}
+
+
+def zustand_lesen(ziel: str) -> dict:
+    """Der Zustand aus ziel/tage/format.zustand.json, bei fehlender oder kaputter Datei
+    der aus den Konstanten."""
+    pfad = os.path.join(ziel, "tage", ZUSTAND_DATEI)
+    try:
+        with open(pfad, encoding="utf-8") as datei:
+            zustand = json.load(datei)
+        gueltig = (isinstance(zustand["start"], str) and isinstance(zustand["name"], str)
+                   and isinstance(zustand["schluessel"], str)
+                   and isinstance(zustand["sets"], list) and zustand["sets"]
+                   and isinstance(zustand["alte"], list))
+    except (OSError, ValueError, KeyError, TypeError):
+        return standard_zustand()
+    return zustand if gueltig else standard_zustand()
+
+
+def zustand_schreiben(ziel: str, zustand: dict) -> None:
+    pfad = os.path.join(ziel, "tage", ZUSTAND_DATEI)
+    os.makedirs(os.path.dirname(pfad), exist_ok=True)
+    with open(pfad, "w", encoding="utf-8") as datei:
+        json.dump(zustand, datei, ensure_ascii=False, indent=1)
+
+
+def deck_sets(deck) -> set:
+    """Die Sets (OP17, EB05, ST01, ...) der Karten eines Decks, Text oder Liste."""
+    text = " ".join(deck) if isinstance(deck, list) else str(deck or "")
+    return {k.split("-")[0] for k in KARTE.findall(text)}
+
+
+def neue_sets(sets: set, zustand: dict) -> set:
+    """Davon die OP und EB Sets mit hoeherer Nummer als das hoechste ihrer Art im Format."""
+    hoechste = {}
+    for name in zustand["sets"]:
+        art, nummer = set_nummer(name) or (None, 0)
+        hoechste[art] = max(hoechste.get(art, 0), nummer)
+    neu = set()
+    for name in sets:
+        art_nummer = set_nummer(name)
+        if art_nummer and art_nummer[1] > hoechste.get(art_nummer[0], 0):
+            neu.add(name)
+    return neu
+
+
+def tag_anteile(docs: list, zustand: dict) -> dict:
+    """Je UTC Tag: Partien im Modus 0 und wie viele davon Karten eines neuen Sets haben.
+
+    Ergebnis: {tag: {"partien": n, "neu": n, "sets": {set: n}}}
+    """
+    tage = {}
+    for doc in docs:
+        if str(doc.get("game_mode")) != REPLAY_MODUS or not doc.get("timestamp"):
+            continue
+        tag = tage.setdefault(str(doc["timestamp"])[:10], {"partien": 0, "neu": 0, "sets": {}})
+        neu = neue_sets(deck_sets(doc.get("winner_deck")) | deck_sets(doc.get("loser_deck")),
+                        zustand)
+        tag["partien"] += 1
+        tag["neu"] += bool(neu)
+        for name in neu:
+            tag["sets"][name] = tag["sets"].get(name, 0) + 1
+    return tage
+
+
+def format_wechsel_erkennen(docs: list, zustand: dict):
+    """(Starttag des neuen Formats, seine neuen Sets) oder None.
+
+    Umstellungstag ist der erste Tag mit mindestens UMSTELL_ANTEIL Partien mit neuen Sets;
+    er mischt beide Formate. Das neue Format beginnt am Tag danach, sobald es diesen Tag
+    in den Daten gibt und er mindestens EB05_MIN_ANTEIL erreicht.
+    """
+    tage = tag_anteile(docs, zustand)
+    for tag in sorted(t for t in tage if t >= zustand["start"]):
+        if tage[tag]["neu"] / tage[tag]["partien"] < UMSTELL_ANTEIL:
+            continue
+        folgetag = str(datetime.date.fromisoformat(tag) + datetime.timedelta(days=1))
+        folge = tage.get(folgetag)
+        if folge and folge["neu"] / folge["partien"] >= EB05_MIN_ANTEIL:
+            sets = {n for n, anzahl in folge["sets"].items()
+                    if anzahl / folge["partien"] >= UMSTELL_ANTEIL}
+            return folgetag, sets
+    return None
+
+
+def format_nach_wechsel(zustand: dict, start: str, neue: set) -> dict:
+    """Das neue Format: ein neues OP Set ersetzt alles, ein neues EB Set kommt zum OP dazu."""
+    nach_art = {"OP": [], "EB": []}
+    for name in neue:
+        nach_art[set_nummer(name)[0]].append(name)
+    op = max(nach_art["OP"], key=set_nummer) if nach_art["OP"] else None
+    eb = max(nach_art["EB"], key=set_nummer) if nach_art["EB"] else None
+    if op:
+        sets = [op] + ([eb] if eb else [])
+    else:
+        alt_op = [n for n in zustand["sets"] if n.startswith("OP")]
+        sets = alt_op + ([eb] if eb else [])
+    return {"start": start, "name": format_name(sets), "schluessel": format_schluessel(sets),
+            "sets": sets, "alte": list(zustand["alte"])}
+
+
+def alten_satz_ablegen(ziel: str, docs: list, starts: dict, zustand: dict,
+                       umstellungstag: str) -> dict:
+    """Den Satz des alten Formats bis zum Vortag der Umstellung rechnen und ablegen.
+
+    Gibt den Eintrag fuer `zustand["alte"]` zurueck.
+    """
+    schluessel = zustand["schluessel"] + ALT_SUFFIX
+    # "OP17 + EB05 Standard" wird "OP17 + EB05 format (old)", wie bei Stats_OP17.
+    name = zustand["name"].removesuffix(" Standard") + ALT_ZUSATZ
+    satz = replay_satz(docs, starts, zustand, umstellungstag, name)
+    datei = schluessel + ALT_ZWISCHEN
+    schreiben(os.path.join(ziel, "tage", datei), satz)
+    print(f"  Altes Format abgelegt: {name}, {satz['partien']} Partien")
+    return {"schluessel": schluessel, "name": name, "datei": datei}
+
+
+def format_umstellen(ziel: str, docs: list, starts: dict, zustand: dict, start: str,
+                     neue: set) -> dict:
+    """Den alten Satz ablegen und den Zustand des neuen Formats liefern."""
+    umstellungstag = str(datetime.date.fromisoformat(start) - datetime.timedelta(days=1))
+    alt = alten_satz_ablegen(ziel, docs, starts, zustand, umstellungstag)
+    neu = format_nach_wechsel(zustand, start, neue)
+    neu["alte"] = [a for a in zustand["alte"] if a["schluessel"] != alt["schluessel"]] + [alt]
+    print(f"  Neues Format ab {start}: {neu['name']}")
+    return neu
+
+
+def format_wechsel_anwenden(ziel: str, docs: list, starts: dict, zustand: dict) -> dict:
+    """Alle erkannten Wechsel nacheinander anwenden; der Zustand ist danach aktuell."""
+    wechsel = format_wechsel_erkennen(docs, zustand)
+    while wechsel:
+        zustand = format_umstellen(ziel, docs, starts, zustand, *wechsel)
+        wechsel = format_wechsel_erkennen(docs, zustand)
+    return zustand
+
+
+def alte_saetze(ziel: str, zustand: dict) -> dict:
+    """Die abgelegten Saetze alter Formate lesen und unter saetze/ neu schreiben."""
+    saetze = {}
+    for alt in zustand["alte"]:
+        try:
+            satz = lesen(os.path.join(ziel, "tage", alt["datei"]))
+        except (OSError, ValueError, KeyError) as fehler:
+            print(f"::warning::Alter Formatsatz {alt.get('schluessel')} nicht gelesen: {fehler}")
+            continue
+        schreiben(os.path.join(ziel, "saetze", alt["schluessel"] + ".json.gz"), satz)
+        saetze[alt["schluessel"]] = satz
+        print(f"  {alt['schluessel']}  {satz['partien']} Partien")
+    return saetze
+
+
+def format_satz(ziel: str, zustand: dict) -> tuple[dict | None, dict]:
     """Der Satz des aktuellen Formats: Modus 0, alle Tage ab dem Start, aus den Replays.
 
+    Liefert den Satz und den Zustand, der nach einem erkannten Wechsel ein neuer ist.
     Faellt Firestore aus, entfaellt der Satz und der Lauf geht weiter.
     """
     try:
         db = Db()
         jetzt = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-        tage = (jetzt - datetime.datetime.fromisoformat(FORMAT_START)).days + 1
-        docs = format_replays_filtern(replays_suchen(db, jetzt, tage))
+        tage = (jetzt - datetime.datetime.fromisoformat(zustand["start"])).days + 1
+        docs = format_replays_filtern(replays_suchen(db, jetzt, tage), zustand)
     except (Exception, SystemExit) as fehler:
-        print(f"::warning::Replays nicht gelesen, {FORMAT_NAME} uebersprungen: {fehler}")
-        return None
-    print(f"  {len(docs)} Replays im Modus {REPLAY_MODUS} ab {FORMAT_START}", flush=True)
+        print(f"::warning::Replays nicht gelesen, {zustand['name']} uebersprungen: {fehler}")
+        return None, zustand
+    print(f"  {len(docs)} Replays im Modus {REPLAY_MODUS} ab {zustand['start']}", flush=True)
     zwischen = os.path.join(ziel, "tage", START_ZWISCHEN)
     try:
         starts = starts_ermitteln(docs, db.c["storageBucket"], zwischen)
     except Exception as fehler:
         print(f"::warning::First und Second nicht gelesen: {fehler}")
         starts = {}
-    satz = replay_satz(docs, starts)
-    groesse = schreiben(os.path.join(ziel, "saetze", FORMAT_SCHLUESSEL + ".json.gz"), satz)
+    zustand = format_wechsel_anwenden(ziel, docs, starts, zustand)
+    satz = replay_satz(docs, starts, zustand)
+    groesse = schreiben(os.path.join(ziel, "saetze", zustand["schluessel"] + ".json.gz"), satz)
     mit_start = sum(1 for v in starts.values() if v is not None)
     print(f"    {groesse/1e3:.0f} KB, {satz['partien']} Partien, First/Second bei "
           f"{mit_start}")
-    print(f"    EB05 Anteil {eb05_anteil(satz):.0%}")
-    warnung = eb05_warnung(satz)
+    print(f"    {zustand['sets'][-1]} Anteil {eb05_anteil(satz, zustand['sets'][-1]):.0%}")
+    warnung = eb05_warnung(satz, zustand)
     if warnung:
         # So erscheint die Warnung in der Zusammenfassung der Action.
         print(f"::warning::{warnung}")
-    return satz
+    return satz, zustand
 
 
-def wochentage(alle_tage: list) -> list:
+def wochentage(alle_tage: list, zustand: dict | None = None) -> list:
     """Das Fenster der selbst gerechneten Wochensaetze, ohne Tage vor dem Format.
 
     Gibt es noch keinen Tag im neuen Format, ist das Fenster leer und der Satz fehlt.
     """
-    return [t for t in alle_tage if t >= FORMAT_START]
+    start = (zustand or standard_zustand())["start"]
+    return [t for t in alle_tage if t >= start]
 
 
 def leader_ohne_anzahl(kennung: str) -> str:
@@ -1022,10 +1224,20 @@ def main() -> None:
         bilder_kopieren(ziel)
         return
 
-    print("Fertige Saetze:")
-    # Leer sein darf das hier: bis WOCHE_AB sind die Wochensaetze ausgeblendet. Geprueft
-    # wird erst, wenn auch die selbst gerechneten Saetze da sind.
-    saetze = fertige_saetze(ziel)
+    # Zuerst das Format: ein erkannter Wechsel verschiebt die Grenze der Wochensaetze.
+    zustand = zustand_lesen(ziel)
+    print(f"Satz aus den Replays, {zustand['name']}:")
+    format_ergebnis, zustand = format_satz(ziel, zustand)
+    zustand_schreiben(ziel, zustand)
+    print("\nAlte Formate:")
+    saetze = alte_saetze(ziel, zustand)
+
+    print("\nFertige Saetze:")
+    # Leer sein darf das hier: vor der Wochengrenze sind die Wochensaetze ausgeblendet.
+    # Geprueft wird erst, wenn auch die selbst gerechneten Saetze da sind.
+    woche_ab = str(datetime.date.fromisoformat(zustand["start"])
+                   + datetime.timedelta(days=WOCHE_TAGE))
+    saetze.update(fertige_saetze(ziel, woche_ab))
 
     print("\nKartennamen:")
     try:
@@ -1061,16 +1273,14 @@ def main() -> None:
         if bereich not in bereiche or not modi:
             continue
         print(f"\nSatz aus der Rohebene, {anzeige}:")
-        satz = roh_satz(ziel, index_schluessel(), wochentage(fenster(ROH_TAGE)), modi[0],
+        satz = roh_satz(ziel, index_schluessel(), wochentage(fenster(ROH_TAGE), zustand), modi[0],
                         [bereich], roh_schluessel(modi[0], bereich), anzeige)
         if satz:
             saetze[roh_schluessel(modi[0], bereich)] = satz
 
-    print(f"\nSatz aus der Rohebene, {FORMAT_NAME}:")
-    satz = format_satz(ziel)
-    if satz:
-        saetze[FORMAT_SCHLUESSEL] = satz
-        event = format_event_satz(ziel, satz)
+    if format_ergebnis:
+        saetze[zustand["schluessel"]] = format_ergebnis
+        event = format_event_satz(ziel, format_ergebnis)
         if event:
             saetze[EVENT_SCHLUESSEL] = event
 
@@ -1082,11 +1292,12 @@ def main() -> None:
         "saetze": [{"schluessel": k, "name": saetze[k]["name"],
                     "partien": saetze[k]["partien"], "stand": saetze[k]["stand"],
                     "datei": "saetze/" + k + ".json.gz"}
-                   for k in satz_reihenfolge(saetze)],
+                   for k in satz_reihenfolge(saetze, zustand)],
         "tage": sorted(tage, key=lambda e: (e["tag"], e["modus"], e["bounty"])),
         "modi": MODI,
         "bounty": list(BOUNTY),
         "bounty_name": BOUNTY_NAME,
+        "start": zustand["schluessel"],
     }
     schreiben(os.path.join(ziel, "verzeichnis.json.gz"), verzeichnis)
     print(f"\n  verzeichnis.json: {len(verzeichnis['saetze'])} Saetze, "
