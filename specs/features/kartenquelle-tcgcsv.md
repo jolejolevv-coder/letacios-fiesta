@@ -108,6 +108,17 @@ von Bandai.
 Der Austausch aller Bilder kostet einmal rund 2.900 Abrufe. Er macht das Aussehen
 einheitlich. Die Bilder liegen im Zwischenspeicher der Action, nicht im Repo.
 
+## Stand 28.10.2026, Phase 1 (Daten)
+
+Gebaut, mit geänderter Reihenfolge der Quellen (Nutzer, 28.10.2026: „bevorzuge Kaizoku wegen
+der Richtigkeit“). Gemessen: Kaizoku kennt 61 Karten aus dem OP18 Vorverkauf, tcgcsv 42;
+Abruf 0,2 s gegen 4,5 s. tcgcsv hatte bei 33 Karten fehlende oder falsche Kosten und Counter,
+Kaizoku stimmte dort mit Punk Records überein. Darum: Kaizoku zuerst, tcgcsv füllt fehlende
+Nummern und Felder, die Datei vom Vortag füllt, wenn eine Quelle ausfällt. Punk Records
+entfällt. Vergleich mit Punk Records: 2.964 statt 2.850 Karten, keine fehlt, Kosten und
+Art gleich, ein Counter weg (OP11-020, ein [Main] Event ohne Counter, also alt falsch),
+acht Namen anders geschrieben (etwa „Kouzuki“). Die Bilder bleiben bei tcgcsv.
+
 ## Entschieden
 
 - Bilder in 1000 px laden und verkleinern (Nutzer, 24.10.2026).
