@@ -11,8 +11,17 @@ weiter. Die Replays in Firestore laufen und zeigen die Umstellung (27.10.: 57 % 
 `game_mode` 0). Gebaut (PR 10, Branch `claude/format-aus-replays`): Formatsatz und Heroines
 Event aus den Replays, First/Second aus den Logs, erster Lauf rund 7 Minuten. Dazu
 `werkzeuge/notice_setzen.py`: der Mitschnitt setzt `seen_update_notice_v` vor jedem Start
-selbst. Entwurf `specs/features/selbstlauf.md` (Formaterkennung vor OP18 am 20.11.) wartet
-auf Freigabe.
+selbst. `specs/features/selbstlauf.md` ist freigegeben (Startsatz automatisch, Warnungen
+nur über GitHub). Phase 1 Formaterkennung gebaut (PR 11, Branch `claude/formaterkennung`,
+auf PR 10 aufgesetzt): Zustand in `public/tage/format.zustand.json`, neue `OP`/`EB` Sets ab
+5 % am Umstellungstag und 30 % am Folgetag, alter Satz als „format (old)“ im Cache,
+`verzeichnis.start` öffnet den Formatsatz.
+
+Annahmen Phase 1: nach OP17 + EB05 kommt OP18 ohne neues EB (Nutzer, 28.10.: EB Sets
+kommen nur alle paar Sets, EB05 Heroines war eine Ausnahme fürs Event; das nächste EB
+frühestens nach OP19 oder OP20). Ein neues EB käme zum OP dazu; zum
+Format zählen die neuen Sets mit mindestens 5 % am Starttag; erkannt wird nur über
+Deckkarten; der Event Schlüssel bleibt `..._op17eb05_event` bis Phase 3.
 
 Bazzite: Update Notice v2.7.7 blockierte die Bestenliste seit 27.10. früh. Am 28.10.
 `seen_update_notice_v` auf 2.7.7 gesetzt (Sicherung `uinf.tres.bak_2026-10-28`) und
@@ -74,6 +83,9 @@ Bounty im Replay ist ohnehin nicht die Queue Bounty.
 
 ## Nächste Schritte
 
+0. PR 10, dann PR 11 mergen (nur mit OK des Nutzers), danach Lauf der Action prüfen:
+   Formatsatz, Heroines Event, `format.zustand.json` im Cache. Dann Selbstlauf Phase 2
+   (tcgcsv Kartendaten, vor dem 20.11.).
 1. Kartenquelle tcgcsv: Phase 2 (Bilder) ist live seit PR 6 (c887775). Erster Lauf der
    Action: 2.218 Bilder ersetzt, 49 noch nicht von tcgcsv (`img/offen.txt`, Vorverkauf OP18
    und alte Promos), 16 ganz ohne Bild (OP18-065, OP18-091, P-087 bis P-151). Als Nächstes
