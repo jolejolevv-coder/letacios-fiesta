@@ -1,6 +1,6 @@
 # Selbstlauf: was Fiesta braucht, um ohne Handarbeit zu laufen
 
-Entwurf vom 28.10.2026, wartet auf Freigabe. Bestandsaufnahme nach dem Formatwechsel, bei
+Entwurf vom 28.10.2026, am selben Tag freigegeben. Bestandsaufnahme nach dem Formatwechsel, bei
 dem drei Dinge gleichzeitig Handarbeit brauchten: Startdatum des Formats, Update Notice
 auf dem Bazzite, Ausfall der Statistik von OPBounty.
 
@@ -71,7 +71,26 @@ Phase 2: Kartendaten tcgcsv (Punkt 7).
 Phase 3: Wache für CDN und Firestore Zugang, Event Ablauf (Punkte 2 bis 4).
 Phase 4: Meldungen (Punkt 5).
 
-## Open questions
+## Entschieden (28.10.2026)
 
-- Soll der neue Formatsatz beim Wechsel automatisch Startsatz der Seite werden? Vorschlag: ja.
-- Wohin sollen Warnungen gehen: nur GitHub, oder zusätzlich Mail oder Discord?
+- Der neue Formatsatz wird beim Wechsel automatisch Startsatz der Seite.
+- Warnungen gehen nur über GitHub (Zusammenfassung der Action, Mail von GitHub bei Fehlern).
+  Phase 4 wird damit klein: keine Mail und kein Discord.
+
+## Phase 1 im Detail: Formaterkennung
+
+- Zustand `public/tage/format.zustand.json` im Cache der Action: Start, Name, Schlüssel, die
+  Sets des Formats (heute `OP17`, `EB05`) und die eingefrorenen alten Formatsätze. Fehlt die
+  Datei, gelten die Konstanten in `aktualisieren.py`.
+- Erkennung je UTC Tag aus den Replays der normalen Queue, die der Lauf ohnehin holt: Anteil
+  der Partien mit mindestens einer Karte eines neuen Sets. Neu ist `OPnn` oder `EBnn` mit
+  höherer Nummer als im Format. Starter (`ST`), Promos (`P`) und `PRB` zählen nicht.
+- Der erste Tag mit mindestens 5 % ist der Umstellungstag und mischt beide Formate. Das neue
+  Format beginnt am Tag danach, sobald dieser Tag mindestens 30 % hat.
+- Name: ein neues `OP` Set ersetzt das Format (`OP18 Standard`), ein neues `EB` Set kommt dazu
+  (`OP18 + EB06 Standard`). Schlüssel `Roh_mode_0_<sets>`, Wochengrenze Start plus 7 Tage.
+- Der alte Formatsatz wird beim Wechsel aus seinen Replays bis zum Vortag der Umstellung
+  gerechnet, im Cache abgelegt und als „<Name> format (old)“ weiter gezeigt.
+- `verzeichnis.json` bekommt `start` mit dem Schlüssel des Formatsatzes; die Seite öffnet ihn.
+- Geht der Cache verloren, liest der Lauf ab dem Start aus den Konstanten und erkennt den
+  Wechsel erneut. Das kostet einen langen Lauf, aber keine Handarbeit.
