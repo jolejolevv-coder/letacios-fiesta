@@ -17,7 +17,9 @@ auf PR 10 aufgesetzt): Zustand in `public/tage/format.zustand.json`, neue `OP`/`
 5 % am Umstellungstag und 30 % am Folgetag, alter Satz als „format (old)“ im Cache,
 `verzeichnis.start` öffnet den Formatsatz.
 
-Annahmen Phase 1: ein neues EB Set ersetzt das alte EB (OP17+EB05 wird OP17+EB06); zum
+Annahmen Phase 1: nach OP17 + EB05 kommt OP18 ohne neues EB (Nutzer, 28.10.: EB Sets
+kommen nur alle paar Sets, EB05 Heroines war eine Ausnahme fürs Event; das nächste EB
+frühestens nach OP19 oder OP20). Ein neues EB käme zum OP dazu; zum
 Format zählen die neuen Sets mit mindestens 5 % am Starttag; erkannt wird nur über
 Deckkarten; der Event Schlüssel bleibt `..._op17eb05_event` bis Phase 3.
 
