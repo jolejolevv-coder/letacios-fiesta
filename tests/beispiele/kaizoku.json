@@ -1,0 +1,62 @@
+[
+ {
+  "cardNumber": "OP01-016",
+  "cardName": "Nami (Kaizoku)",
+  "cost": "5",
+  "counter": "0",
+  "cardType": "CHARACTER",
+  "color": "Red",
+  "text": "",
+  "products": []
+ },
+ {
+  "cardNumber": "P-999",
+  "cardName": "",
+  "cost": "",
+  "counter": "",
+  "cardType": "",
+  "color": "",
+  "text": "",
+  "products": []
+ },
+ {
+  "cardNumber": "OP18-005",
+  "cardName": "Franky",
+  "cost": "4",
+  "counter": "1000",
+  "cardType": "CHARACTER",
+  "color": "Red/Green",
+  "text": "",
+  "products": []
+ },
+ {
+  "cardNumber": "OP18-090",
+  "cardName": "Event X",
+  "cost": "2",
+  "counter": "0",
+  "cardType": "EVENT",
+  "color": "Black",
+  "text": "[Main] x <br/> [Counter] Your Leader gains +4000 power during this battle.",
+  "products": []
+ },
+ {
+  "cardNumber": "XOP12-040",
+  "cardName": "Stage Y",
+  "cost": "1",
+  "counter": "0",
+  "cardType": "STAGE",
+  "color": "Yellow",
+  "text": "",
+  "products": []
+ },
+ {
+  "cardNumber": "",
+  "cardName": "",
+  "cost": "",
+  "counter": "",
+  "cardType": "",
+  "color": "",
+  "text": "",
+  "products": []
+ }
+]

@@ -542,3 +542,113 @@ class Wechsel(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+BEISPIELE = os.path.join(os.path.dirname(__file__), "beispiele")
+
+
+def beispiel(name):
+    import json
+    with open(os.path.join(BEISPIELE, name), encoding="utf-8") as datei:
+        return json.load(datei)
+
+
+class Kartenquelle(unittest.TestCase):
+    """namen_holen und die Umrechner ohne Netz, mit Beispielantworten beider Quellen."""
+
+    def setUp(self):
+        self.produkte = beispiel("tcgcsv_produkte.json")
+        self.kaizoku = beispiel("kaizoku.json")
+        self.karten = A.karten_aus_tcgcsv(self.produkte)
+
+    def test_grundmotiv_statt_variante(self):
+        # Die Parallel Version steht zuerst und hat andere Kosten.
+        self.assertEqual(self.karten["OP01-016"], {"n": "Nami", "f": "r", "k": 1, "c": 1000})
+
+    def test_nur_variante_vorhanden_nimmt_die_variante(self):
+        self.assertEqual(self.karten["OP18-001"]["n"], "Tony Tony.Chopper (Parallel)")
+
+    def test_event_counter_aus_dem_kartentext(self):
+        self.assertEqual(self.karten["OP01-029"], {"n": "Radical Beam!!", "f": "r", "k": 1,
+                                                    "a": "e", "c": 2000})
+
+    def test_event_als_character_gemeldet_wird_erkannt(self):
+        self.assertEqual(self.karten["EB01-050"]["a"], "e")
+        self.assertEqual(self.karten["EB01-050"].get("c"), None)   # kein +Zahl im Text
+
+    def test_leader_nimmt_life_als_kosten_und_beide_farben(self):
+        self.assertEqual(self.karten["EB01-001"], {"n": "Kouzuki Oden", "f": "gr", "k": 4, "a": "l"})
+
+    def test_stage_und_namenszusatz(self):
+        self.assertEqual(self.karten["EB04-010"], {"n": "Lulucia Kingdom", "f": "r", "k": 7, "a": "s"})
+        self.assertEqual(self.karten["EB05-010"]["n"], "Nico Robin")
+
+    def test_don_und_boxen_sind_keine_karten(self):
+        self.assertNotIn("DON-001", self.karten)
+        self.assertEqual(len(self.karten), 7)
+
+    def test_kaizoku_umrechner(self):
+        self.assertEqual(A.karte_aus_kaizoku(self.kaizoku[3]),
+                         ("OP18-090", {"n": "Event X", "f": "s", "k": 2, "a": "e", "c": 4000}))
+        self.assertEqual(A.karte_aus_kaizoku(self.kaizoku[2])[1]["f"], "rg")
+        self.assertIsNone(A.karte_aus_kaizoku(self.kaizoku[5]))   # leerer Platzhalter
+        self.assertIsNone(A.karte_aus_kaizoku(self.kaizoku[1]))   # P-999 ohne Kartenart
+
+    def test_kaizoku_zuerst_tcgcsv_fuellt_luecken(self):
+        karten = A.karten_aus_kaizoku(self.kaizoku)
+        neu = A.karten_ergaenzen(karten, self.karten)
+        # Nummern, die nur tcgcsv kennt, kommen dazu; Kaizoku Werte bleiben stehen.
+        self.assertEqual(neu, len(set(self.karten) - set(A.karten_aus_kaizoku(self.kaizoku))))
+        self.assertEqual(karten["OP18-090"]["c"], 4000)
+
+    def test_ergaenzen_fuellt_nur_fehlende_felder(self):
+        karten = {"OP01-001": {"n": "Kaizoku", "k": 5}}
+        neu = A.karten_ergaenzen(karten, {"OP01-001": {"n": "tcgcsv", "k": 4, "c": 1000},
+                                          "OP01-002": {"n": "Nur tcgcsv"}})
+        self.assertEqual(neu, 1)
+        self.assertEqual(karten["OP01-001"], {"n": "Kaizoku", "k": 5, "c": 1000})
+        self.assertEqual(karten["OP01-002"], {"n": "Nur tcgcsv"})
+
+    def test_namen_holen_schreibt_beide_quellen(self):
+        with tempfile.TemporaryDirectory() as ziel:
+            anzahl = A.namen_holen(ziel, self.produkte, self.kaizoku)
+            gelesen = A.lesen(os.path.join(ziel, "karten.json.gz"))
+        self.assertEqual(anzahl, 10)
+        self.assertEqual(gelesen["OP01-016"]["n"], "Nami (Kaizoku)")   # Kaizoku zuerst
+        self.assertEqual(gelesen["OP18-005"]["k"], 4)
+
+    def test_kaizoku_ausfall_nimmt_tcgcsv_und_gestern(self):
+        alt = A.kaizoku_holen
+        A.kaizoku_holen = lambda: (_ for _ in ()).throw(OSError("aus"))
+        try:
+            with tempfile.TemporaryDirectory() as ziel:
+                pfad = os.path.join(ziel, "karten.json.gz")
+                A.schreiben(pfad, {"OP99-001": {"n": "Gestern"}})
+                self.assertEqual(A.namen_holen(ziel, self.produkte), 8)
+                self.assertEqual(A.lesen(pfad)["OP99-001"], {"n": "Gestern"})
+        finally:
+            A.kaizoku_holen = alt
+
+    def test_tcgcsv_ausfall_nimmt_kaizoku_und_gestern(self):
+        with tempfile.TemporaryDirectory() as ziel:
+            pfad = os.path.join(ziel, "karten.json.gz")
+            A.schreiben(pfad, {"OP99-001": {"n": "Gestern"}})
+            anzahl = A.namen_holen(ziel, [], self.kaizoku)
+            gelesen = A.lesen(pfad)
+        self.assertEqual(anzahl, len(A.karten_aus_kaizoku(self.kaizoku)) + 1)
+        self.assertEqual(gelesen["OP99-001"], {"n": "Gestern"})
+
+    def test_beide_aus_laesst_die_alte_datei_stehen(self):
+        with tempfile.TemporaryDirectory() as ziel:
+            pfad = os.path.join(ziel, "karten.json.gz")
+            A.schreiben(pfad, {"OP01-001": {"n": "Gestern"}})
+            self.assertEqual(A.namen_holen(ziel, [], []), 0)
+            self.assertEqual(A.lesen(pfad), {"OP01-001": {"n": "Gestern"}})
+
+    def test_karten_ohne_daten(self):
+        with tempfile.TemporaryDirectory() as ziel:
+            os.makedirs(os.path.join(ziel, "saetze"))
+            A.schreiben(os.path.join(ziel, "saetze", "x.json.gz"),
+                        {"leader": [{"id": "OP01-001", "geg": ["OP01-002"], "listen": []}]})
+            A.schreiben(os.path.join(ziel, "karten.json.gz"), {"OP01-001": {"n": "a"}})
+            self.assertEqual(A.karten_ohne_daten(ziel), ["OP01-002"])

@@ -83,9 +83,11 @@ Bounty im Replay ist ohnehin nicht die Queue Bounty.
 
 ## Nächste Schritte
 
-0. PR 10, dann PR 11 mergen (nur mit OK des Nutzers), danach Lauf der Action prüfen:
-   Formatsatz, Heroines Event, `format.zustand.json` im Cache. Dann Selbstlauf Phase 2
-   (tcgcsv Kartendaten, vor dem 20.11.).
+0. PR 10 und PR 11 am 28.10. gemergt, Lauf 40647237206 grün: 8.829 Replays, First/Second
+   bei 7.724, EB05 56 %, Event 24 von 25 Leadern, `format.zustand.json` geschrieben. Als
+   Nächstes Selbstlauf Phase 2 (Kartendaten, vor dem 20.11.): gebaut auf Branch
+   `claude/tcgcsv-daten` (PR 12), Kaizoku zuerst, tcgcsv füllt Lücken, Warnung „Karten ohne
+   Daten“. Danach Selbstlauf Phase 3 (Wachen für CDN und Firestore Zugang, Event Ablauf `bis`).
 1. Kartenquelle tcgcsv: Phase 2 (Bilder) ist live seit PR 6 (c887775). Erster Lauf der
    Action: 2.218 Bilder ersetzt, 49 noch nicht von tcgcsv (`img/offen.txt`, Vorverkauf OP18
    und alte Promos), 16 ganz ohne Bild (OP18-065, OP18-091, P-087 bis P-151). Als Nächstes

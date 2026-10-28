@@ -942,60 +942,20 @@ def tage_laden(ziel: str, anzahl: int, modi: list, bereiche: list) -> list:
     return verzeichnis
 
 
-NAMEN_QUELLE = ("https://raw.githubusercontent.com/buhbbl/punk-records/main/"
-                "english/index/cards_by_id.json")
-# Je Pack eine Datei mit dem Kartentext. Gebraucht nur fuer den Counter der Events, der
-# im Index fehlt (dort steht er nur bei Characters).
-PACK_QUELLE = ("https://raw.githubusercontent.com/buhbbl/punk-records/main/"
-               "english/data/{pack}.json")
 # Wie book.countertabelle in Metacoach: bei Events mit [Counter] die erste Powerzahl danach.
 EVENT_COUNTER = re.compile(r"\[Counter\][^+]*\+(\d{4,5})")
+KAIZOKU_QUELLE = "https://cdn.cardkaizoku.com/card_data.json"
+KAIZOKU_ZEIT = 120
+TCGCSV_ZEIT = 120
+# Kartenarten, die in karten.json.gz stehen. DON!! Karten und Produkte wie Booster Boxen nicht.
+KARTENARTEN = {"leader", "character", "event", "stage"}
+# Hinter dem Namen steht bei Karten mit mehreren Motiven die Nummer, etwa "Nico Robin (010)".
+NAME_NUMMER = re.compile(r"(\s*\((\d{3}|[A-Z]+\d*-\d{3})\)|\s+-\s+[A-Z]+\d*-\d{3}(\s*\[[^\]]*\])?)\s*$")
 
 
 # Kuerzel fuer die Farben, damit die Datei klein bleibt.
 FARBKUERZEL = {"Red": "r", "Green": "g", "Blue": "b", "Purple": "p",
                "Black": "s", "Yellow": "y"}
-
-
-def namen_holen(ziel: str) -> int:
-    """Kartendaten aus dem Punk Records Datensatz.
-
-    Uebernommen werden Name, Farben und Kosten. Die Farben tragen die Seite optisch, die
-    Kosten machen aus dem Kartenhaufen einer Deckliste eine lesbare Kurve.
-
-    Die Quelle fuehrt auch Varianten wie OP01-001_p1. Sie tragen dieselben Werte und
-    werden weggelassen, sonst waere die Datei dreimal so gross ohne Mehrwert.
-    """
-    with urllib.request.urlopen(NAMEN_QUELLE, timeout=180) as antwort:
-        roh = json.loads(antwort.read().decode("utf-8"))
-    karten = {}
-    for kennung, k in roh.items():
-        if "_" in kennung or not k:
-            continue
-        name = k.get("name")
-        if not name:
-            continue
-        eintrag = {"n": html.unescape(name)}
-        farben = [FARBKUERZEL[f] for f in (k.get("colors") or []) if f in FARBKUERZEL]
-        if farben:
-            eintrag["f"] = "".join(farben)
-        kosten = k.get("cost")
-        if isinstance(kosten, int):
-            eintrag["k"] = kosten
-        art = k.get("category")
-        if art and art != "Character":
-            eintrag["a"] = art[:1].lower()   # l Leader, e Event, s Stage
-        counter = k.get("counter")
-        if isinstance(counter, int) and counter > 0:
-            eintrag["c"] = counter
-        karten[kennung] = eintrag
-    events = event_counter_holen(roh)
-    for kennung, wert in events.items():
-        if kennung in karten:
-            karten[kennung]["c"] = wert
-    groesse = schreiben(os.path.join(ziel, "karten.json.gz"), karten)
-    print(f"  karten.json.gz: {len(karten)} Karten, {len(events)} Event Counter, {groesse/1e3:.0f} KB")
-    return len(karten)
 
 
 def event_counter(effekt: str):
@@ -1006,36 +966,201 @@ def event_counter(effekt: str):
     return int(m.group(1)) if m else None
 
 
-def event_counter_holen(index: dict) -> dict:
-    """Counter der Events mit dem Schluesselwort Counter, aus den Packdateien.
+def zahl(wert):
+    """Ganzzahl aus einem Textfeld, oder None."""
+    try:
+        return int(str(wert).strip())
+    except (TypeError, ValueError):
+        return None
 
-    "Analyze my replay" braucht ihn, um zu sehen, ob die Hand einen Angriff halten konnte
-    (specs/features/eigenes-replay-analysieren.md). Faellt ein Pack aus, fehlen nur seine
-    Events; die Seite zaehlt sie dann mit 0, wie Metacoach eine unbekannte Karte.
+
+def karte_zusammenbauen(name, farben, kosten, art, counter) -> dict | None:
+    """Ein Eintrag von karten.json.gz: n Name, f Farben, k Kosten, a Art, c Counter."""
+    if not name:
+        return None
+    eintrag = {"n": html.unescape(name)}
+    kuerzel = "".join(FARBKUERZEL[f] for f in farben if f in FARBKUERZEL)
+    if kuerzel:
+        eintrag["f"] = kuerzel
+    if kosten is not None:
+        eintrag["k"] = kosten
+    if art and art != "character":
+        eintrag["a"] = art[:1]   # l Leader, e Event, s Stage
+    if counter:
+        eintrag["c"] = counter
+    return eintrag
+
+
+def tcgcsv_felder(produkt: dict) -> dict:
+    return {f.get("name"): f.get("value") for f in produkt.get("extendedData", [])}
+
+
+# Diese Felder sind bei tcgcsv je Produkt einzeln gepflegt und weichen zwischen den Produkten
+# einer Nummer ab (fehlende Kosten, ein Event als Character, ein falscher Counter). Es gilt der
+# Wert, den die meisten Produkte nennen; bei Gleichstand der vom Grundmotiv.
+ABSTIMMUNG = ("CardType", "Cost", "Life", "Counterplus", "Power")
+
+
+def haeufigster(werte: list):
+    """Der haeufigste Wert, bei Gleichstand der erste in der Liste."""
+    if not werte:
+        return None
+    return max(dict.fromkeys(werte), key=werte.count)
+
+
+def karte_aus_tcgcsv(produkt: dict, geschwister: tuple = ()):
+    """(Nummer, Eintrag) aus einem tcgcsv Produkt, oder None bei Nicht Karten (DON!!, Boxen).
+
+    `geschwister` sind die anderen Produkte derselben Nummer (Varianten), die bei den Feldern
+    in ABSTIMMUNG mitstimmen.
     """
-    packs = sorted({k.get("pack_id") for kennung, k in index.items()
-                    if k and "_" not in kennung and k.get("category") == "Event"
-                    and "Counter" in (k.get("keywords") or []) and k.get("pack_id")})
+    felder = tcgcsv_felder(produkt)
+    alle = [felder] + [tcgcsv_felder(p) for p in geschwister]
+    for name in ABSTIMMUNG:
+        wert = haeufigster([f[name] for f in alle if f.get(name) not in (None, "")])
+        if wert is not None:
+            felder[name] = wert
+    nummer, art = felder.get("Number"), (felder.get("CardType") or "").lower()
+    if art == "character" and not felder.get("Power"):
+        # Events und Stages haben keine Power. Als Character ist hier ein Event gemeldet, wenn der Text
+        # einen Counter oder einen Main Effekt nennt.
+        text = felder.get("Description") or ""
+        art = "event" if "[Counter]" in text or "[Main]" in text else art
+    if not nummer or art not in KARTENARTEN:
+        return None
+    name = NAME_NUMMER.sub("", produkt.get("name") or "")
+    farben = (felder.get("Color") or "").split(";")
+    counter = zahl(felder.get("Counterplus")) or 0 if art == "character" else 0
+    if art == "event":
+        counter = event_counter(felder.get("Description")) or 0
+    kosten = zahl(felder.get("Life") if art == "leader" else felder.get("Cost"))
+    if kosten is None and art == "leader":
+        kosten = zahl(felder.get("Cost"))
+    eintrag = karte_zusammenbauen(name, farben, kosten, art, counter)
+    return (nummer, eintrag) if eintrag else None
 
-    def ein_pack(pack):
+
+def karte_aus_kaizoku(eintrag: dict):
+    """(Nummer, Eintrag) aus einem Eintrag von card_data.json, oder None bei leeren Platzhaltern."""
+    nummer, art = eintrag.get("cardNumber"), (eintrag.get("cardType") or "").lower()
+    if not nummer or art not in KARTENARTEN:
+        return None
+    counter = zahl(eintrag.get("counter")) or 0
+    if art == "event":
+        counter = event_counter(eintrag.get("text")) or counter
+    karte = karte_zusammenbauen(eintrag.get("cardName"), (eintrag.get("color") or "").split("/"),
+                                zahl(eintrag.get("cost")), art, counter)
+    return (nummer, karte) if karte else None
+
+
+def je_nummer(produkte: list, brauchbar=lambda produkt: True) -> dict:
+    """Je Kartennummer die Produkte, das Grundmotiv zuerst. Varianten sind eigene Produkte."""
+    gruppen = {}
+    for produkt in produkte:
+        nummer = kartennummer(produkt)
+        if nummer and brauchbar(produkt):
+            gruppen.setdefault(nummer, []).append(produkt)
+    return {nummer: sorted(liste, key=lambda p: (1 if VARIANTE.search(p.get("name", "")) else 0,
+                                                 p.get("productId", 0)))
+            for nummer, liste in gruppen.items()}
+
+
+def karten_aus_tcgcsv(produkte: list) -> dict:
+    karten = {}
+    for nummer, liste in je_nummer(produkte).items():
+        umgerechnet = karte_aus_tcgcsv(liste[0], tuple(liste[1:]))
+        if umgerechnet:
+            karten[nummer] = umgerechnet[1]
+    return karten
+
+
+def kaizoku_holen() -> list:
+    anfrage = urllib.request.Request(KAIZOKU_QUELLE, headers=TCGCSV_KOPF)
+    with urllib.request.urlopen(anfrage, timeout=KAIZOKU_ZEIT) as antwort:
+        roh = json.loads(antwort.read().decode("utf-8"))
+    if not isinstance(roh, list):
+        raise ValueError("card_data.json ist keine Liste")
+    return roh
+
+
+def karten_aus_kaizoku(eintraege: list) -> dict:
+    """Alle Karten aus der Kaizoku Datei, je Nummer der erste brauchbare Eintrag."""
+    karten = {}
+    for e in eintraege:
+        umgerechnet = karte_aus_kaizoku(e) if isinstance(e, dict) else None
+        if umgerechnet:
+            karten.setdefault(umgerechnet[0], umgerechnet[1])
+    return karten
+
+
+def karten_ergaenzen(karten: dict, ersatz: dict) -> int:
+    """Fehlende Nummern und fehlende Felder aus `ersatz` in `karten` eintragen.
+
+    Vorhandene Werte bleiben. Gibt zurueck, wie viele Nummern neu dazukamen.
+    """
+    neu = 0
+    for nummer, eintrag in ersatz.items():
+        if nummer not in karten:
+            karten[nummer] = dict(eintrag)
+            neu += 1
+            continue
+        for feld, wert in eintrag.items():
+            karten[nummer].setdefault(feld, wert)
+    return neu
+
+
+def namen_holen(ziel: str, produkte: list | None = None, kaizoku: list | None = None) -> int:
+    """Kartendaten (Name, Farben, Kosten, Art, Counter): Kaizoku zuerst, Luecken aus tcgcsv.
+
+    Kaizoku ist richtiger und bei neuen Sets schneller (gemessen 28.10.2026: 61 gegen 42
+    Karten aus dem OP18 Vorverkauf; tcgcsv hatte bei 33 Karten falsche oder fehlende Kosten
+    und Counter). tcgcsv fuellt Nummern und Felder, die Kaizoku nicht hat.
+    `produkte` und `kaizoku` sind schon geladene Antworten; None heisst, hier laden.
+    Faellt eine Quelle aus, fuellt die Datei vom Vortag die Nummern, die dann fehlen.
+    Fallen beide aus, bleibt die Datei vom Vortag ganz stehen.
+    """
+    pfad = os.path.join(ziel, "karten.json.gz")
+    if kaizoku is None:
         try:
-            with urllib.request.urlopen(PACK_QUELLE.format(pack=pack), timeout=60) as antwort:
-                return json.loads(antwort.read().decode("utf-8"))
-        except (urllib.error.URLError, OSError, ValueError) as fehler:
-            print(f"  Pack {pack} fehlt: {fehler}")
-            return []
+            kaizoku = kaizoku_holen()
+        except Exception as fehler:
+            print(f"::warning::Kaizoku nicht erreichbar, Kartendaten nur aus tcgcsv: {fehler}")
+            kaizoku = []
+    if produkte is None:
+        try:
+            produkte = tcgcsv_produkte_holen()
+        except Exception as fehler:
+            print(f"::warning::tcgcsv nicht erreichbar, Kartendaten nur aus Kaizoku: {fehler}")
+            produkte = []
+    karten = karten_aus_kaizoku(kaizoku)
+    von_kaizoku = len(karten)
+    von_tcgcsv = karten_ergaenzen(karten, karten_aus_tcgcsv(produkte))
+    if not karten:
+        print("::warning::Keine Kartendaten aus Kaizoku und tcgcsv, karten.json.gz bleibt wie gestern")
+        return 0
+    if not von_kaizoku or not produkte:
+        try:
+            gestern = lesen(pfad)
+        except (OSError, ValueError):
+            gestern = {}
+        karten_ergaenzen(karten, gestern)
+    groesse = schreiben(pfad, karten)
+    print(f"  karten.json.gz: {len(karten)} Karten ({von_kaizoku} von Kaizoku, {von_tcgcsv} "
+          f"nur von tcgcsv), {groesse/1e3:.0f} KB")
+    return len(karten)
 
-    aus = {}
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        for karten in pool.map(ein_pack, packs):
-            for k in karten or []:
-                if not isinstance(k, dict) or k.get("category") != "Event":
-                    continue
-                wert = event_counter(k.get("effect"))
-                kennung = k.get("id") or ""
-                if wert and "_" not in kennung:
-                    aus[kennung] = wert
-    return aus
+
+# So viele Nummern nennt die Warnung, der Rest steht nur als Anzahl darin.
+KARTEN_OHNE_ANZEIGE = 30
+
+
+def karten_ohne_daten(ziel: str) -> list:
+    """Karten, die eine abgelegte Datei nennt, die aber nicht in karten.json.gz stehen."""
+    try:
+        karten = lesen(os.path.join(ziel, "karten.json.gz"))
+    except (OSError, ValueError):
+        return []
+    return sorted(gebrauchte_karten(ziel) - set(karten))
 
 
 # Eine Groesse je Karte. Die Rasteransicht zeigt 46 bis 54 Pixel breit, 120 deckt auch
@@ -1072,7 +1197,7 @@ BILD_PARALLEL = 16
 
 def tcgcsv_lesen(pfad: str):
     anfrage = urllib.request.Request(TCGCSV + pfad, headers=TCGCSV_KOPF)
-    with urllib.request.urlopen(anfrage, timeout=120) as antwort:
+    with urllib.request.urlopen(anfrage, timeout=TCGCSV_ZEIT) as antwort:
         return json.loads(antwort.read().decode("utf-8"))
 
 
@@ -1085,28 +1210,17 @@ def kartennummer(produkt: dict):
 
 def tcgcsv_bilder(produkte: list) -> dict:
     """Je Kartennummer die Bildadresse in 1000 px, vom Grundmotiv statt einer Variante."""
-    beste = {}
-    for produkt in produkte:
-        nummer, url = kartennummer(produkt), produkt.get("imageUrl")
-        if not nummer or not url:
-            continue
-        rang = (1 if VARIANTE.search(produkt.get("name", "")) else 0, produkt.get("productId", 0))
-        if nummer not in beste or rang < beste[nummer][0]:
-            beste[nummer] = (rang, url.replace(TCGCSV_KLEIN, TCGCSV_GROSS))
-    return {nummer: url for nummer, (_, url) in beste.items()}
+    gruppen = je_nummer(produkte, lambda produkt: produkt.get("imageUrl"))
+    return {nummer: liste[0]["imageUrl"].replace(TCGCSV_KLEIN, TCGCSV_GROSS)
+            for nummer, liste in gruppen.items()}
 
 
-def tcgcsv_bilder_holen() -> dict:
-    """Alle Bildadressen von tcgcsv. Leer, wenn die Quelle nicht antwortet."""
-    try:
-        gruppen = tcgcsv_lesen("groups")["results"]
-        produkte = []
-        for gruppe in gruppen:
-            produkte += tcgcsv_lesen(f"{gruppe['groupId']}/products")["results"]
-    except Exception as fehler:
-        print(f"::warning::tcgcsv nicht erreichbar, Bilder bleiben wie sie sind: {fehler}")
-        return {}
-    return tcgcsv_bilder(produkte)
+def tcgcsv_produkte_holen() -> list:
+    """Alle Produkte aller Gruppen von tcgcsv. Wirft, wenn die Quelle nicht antwortet."""
+    produkte = []
+    for gruppe in tcgcsv_lesen("groups")["results"]:
+        produkte += tcgcsv_lesen(f"{gruppe['groupId']}/products")["results"]
+    return produkte
 
 
 def gebrauchte_karten(ziel: str) -> set:
@@ -1240,10 +1354,16 @@ def main() -> None:
     saetze.update(fertige_saetze(ziel, woche_ab))
 
     print("\nKartennamen:")
+    # Einmal laden: dieselben Produkte liefern die Kartendaten und die Bildadressen.
+    produkte = None
     try:
-        namen_holen(ziel)
+        produkte = tcgcsv_produkte_holen()
     except Exception as fehler:
-        print(f"  fehlgeschlagen, Seite zeigt Nummern: {fehler}")
+        print(f"::warning::tcgcsv nicht erreichbar, Bilder bleiben wie gestern: {fehler}")
+    try:
+        namen_holen(ziel, produkte if produkte is not None else [])
+    except Exception as fehler:
+        print(f"::warning::Kartendaten fehlgeschlagen, Seite zeigt Nummern: {fehler}")
 
     tage = []
     if args.tage:
@@ -1303,8 +1423,12 @@ def main() -> None:
     print(f"\n  verzeichnis.json: {len(verzeichnis['saetze'])} Saetze, "
           f"{len(verzeichnis['tage'])} Tagesdateien")
 
+    ohne = karten_ohne_daten(ziel)
+    if ohne:
+        print(f"::warning::{len(ohne)} Karten ohne Daten: {', '.join(ohne[:KARTEN_OHNE_ANZEIGE])}")
+
     if args.bilder:
-        bilder_kopieren(ziel)
+        bilder_kopieren(ziel, tcgcsv_bilder(produkte or []))
 
 
 if __name__ == "__main__":

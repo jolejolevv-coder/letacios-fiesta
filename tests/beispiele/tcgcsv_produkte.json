@@ -1,0 +1,399 @@
+[
+ {
+  "productId": 20,
+  "name": "Nami (Parallel)",
+  "imageUrl": "https://tcgplayer-cdn.tcgplayer.com/product/20_200w.jpg",
+  "extendedData": [
+   {
+    "name": "Number",
+    "displayName": "Number",
+    "value": "OP01-016"
+   },
+   {
+    "name": "CardType",
+    "displayName": "CardType",
+    "value": "Character"
+   },
+   {
+    "name": "Color",
+    "displayName": "Color",
+    "value": "Red"
+   },
+   {
+    "name": "Cost",
+    "displayName": "Cost",
+    "value": "9"
+   },
+   {
+    "name": "Counterplus",
+    "displayName": "Counterplus",
+    "value": "2000"
+   },
+   {
+    "name": "Description",
+    "displayName": "Description",
+    "value": "[On Play] draw"
+   },
+   {
+    "name": "Power",
+    "displayName": "Power",
+    "value": "2000"
+   }
+  ]
+ },
+ {
+  "productId": 11,
+  "name": "Nami",
+  "imageUrl": "https://tcgplayer-cdn.tcgplayer.com/product/11_200w.jpg",
+  "extendedData": [
+   {
+    "name": "Number",
+    "displayName": "Number",
+    "value": "OP01-016"
+   },
+   {
+    "name": "CardType",
+    "displayName": "CardType",
+    "value": "Character"
+   },
+   {
+    "name": "Color",
+    "displayName": "Color",
+    "value": "Red"
+   },
+   {
+    "name": "Cost",
+    "displayName": "Cost",
+    "value": "1"
+   },
+   {
+    "name": "Counterplus",
+    "displayName": "Counterplus",
+    "value": "1000"
+   },
+   {
+    "name": "Description",
+    "displayName": "Description",
+    "value": "[On Play] draw"
+   },
+   {
+    "name": "Power",
+    "displayName": "Power",
+    "value": "2000"
+   }
+  ]
+ },
+ {
+  "productId": 12,
+  "name": "Nami (Manga)",
+  "imageUrl": "https://tcgplayer-cdn.tcgplayer.com/product/12_200w.jpg",
+  "extendedData": [
+   {
+    "name": "Number",
+    "displayName": "Number",
+    "value": "OP01-016"
+   },
+   {
+    "name": "CardType",
+    "displayName": "CardType",
+    "value": "Character"
+   },
+   {
+    "name": "Color",
+    "displayName": "Color",
+    "value": "Red"
+   },
+   {
+    "name": "Cost",
+    "displayName": "Cost",
+    "value": "1"
+   },
+   {
+    "name": "Counterplus",
+    "displayName": "Counterplus",
+    "value": "1000"
+   },
+   {
+    "name": "Description",
+    "displayName": "Description",
+    "value": "[On Play] draw"
+   },
+   {
+    "name": "Power",
+    "displayName": "Power",
+    "value": "2000"
+   }
+  ]
+ },
+ {
+  "productId": 30,
+  "name": "Radical Beam!! (Alternate Art)",
+  "imageUrl": "https://tcgplayer-cdn.tcgplayer.com/product/30_200w.jpg",
+  "extendedData": [
+   {
+    "name": "Number",
+    "displayName": "Number",
+    "value": "OP01-029"
+   },
+   {
+    "name": "CardType",
+    "displayName": "CardType",
+    "value": "Event"
+   },
+   {
+    "name": "Color",
+    "displayName": "Color",
+    "value": "Red"
+   },
+   {
+    "name": "Cost",
+    "displayName": "Cost",
+    "value": "1"
+   },
+   {
+    "name": "Description",
+    "displayName": "Description",
+    "value": "[Counter] Up to 1 gains +2000 power during this battle."
+   }
+  ]
+ },
+ {
+  "productId": 31,
+  "name": "Radical Beam!!",
+  "imageUrl": "https://tcgplayer-cdn.tcgplayer.com/product/31_200w.jpg",
+  "extendedData": [
+   {
+    "name": "Number",
+    "displayName": "Number",
+    "value": "OP01-029"
+   },
+   {
+    "name": "CardType",
+    "displayName": "CardType",
+    "value": "Event"
+   },
+   {
+    "name": "Color",
+    "displayName": "Color",
+    "value": "Red"
+   },
+   {
+    "name": "Cost",
+    "displayName": "Cost",
+    "value": "1"
+   },
+   {
+    "name": "Description",
+    "displayName": "Description",
+    "value": "[Counter] Up to 1 gains +2000 power during this battle."
+   }
+  ]
+ },
+ {
+  "productId": 40,
+  "name": "...I Want to Live!!",
+  "imageUrl": "https://tcgplayer-cdn.tcgplayer.com/product/40_200w.jpg",
+  "extendedData": [
+   {
+    "name": "Number",
+    "displayName": "Number",
+    "value": "EB01-050"
+   },
+   {
+    "name": "CardType",
+    "displayName": "CardType",
+    "value": "Character"
+   },
+   {
+    "name": "Color",
+    "displayName": "Color",
+    "value": "Black"
+   },
+   {
+    "name": "Cost",
+    "displayName": "Cost",
+    "value": "3"
+   },
+   {
+    "name": "Description",
+    "displayName": "Description",
+    "value": "[Counter] If you have 30 cards, draw."
+   }
+  ]
+ },
+ {
+  "productId": 50,
+  "name": "Kouzuki Oden",
+  "imageUrl": "https://tcgplayer-cdn.tcgplayer.com/product/50_200w.jpg",
+  "extendedData": [
+   {
+    "name": "Number",
+    "displayName": "Number",
+    "value": "EB01-001"
+   },
+   {
+    "name": "CardType",
+    "displayName": "CardType",
+    "value": "Leader"
+   },
+   {
+    "name": "Color",
+    "displayName": "Color",
+    "value": "Green;Red"
+   },
+   {
+    "name": "Description",
+    "displayName": "Description",
+    "value": "text"
+   },
+   {
+    "name": "Power",
+    "displayName": "Power",
+    "value": "5000"
+   },
+   {
+    "name": "Life",
+    "displayName": "Life",
+    "value": "4"
+   }
+  ]
+ },
+ {
+  "productId": 60,
+  "name": "Lulucia Kingdom - EB04-010 [Serial Number]",
+  "imageUrl": "https://tcgplayer-cdn.tcgplayer.com/product/60_200w.jpg",
+  "extendedData": [
+   {
+    "name": "Number",
+    "displayName": "Number",
+    "value": "EB04-010"
+   },
+   {
+    "name": "CardType",
+    "displayName": "CardType",
+    "value": "Stage"
+   },
+   {
+    "name": "Color",
+    "displayName": "Color",
+    "value": "Red"
+   },
+   {
+    "name": "Cost",
+    "displayName": "Cost",
+    "value": "7"
+   }
+  ]
+ },
+ {
+  "productId": 61,
+  "name": "Nico Robin (010)",
+  "imageUrl": "https://tcgplayer-cdn.tcgplayer.com/product/61_200w.jpg",
+  "extendedData": [
+   {
+    "name": "Number",
+    "displayName": "Number",
+    "value": "EB05-010"
+   },
+   {
+    "name": "CardType",
+    "displayName": "CardType",
+    "value": "Character"
+   },
+   {
+    "name": "Color",
+    "displayName": "Color",
+    "value": "Blue;Black"
+   },
+   {
+    "name": "Cost",
+    "displayName": "Cost",
+    "value": "3"
+   },
+   {
+    "name": "Counterplus",
+    "displayName": "Counterplus",
+    "value": "1000"
+   },
+   {
+    "name": "Description",
+    "displayName": "Description",
+    "value": "x"
+   },
+   {
+    "name": "Power",
+    "displayName": "Power",
+    "value": "4000"
+   }
+  ]
+ },
+ {
+  "productId": 70,
+  "name": "DON!! Card",
+  "imageUrl": "https://tcgplayer-cdn.tcgplayer.com/product/70_200w.jpg",
+  "extendedData": [
+   {
+    "name": "Number",
+    "displayName": "Number",
+    "value": "DON-001"
+   },
+   {
+    "name": "CardType",
+    "displayName": "CardType",
+    "value": "DON!!"
+   },
+   {
+    "name": "Color",
+    "displayName": "Color",
+    "value": "Red"
+   }
+  ]
+ },
+ {
+  "productId": 71,
+  "name": "Booster Box",
+  "extendedData": []
+ },
+ {
+  "productId": 80,
+  "name": "Tony Tony.Chopper (Parallel)",
+  "imageUrl": "https://tcgplayer-cdn.tcgplayer.com/product/80_200w.jpg",
+  "extendedData": [
+   {
+    "name": "Number",
+    "displayName": "Number",
+    "value": "OP18-001"
+   },
+   {
+    "name": "CardType",
+    "displayName": "CardType",
+    "value": "Character"
+   },
+   {
+    "name": "Color",
+    "displayName": "Color",
+    "value": "Red"
+   },
+   {
+    "name": "Cost",
+    "displayName": "Cost",
+    "value": "2"
+   },
+   {
+    "name": "Counterplus",
+    "displayName": "Counterplus",
+    "value": "1000"
+   },
+   {
+    "name": "Description",
+    "displayName": "Description",
+    "value": "y"
+   },
+   {
+    "name": "Power",
+    "displayName": "Power",
+    "value": "3000"
+   }
+  ]
+ }
+]
