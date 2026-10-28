@@ -209,6 +209,10 @@ fi
 # werkzeuge/spieldatei.py. Ohne aktuelle Datei scheitert der Lauf ohnehin.
 python3 "$WERKZEUGE/spieldatei.py" || sagen "Spieldatei nicht nachgezogen, nehme $SPIELPAKET"
 
+# Nach einem Clientupdate verdeckt sonst die Update Notice die Bestenliste; siehe
+# werkzeuge/notice_setzen.py. Ein Fehler hier kostet hoechstens die Notice.
+python3 "$WERKZEUGE/notice_setzen.py" --paket "$SPIELPAKET" || sagen "Notice nicht gesetzt"
+
 bildschirm_sicherstellen
 
 sagen "Spiel starten"
