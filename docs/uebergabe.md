@@ -58,22 +58,11 @@ Phase 1 gebaut auf Branch `claude/update-log` (150 Tests grün). Offen: Bot und 
 PR 13 gemergt, Lauf grün. Filter auf gespiegelte Nachrichten auf Branch
 `claude/update-log-filter`. Prüfen mit der nächsten echten Meldung von OPBounty.
 
-## Entscheidungen des Nutzers am 24.10.2026
+## Entscheidung 29.10.2026
 
-* PR 4 (EB05) ist gemergt und live geprüft: beide Sätze und 55 Bilder.
-* Im Event Satz will der Nutzer nur Winrates gegen Heroines sehen. Gebaut und live (PR 5).
-* Kartenpipeline: eine Quelle statt vieler. Gewählt tcgcsv, Kaizoku nur als Ersatz für Daten.
-* Car D. Kaizoku (cardkaizoku.com/matchhistory) bekommt Partien direkt vom Sim, auch private
-  Lobbys. Replays über `POST api.cardkaizoku.com/match-replay` nur mit Patreon (403
-  `patreon_required`). Empfehlung: nicht scrapen, Kaizoku nach Datenzugang fragen. Offen.
-
-* Grenze 6 im Plausibilitätsschutz, weil saubere Tage 2 bis 4 verdächtige Namen haben und
-  Tage mit der Notice 18 bis 19.
-* Die Zählanimation beim Leaderwechsel bleibt, nur der erste Wert steht sofort.
-* Für die EB05 Queue reichen ihm am Ende Decklists und Matchup Matrix nach Winrate,
-  Rangliste und Replays gestrichen. Zuerst wollte er Rangliste, Decks, Statistik und Replays. Grund: Etwa
-  am 7.11.2026 ist ein Event mit EB05 Decks, auf dem nur die 25 Leader der Liste erlaubt sind.
-  Ein Filter nur mit diesen Leadern in der EB05 Meta ist ausdrücklich gewünscht.
+`mitschnitt.timer` läuft auf Wunsch nur noch einmal am Tag, 05:30 UTC (vorher stündlich
+nachfassen bis 21:30 UTC). Auf dem Bazzite aktiv, alte Datei in `/tmp/mitschnitt.timer.bak`.
+Fällt der Termin aus, fehlt die Bestenliste des Tages.
 
 ## Nächste Schritte
 
