@@ -23,46 +23,39 @@ frühestens nach OP19 oder OP20). Ein neues EB käme zum OP dazu; zum
 Format zählen die neuen Sets mit mindestens 5 % am Starttag; erkannt wird nur über
 Deckkarten; der Event Schlüssel bleibt `..._op17eb05_event` bis Phase 3.
 
+Statistikquellen geprüft (28.10.): Der Client 2.7.7 liest dieselben CDN Adressen wie wir,
+einen neuen Ort gibt es nicht. Firestore `Matches` ist seit 22.07.2025 tot (letzter
+`match_index` 5043131, gelesen nur mit Feldmaske ohne Namen). Bleibt: `Replays`.
+Gezählt wird beim Server: nach jeder Partie schickt der Client `send_match_info` per RPC an
+den Spielserver. Ein Rückweg für globale Statistik (`request_global_stats`,
+`receive_global_data`) steht noch im Paket, wird aber nirgends aufgerufen. Der Export des
+Servers aufs CDN ist am 26.10. stehen geblieben; einen anderen Ausgang gibt es im Client nicht.
+Abdeckung der Replays (Modus 0, Replays je Tag durch Partien laut CDN, gemessen 28.10.):
+Juli bis Mitte August 40 bis 42 %, September 36 bis 37 %, Anfang Oktober 33 %, 17. bis 22.10.
+nur 17 bis 20 %, 23. bis 25.10. wieder 28 bis 37 %. Ab 27.10. ohne Vergleich (7.231 Replays
+am 27.10., vorher rund 4.200 je Tag). Skript: Scratchpad `abdeckung.py`, nicht im Repo.
+Upload laut Client 2.7.7 nur, wenn: Spieler ist Lobbyleiter (`room_leader`, je Partie einer),
+kein Turnier, Ergebnis bestätigt (nicht cancelled, invalid, early, pending, unresolved), beide
+Leader bekannt, und das Combat Log der OPTCGSim (`CombatLogs/AutoSaved`, über `simPath`) des
+Lobbyleiters wird gefunden und besteht die Prüfung (`win` gesetzt, Integrität nicht invalid).
+Upload über einen Ausgang mit Wiederholung, erst Storage, dann Firestore `Replays`.
+
 Bazzite: Update Notice v2.7.7 blockierte die Bestenliste seit 27.10. früh. Am 28.10.
 `seen_update_notice_v` auf 2.7.7 gesetzt (Sicherung `uinf.tres.bak_2026-10-28`) und
 `mitschnitt.service` neu gestartet. Laut Notice läuft das alte Format jetzt in der Special
 Queue (`mode_1`).
 
-## Formatwechsel, 26.10.2026
+## Stand 29.10.2026
 
-OPBounty hat am 26.10. mittags die normale Queue (`mode_0`) auf OP17 plus EB05 umgestellt.
-Live seit PR 7 (374d741): Satz
-„OP17 + EB05 Standard“ (`Roh_mode_0_op17eb05`, alle Bereiche, ab `FORMAT_START` 2026-10-27)
-ganz oben und als Startsatz der Seite. EB05 Queue und `Stats_Special_Queue` sind entfernt. Das Heroines Event
-bleibt, gebaut aus dem neuen Satz (`Roh_mode_0_op17eb05_event`, PR 8). OP17 Sätze heißen „OP17 format (old)“. Wochensätze des Spiels
-fehlen bis 03.11. (`WOCHE_AB`, PR 9), „Last Week 3B Bounty“ zählt nur neue Tage. Die Rohdaten reichten
-am 26.10. bis zum 25.10., der neue Satz erscheint also frühestens mit dem Lauf vom 28.10.
-
-Nächste Schritte: Ab 28.10. live prüfen, ob der Satz da ist
-und der EB05 Anteil im Log über 30 % liegt und das Heroines Event darunter steht. Danach Phase 1 von tcgcsv (Kartendaten).
-
-## Stand 24.10.2026
-
-Gemergt: PR 2 (Schutz gegen verdeckte Namen in `werkzeuge/plausibel.py`, Grenze 6 verdächtige
-Namen) und PR 3 (Zähler zeigen sofort den Endwert, `src/zaehler.js`). Die Ursache der kaputten
-Namen am 23. und 24.10. war die Update Notice im Spiel. Der Wert `seen_update_notice_v` in
-`~/.local/share/godot/app_userdata/OPBounty/uinf.tres` auf dem Bazzite steht auf 2.7.4. Der Lauf
-von 17:02 mit Commit 0d028e5 ist sauber online. Kommt eine neue Spielversion, blockt
-`plausibel.py` den Push. Dann den Wert auf die neue Version setzen, den Tagesmarker
-`~/mitschnitt/erledigt_<datum>` löschen und neu laufen lassen.
-
-Unversioniert im Worktree `trusting-knuth-88e5d4` liegt `specs/features/zuordnung-leaderzahl.md`,
-noch ohne Freigabe: Eine user_id wird über den Abdruck nur vergeben, wenn die Zahl der
-Leader passt. Damit bekommt Rang 1 MircoMorscio wieder die Id 17751 (`mirco4thewin`), die er
-vom 12. bis 22.10. hatte. Empfehlung: als harte Bedingung, nicht nur als Tiebreak.
-
-## EB05 Queue, abgeschlossen 24.10.2026
-
-Branch `claude/eb05-queue`: Sätze „EB05 Queue“ (alle Partien von `mode_1` seit 10.10.) und
-„EB05 Heroines Event“ (nur die 25 Leader aus `eb05_leader.json`), dazu 55 Kartenbilder aus
-dem Sim in `bilder_nachtrag/` (Werkzeug `werkzeuge/bilder_nachtragen.py`). EB05-026 und
-OP18-091 fehlen auch im Sim. Rangliste und Replays für EB05 hat der Nutzer gestrichen, die
-Bounty im Replay ist ohnehin nicht die Queue Bounty.
+OPBounty 2.7.8: CDN schreibt wieder seit 29.10. 02:27 UTC, 27. und 28.10. nachgeliefert
+(mode_0: 16.088 und 12.921 Partien, EB05 Anteil 31 und 33 %, Replays 56 bis 59 %). Grund
+vermutlich: Spieler mit eingebetteter Sim landen vorläufig in der OP17 Queue, mode_0 mischt
+also beide Kartenpools. Formatsatz bleibt bei den Replays (Empfehlung, Nutzer hat nicht
+widersprochen). Neu: Entwurf `specs/features/update-log.md` (Update Kanal per Folgen in eigenen
+Server, eigener Bot, Action liest per REST). Spec freigegeben, Folgen eingerichtet, Action bleibt täglich.
+Phase 1 gebaut auf Branch `claude/update-log` (150 Tests grün). Offen: Bot und Secrets
+`DISCORD_BOT_TOKEN`, `DISCORD_KANAL_ID` durch den Nutzer nach `docs/discord-bot-anleitung.md`,
+dann Phase 2: Lauf starten, `public/tage/update_log.json` gegen die Meldung zu v2.7.8 prüfen.
 
 ## Entscheidungen des Nutzers am 24.10.2026
 

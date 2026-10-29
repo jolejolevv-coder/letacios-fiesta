@@ -79,6 +79,16 @@ jobs:
 
       - run: pip install --quiet cryptography pillow
 
+      # Die Update Meldungen von OPBounty, gespiegelt in einen eigenen Discord Server und
+      # dort von einem eigenen Bot gelesen (specs/features/update-log.md). Wichtige neue
+      # Meldungen erscheinen als Warnung. Fehlt der Bot, laeuft der Bau trotzdem weiter.
+      - name: Update Log aus Discord
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_KANAL_ID: ${{ secrets.DISCORD_KANAL_ID }}
+        run: python3 update_log.py --ziel public
+        continue-on-error: true
+
       # Der Formatsatz kommt aus den Replays in Firestore, dazu braucht der Schritt
       # dieselben Zugangsdaten wie die Spielerdaten.
       - name: Daten und Bilder holen
