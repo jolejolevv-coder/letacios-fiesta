@@ -1,6 +1,6 @@
 # Roadmap Letacios Fiesta
 
-Stand 26.10.2026. Ausführlich in `docs/uebergabe.md`.
+Stand 29.10.2026. Ausführlich in `docs/uebergabe.md`.
 
 ## Erledigt
 
@@ -20,6 +20,8 @@ Stand 26.10.2026. Ausführlich in `docs/uebergabe.md`.
   Phase 2 tcgcsv Daten, Phase 3 Wachen und Event Ablauf, Phase 4 Meldungen.
 * Kartenquelle tcgcsv (`specs/features/kartenquelle-tcgcsv.md`): Bilder live (PR 6),
   Daten aus tcgcsv mit Kaizoku als Ersatz offen.
+* Update Log aus Discord (`specs/features/update-log.md`): Phase 1 gebaut, wartet auf Bot und
+  Secrets des Nutzers (`docs/discord-bot-anleitung.md`).
 * Zuordnung der user_id über die Leaderzahl (`specs/features/zuordnung-leaderzahl.md`).
 
 ## Später, nur auf Wunsch
