@@ -11,8 +11,10 @@ von OPBounty ist bereits per „Folgen“ in deinen Server umgeleitet.
 
 ## 2. Bot einstellen
 
-1. Links „Bot“ wählen.
-2. „Public Bot“ ausschalten, damit niemand sonst ihn einladen kann.
+1. Zuerst links „Installation“ wählen, „Installationslink“ (Install Link) auf „Keine“ setzen
+   und speichern. Sonst lehnt Discord im nächsten Schritt mit „Private Anwendungen können
+   keinen Standard Autorisierungslink haben“ ab.
+2. Links „Bot“ wählen und „Public Bot“ ausschalten, damit niemand sonst ihn einladen kann.
 3. Unter „Privileged Gateway Intents“ den Schalter „Message Content Intent“ einschalten und
    speichern. Ohne ihn liefert Discord die Nachrichten mit leerem Text.
 4. „Reset Token“, bestätigen, Token kopieren. Discord zeigt ihn nur einmal. Nirgends
