@@ -37,3 +37,21 @@ am 26.10. bis zum 25.10., der neue Satz erscheint also frühestens mit dem Lauf 
 Nächste Schritte: Ab 28.10. live prüfen, ob der Satz da ist
 und der EB05 Anteil im Log über 30 % liegt und das Heroines Event darunter steht. Danach Phase 1 von tcgcsv (Kartendaten).
 
+
+## Entscheidungen des Nutzers am 24.10.2026
+
+* PR 4 (EB05) ist gemergt und live geprüft: beide Sätze und 55 Bilder.
+* Im Event Satz will der Nutzer nur Winrates gegen Heroines sehen. Gebaut und live (PR 5).
+* Kartenpipeline: eine Quelle statt vieler. Gewählt tcgcsv, Kaizoku nur als Ersatz für Daten.
+* Car D. Kaizoku (cardkaizoku.com/matchhistory) bekommt Partien direkt vom Sim, auch private
+  Lobbys. Replays über `POST api.cardkaizoku.com/match-replay` nur mit Patreon (403
+  `patreon_required`). Empfehlung: nicht scrapen, Kaizoku nach Datenzugang fragen. Offen.
+
+* Grenze 6 im Plausibilitätsschutz, weil saubere Tage 2 bis 4 verdächtige Namen haben und
+  Tage mit der Notice 18 bis 19.
+* Die Zählanimation beim Leaderwechsel bleibt, nur der erste Wert steht sofort.
+* Für die EB05 Queue reichen ihm am Ende Decklists und Matchup Matrix nach Winrate,
+  Rangliste und Replays gestrichen. Zuerst wollte er Rangliste, Decks, Statistik und Replays. Grund: Etwa
+  am 7.11.2026 ist ein Event mit EB05 Decks, auf dem nur die 25 Leader der Liste erlaubt sind.
+  Ein Filter nur mit diesen Leadern in der EB05 Meta ist ausdrücklich gewünscht.
+

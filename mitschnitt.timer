@@ -1,18 +1,16 @@
-# Zweimal am Tag, in UTC und nicht in Ortszeit. Die Action steht auf 06:20 UTC; ein
-# Timer auf 07:30 Ortszeit liefe im Winter erst um 06:30 UTC, also danach. Der zweite
-# Termin ist das Nachfassen, er tut nichts, wenn der erste geklappt hat (Tagesmarke in
-# mitschnitt_server.sh). Der Push des Servers loest die Action ohnehin selbst aus.
+# Einmal am Tag, in UTC und nicht in Ortszeit. Die Action steht auf 06:20 UTC; ein
+# Timer auf 07:30 Ortszeit liefe im Winter erst um 06:30 UTC, also danach. Der Push des
+# Servers loest die Action ohnehin selbst aus.
+#
+# Seit dem 29.10.2026 auf Wunsch des Nutzers nur noch ein Termin. Vorher wurde bis 21:30 UTC
+# stuendlich nachgefasst (eingefuehrt am 19.10.2026, als die Spielserver von OPBounty ab
+# etwa 04:10 UTC aus waren). Faellt der eine Termin aus, fehlt die Bestenliste dieses Tages.
 
 [Unit]
-Description=Letacios Fiesta: Bestenliste taeglich ab 05:30 UTC, bis 21:30 UTC stuendlich nachfassen
+Description=Letacios Fiesta: Bestenliste einmal taeglich um 05:30 UTC
 
 [Timer]
 OnCalendar=*-*-* 05:30:00 UTC
-OnCalendar=*-*-* 06:30:00 UTC
-# Seit dem 19.10.2026 zusaetzlich stuendlich bis zum Abend: an dem Tag waren die Spielserver von
-# OPBounty ab etwa 04:10 UTC fuer alle aus, und zwei Versuche am Morgen liessen den ganzen Tag
-# ohne Bestenliste. Nach einem Erfolg tun die weiteren Termine nichts (Tagesmarke).
-OnCalendar=*-*-* 07..21:30:00 UTC
 # War der Server zur Zeit aus, laeuft der Dienst nach dem Start nach. Die
 # Leerlaufpruefung im Skript verhindert, dass er dann in eine laufende Nutzung klickt.
 Persistent=true
