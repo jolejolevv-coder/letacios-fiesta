@@ -24,6 +24,10 @@ USER_AGENT = "DiscordBot (https://github.com/jolejolevv-coder/letacios-fiesta, 1
 ABRUF_ANZAHL = 20
 BEHALTEN = 20
 ZEITLIMIT = 30
+# Discord markiert Nachrichten, die per "Folgen" aus einem anderen Server kommen, mit
+# diesem Flag. Nur sie sind Meldungen von OPBounty; alles andere im Kanal, auch die
+# Systemnachricht "Kanal gefolgt", bleibt draussen.
+IS_CROSSPOST = 1 << 1
 DATEI = os.path.join("tage", "update_log.json")
 VERSION = re.compile(r"\bv(\d+\.\d+\.\d+)\b", re.IGNORECASE)
 # Was die Seite betreffen kann: ein Set, eine Queue, eine neue Spielversion, die Statistik.
@@ -52,12 +56,17 @@ def text_aus_nachricht(nachricht: dict) -> str:
     return "\n".join(t for t in teile if t).strip()
 
 
+def ist_gespiegelt(nachricht: dict) -> bool:
+    return bool((nachricht.get("flags") or 0) & IS_CROSSPOST)
+
+
 def meldung(nachricht: dict) -> dict:
     """Eine Nachricht in die Form, die in update_log.json steht."""
     text = text_aus_nachricht(nachricht)
     version = VERSION.search(text)
     return {"id": nachricht["id"], "zeit": nachricht.get("timestamp", ""),
-            "version": version.group(1) if version else None, "text": text}
+            "version": version.group(1) if version else None, "text": text,
+            "gespiegelt": True}
 
 
 def ist_wichtig(text: str) -> bool:
@@ -116,14 +125,14 @@ def main() -> None:
         print("::warning::DISCORD_BOT_TOKEN oder DISCORD_KANAL_ID fehlt, Update Log uebersprungen")
         return
     try:
-        neu = [meldung(n) for n in nachrichten_holen(token, kanal)]
+        neu = [meldung(n) for n in nachrichten_holen(token, kanal) if ist_gespiegelt(n)]
     except Exception as fehler:
         print(f"::warning::Discord nicht erreichbar, Update Log bleibt wie gestern: {fehler}")
         return
 
     pfad = os.path.join(args.ziel, DATEI)
     try:
-        alt = lesen(pfad)
+        alt = [m for m in lesen(pfad) if m.get("gespiegelt")]
     except Exception as fehler:
         print(f"::warning::{pfad} unlesbar, fange neu an: {fehler}")
         alt = []

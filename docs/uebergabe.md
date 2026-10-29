@@ -55,7 +55,8 @@ widersprochen). Neu: Entwurf `specs/features/update-log.md` (Update Kanal per Fo
 Server, eigener Bot, Action liest per REST). Spec freigegeben, Folgen eingerichtet, Action bleibt täglich.
 Phase 1 gebaut auf Branch `claude/update-log` (150 Tests grün). Offen: Bot und Secrets
 `DISCORD_BOT_TOKEN`, `DISCORD_KANAL_ID` durch den Nutzer nach `docs/discord-bot-anleitung.md`,
-dann Phase 2: Lauf starten, `public/tage/update_log.json` gegen die Meldung zu v2.7.8 prüfen.
+PR 13 gemergt, Lauf grün. Filter auf gespiegelte Nachrichten auf Branch
+`claude/update-log-filter`. Prüfen mit der nächsten echten Meldung von OPBounty.
 
 ## Entscheidungen des Nutzers am 24.10.2026
 

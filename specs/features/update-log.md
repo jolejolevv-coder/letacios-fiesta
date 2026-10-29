@@ -25,6 +25,15 @@ GitHub, wenn eine davon Format, Queue oder Statistik betrifft.
 5. Enthält eine neue Meldung ein Set (`OP\d\d`, `EB\d\d`), das Wort Queue oder eine Version
    (`v\d+\.\d+\.\d+`), schreibt die Action `::warning::` mit der ersten Zeile der Meldung.
 
+## Stand Phase 2 (29.10.2026)
+
+Erster Lauf 40847075261 nach PR 13: Bot liest, Text kommt an (Message Content Intent an).
+Der Kanal enthielt aber alte fremde Nachrichten (Restock Monitor 2024) und die Systemnachricht
+„Kanal gefolgt“. Seitdem zählen nur Nachrichten mit Flag `IS_CROSSPOST` (per Folgen
+gespiegelt). Die Meldung zu v2.7.8 fehlt, weil Folgen nur neue Beiträge weiterleitet; geprüft
+wird mit der nächsten Meldung von OPBounty. `update_log.json` liegt unverschlüsselt auf der
+Seite, es sind öffentliche Ankündigungen.
+
 ## Scope
 
 In scope:

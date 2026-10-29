@@ -34,6 +34,11 @@ class Meldung(unittest.TestCase):
         self.assertEqual(U.erste_zeile("\n# We are back! 🔥\nmehr"), "We are back! 🔥")
         self.assertEqual(U.erste_zeile("**OPBounty v2.7.7** is live"), "OPBounty v2.7.7 is live")
 
+    def test_nur_gespiegelte(self):
+        gespiegelt = [n["id"] for n in nachrichten() if U.ist_gespiegelt(n)]
+        self.assertEqual(len(gespiegelt), 3)
+        self.assertNotIn("1200000000000000001", gespiegelt)
+
     def test_wichtig(self):
         self.assertTrue(U.ist_wichtig("mapped to EB05 queues"))
         self.assertTrue(U.ist_wichtig("updated to v2.7.8"))
@@ -43,7 +48,7 @@ class Meldung(unittest.TestCase):
 
 class Zusammenfuehren(unittest.TestCase):
     def test_nur_unbekannte_und_neueste_zuerst(self):
-        alle = [U.meldung(n) for n in nachrichten()]
+        alle = [U.meldung(n) for n in nachrichten()[:3]]
         liste, unbekannt = U.zusammenfuehren(alle[1:], alle)
         self.assertEqual([m["id"] for m in unbekannt], [alle[0]["id"]])
         self.assertEqual(liste[0]["id"], alle[0]["id"])
@@ -82,7 +87,7 @@ class Lauf(unittest.TestCase):
         self.assertIn("::warning::Discord nicht erreichbar", aus)
 
     def test_erster_lauf_still_danach_genau_einmal(self):
-        alt = nachrichten()[1:]
+        alt = nachrichten()[1:3]
         erster = self.lauf(self.ziel, self.env, lambda t, k: alt)
         self.assertNotIn("::warning::", erster)
         zweiter = self.lauf(self.ziel, self.env)
@@ -92,6 +97,15 @@ class Lauf(unittest.TestCase):
         self.assertNotIn("::warning::", dritter)
         with open(os.path.join(self.ziel, U.DATEI), encoding="utf-8") as datei:
             self.assertEqual(len(json.load(datei)), 3)
+
+    def test_alte_eintraege_ohne_kennung_fallen_weg(self):
+        os.makedirs(os.path.join(self.ziel, "tage"))
+        with open(os.path.join(self.ziel, U.DATEI), "w", encoding="utf-8") as datei:
+            json.dump([{"id": "1", "zeit": "", "version": None, "text": "REEESTOCK OP09"}], datei)
+        aus = self.lauf(self.ziel, self.env)
+        self.assertNotIn("::warning::", aus)
+        with open(os.path.join(self.ziel, U.DATEI), encoding="utf-8") as datei:
+            self.assertNotIn("1", [m["id"] for m in json.load(datei)])
 
 
 if __name__ == "__main__":
