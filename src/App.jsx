@@ -3290,19 +3290,13 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen, kzSpieler }) {
 /* --------------------------------------------------------------------------
    Kaizoku als Quelle (docs/kaizoku-einbau.md). Die Zahlen laufen ueber den Adapter in
    daten.js durch Decklists, Ranking, Matchups und Matrix. Hier stehen nur die Teile, die
-   unsere Daten nicht kennen: Kartenwerte, Starthand, Zugkurve und Techkarten (Stufe B).
+   unsere Daten nicht kennen: die Techkarten (Stufe B). Kartenwerte, Starthand und Zugkurve
+   stehen in kaizoku_b.json.gz, sind aber nicht eingebaut (Zugkurve eventuell fuer den Guide).
    -------------------------------------------------------------------------- */
-
-const KZ_ZUEGE = 8;
 
 function kzName(namen, code) {
   const id = kennung(code);
   return (namen[id] || {}).n || id;
-}
-
-function kzKombi(namen, kombi) {
-  if (kombi === "NO_PLAY") return "No play";
-  return kombi.split("+").map((c) => kzName(namen, c)).join(" + ");
 }
 
 /* Kopf der Kaizoku Teile: sagt, dass die Zahlen nicht unsere sind. */
@@ -3316,60 +3310,6 @@ function KaizokuHinweis({ satz }) {
       games per leader are estimated as half each, there is no split by seat per opponent or per list, and no
       game duration.
     </p>
-  );
-}
-
-function KaizokuKarten({ b, leaderId, namen }) {
-  const e = b && b.leader ? b.leader[leaderId] : null;
-  if (b === null) return <p className="laedt">Loading card stats ...</p>;
-  if (!e) return <p className="leer-satz">No card stats for this leader.</p>;
-  const teil = (seite) => (e.kurve && e.kurve[seite]) || [];
-  return (
-    <>
-      <Abschnitt titel="Cards in the deck">
-        {e.karten.length ? (
-          <table className="tab kz-tab">
-            <thead><tr><th>Card</th><th>In decks</th><th>Win rate with</th><th>Avg copies</th></tr></thead>
-            <tbody>
-              {e.karten.slice(0, 20).map(([c, nutzung, wr, kopien]) => (
-                <tr key={c}>
-                  <td><Kartenbild id={c} breite={22} /> {kzName(namen, c)}</td>
-                  <td className="z">{(100 * nutzung).toFixed(0)} %</td>
-                  <td className={"z " + wrKlasse(100 * wr)}>{(100 * wr).toFixed(1)} %</td>
-                  <td className="z">{kopien.toFixed(1)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : <p className="leer-satz">No card stats.</p>}
-      </Abschnitt>
-      <Abschnitt titel="Opening hand">
-        {e.hand.length ? (
-          <ul className="bilanz-liste">
-            {e.hand.slice(0, 10).map(([c, anteil]) => (
-              <li key={c}><Kartenbild id={c} breite={22} /><span>{kzName(namen, c)}</span>
-                <span className="z">{(100 * anteil).toFixed(0)} % of hands</span></li>
-            ))}
-          </ul>
-        ) : <p className="leer-satz">No hand stats.</p>}
-      </Abschnitt>
-      <Abschnitt titel="Turn plays">
-        {teil("first").length || teil("second").length ? (
-          <table className="tab kz-tab">
-            <thead><tr><th>Turn</th><th>Going first</th><th>Going second</th></tr></thead>
-            <tbody>
-              {Array.from({ length: KZ_ZUEGE }, (_, i) => i + 1).map((t) => {
-                const a = teil("first").find((z) => z[0] === t);
-                const c = teil("second").find((z) => z[0] === t);
-                if (!a && !c) return null;
-                const zelle = (z) => (z ? z[1].slice(0, 2).map(([k, r]) => `${kzKombi(namen, k)} (${(100 * r).toFixed(0)} %)`).join(", ") : "–");
-                return <tr key={t}><td className="z">{t}</td><td style={{ textAlign: "left" }}>{zelle(a)}</td><td style={{ textAlign: "left" }}>{zelle(c)}</td></tr>;
-              })}
-            </tbody>
-          </table>
-        ) : <p className="leer-satz">No turn data.</p>}
-      </Abschnitt>
-    </>
   );
 }
 
@@ -4228,10 +4168,7 @@ export default function App() {
           </p>
         </Abschnitt>
         {istKaizoku ? (
-          <>
-            <KaizokuKarten b={kzB} leaderId={leader.id} namen={namen} />
-            <KaizokuHinweis satz={satz} />
-          </>
+          <KaizokuHinweis satz={satz} />
         ) : null}
       </>
     );
