@@ -36,7 +36,6 @@ Die Spielerseite zeigt, wie sich der Bounty eines Spielers entwickelt hat und ge
 - [ ] Die Abdeckungszeile nennt, wie viele Partien der Auswertung zugrunde liegen, und dass es nur die zuletzt aufgezeichneten sind.
 - [ ] Bei Spielern ohne Daten oder ohne Niederlagen erscheint ein erklärender Leerzustand.
 - [ ] Tests: Anhängen (Tag doppelt, Lücke, Spieler fällt raus), Gruppierung nach Gegnerleader (Zählung, Anteil, Quote, Spieler ohne Niederlage), Rendern mit 0, 1 und vielen Punkten.
-- [ ] WAF Kurzprüfung entfällt, es ist ein Hobbyprojekt; Rechtefrage (Datenquelle, Datenschutz) ist im Scope geklärt.
 
 ## Implementation plan
 
