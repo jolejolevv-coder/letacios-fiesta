@@ -25,16 +25,17 @@ Handy wie am Rechner.
 
 Fiesta zeigt, was der OPBounty Client selbst nicht zeigt: den Sitzsplit first und second,
 tagesgenaue Zeiträume statt fertiger Sätze, die Leaderaufstellung der Top 100 und einen Replay
-Viewer mit Angriffspfeilen. Fiesta und Metacoach sehen seit dem 22.10.2026 gleich aus: dieselbe
-Spielhilfe, zwei Werkzeuge.
+Viewer mit Angriffspfeilen. Seit dem Redesign vom 02.11.2026 hat Fiesta ein eigenes Gesicht und
+sieht nicht mehr aus wie Metacoach.
 
 ## Design Direction
 
-Fiesta folgt der Richtung "Spielhilfe" von Metacoach (`~/Downloads/meta-coach/DESIGN.md`): die
-laminierte Kurzreferenz, die neben der Playmat liegt. Ein dunkles Kartonblatt mit blauem
-Kopfband, darunter nummerierte Zeilen mit Zebra, Zahlen rechtsbündig in Saira, Details auf der
-Rückseite einer Zeile statt in neuen Ansichten. Abgelehnt sind Kacheln, Kartenraster mit großen
-Bildern und gute oder schlechte Werte in Grün und Rot. Was gebaut ist, beschreibt `DESIGN.md`.
+Fiesta ist ein ruhiges Werkzeug im Stil von Linear und Raycast (Richtung "Werkzeug",
+`specs/features/redesign.md`): warmes Schwarz, Haarlinien statt Zebra, ein blauer Akzent nur für
+Fokus, Kennungen und aktive Wahl, Zahlen in Geist Mono, Kennzahlen als Kacheln, Tabellen als
+gerahmte Blöcke, Details auf der Rückseite einer Zeile statt in neuen Ansichten. Ein Suchfeld mit
+⌘K findet jeden Leader, am Handy liegt die Navigation in einer unteren Leiste. Gewinnt und
+verliert stehen in gedämpftem Seegrün und Ziegelrot. Was gebaut ist, beschreibt `DESIGN.md`.
 
 ## Operating Context
 
@@ -47,8 +48,8 @@ Bildern und gute oder schlechte Werte in Grün und Rot. Was gebaut ist, beschrei
 ## Capabilities and Constraints
 
 * React 18, Tailwind 4, GSAP, Vite; die Oberfläche steckt in `src/App.jsx`, das Aussehen in
-  `src/index.css` (Grundlage ist die CSS von Metacoach, darunter die Ergänzungen für Fiesta).
-* Schriften als Fontsource Pakete: Saira Semi Condensed (400 bis 700) und Source Sans 3 Variable.
+  `src/index.css` (Tokens in `:root`, Namen auf Deutsch).
+* Schriften als Fontsource Pakete: Geist Variable (mit Kursivschnitt) und Geist Mono Variable.
 * Die ganze Seite liegt AES verschlüsselt hinter einem Passwort und ist nicht für Suchmaschinen
   gedacht (`noindex`).
 * Rund 2200 Kartenbilder, 120 Pixel breit; gezeigt werden sie klein (16 bis 36 Pixel), als
@@ -62,7 +63,7 @@ Bildern und gute oder schlechte Werte in Grün und Rot. Was gebaut ist, beschrei
 * Name "Letacios Fiesta". "Letacios" ist ein Insider Witz der Gruppe und wird auf der Seite
   nicht erklärt.
 * Die Marke ist ein flacher, geometrischer Sombrero in Strohgelb `#e8a33d` (`src/Sombrero.jsx`,
-  auch das Favicon). Sein Stroh ist die einzige zweite Farbe neben Turn Order Blau.
+  auch das Favicon). Sein Stroh ist die einzige zweite Farbe neben dem Akzentblau.
 * Die Seite bleibt nur dunkel.
 
 ## Evidence on Hand
@@ -74,6 +75,6 @@ nichts davon wird erfunden.
 
 1. Die Zahl zuerst: jede Ansicht beantwortet eine Frage, bevor sie schmückt.
 2. Handy und Rechner sind gleichwertig.
-3. Jede Liste ist nummeriert und gestreift; Details stehen auf der Rückseite der Zeile.
+3. Jede Liste ist nummeriert; Details stehen auf der Rückseite der Zeile.
 4. Schätzungen kursiv mit Raute, echte Ladderzahlen aufrecht.
 5. Schnell bleibt Pflicht.

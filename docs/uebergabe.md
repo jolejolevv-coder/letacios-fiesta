@@ -5,45 +5,7 @@ bei Bedarf `README.md`, `PRODUCT.md` und `DESIGN.md`.
 
 ## Stand 28.10.2026
 
-OPBounty veröffentlicht seit dem 26.10. 18:28 UTC keine Statistik mehr (Rohdateien und
-fertige Sätze stehen still). Deshalb fehlen „OP17 + EB05 Standard“ und das Heroines Event
-weiter. Die Replays in Firestore laufen und zeigen die Umstellung (27.10.: 57 % EB05 in
-`game_mode` 0). Gebaut (PR 10, Branch `claude/format-aus-replays`): Formatsatz und Heroines
-Event aus den Replays, First/Second aus den Logs, erster Lauf rund 7 Minuten. Dazu
-`werkzeuge/notice_setzen.py`: der Mitschnitt setzt `seen_update_notice_v` vor jedem Start
-selbst. `specs/features/selbstlauf.md` ist freigegeben (Startsatz automatisch, Warnungen
-nur über GitHub). Phase 1 Formaterkennung gebaut (PR 11, Branch `claude/formaterkennung`,
-auf PR 10 aufgesetzt): Zustand in `public/tage/format.zustand.json`, neue `OP`/`EB` Sets ab
-5 % am Umstellungstag und 30 % am Folgetag, alter Satz als „format (old)“ im Cache,
-`verzeichnis.start` öffnet den Formatsatz.
-
-Annahmen Phase 1: nach OP17 + EB05 kommt OP18 ohne neues EB (Nutzer, 28.10.: EB Sets
-kommen nur alle paar Sets, EB05 Heroines war eine Ausnahme fürs Event; das nächste EB
-frühestens nach OP19 oder OP20). Ein neues EB käme zum OP dazu; zum
-Format zählen die neuen Sets mit mindestens 5 % am Starttag; erkannt wird nur über
-Deckkarten; der Event Schlüssel bleibt `..._op17eb05_event` bis Phase 3.
-
-Statistikquellen geprüft (28.10.): Der Client 2.7.7 liest dieselben CDN Adressen wie wir,
-einen neuen Ort gibt es nicht. Firestore `Matches` ist seit 22.07.2025 tot (letzter
-`match_index` 5043131, gelesen nur mit Feldmaske ohne Namen). Bleibt: `Replays`.
-Gezählt wird beim Server: nach jeder Partie schickt der Client `send_match_info` per RPC an
-den Spielserver. Ein Rückweg für globale Statistik (`request_global_stats`,
-`receive_global_data`) steht noch im Paket, wird aber nirgends aufgerufen. Der Export des
-Servers aufs CDN ist am 26.10. stehen geblieben; einen anderen Ausgang gibt es im Client nicht.
-Abdeckung der Replays (Modus 0, Replays je Tag durch Partien laut CDN, gemessen 28.10.):
-Juli bis Mitte August 40 bis 42 %, September 36 bis 37 %, Anfang Oktober 33 %, 17. bis 22.10.
-nur 17 bis 20 %, 23. bis 25.10. wieder 28 bis 37 %. Ab 27.10. ohne Vergleich (7.231 Replays
-am 27.10., vorher rund 4.200 je Tag). Skript: Scratchpad `abdeckung.py`, nicht im Repo.
-Upload laut Client 2.7.7 nur, wenn: Spieler ist Lobbyleiter (`room_leader`, je Partie einer),
-kein Turnier, Ergebnis bestätigt (nicht cancelled, invalid, early, pending, unresolved), beide
-Leader bekannt, und das Combat Log der OPTCGSim (`CombatLogs/AutoSaved`, über `simPath`) des
-Lobbyleiters wird gefunden und besteht die Prüfung (`win` gesetzt, Integrität nicht invalid).
-Upload über einen Ausgang mit Wiederholung, erst Storage, dann Firestore `Replays`.
-
-Bazzite: Update Notice v2.7.7 blockierte die Bestenliste seit 27.10. früh. Am 28.10.
-`seen_update_notice_v` auf 2.7.7 gesetzt (Sicherung `uinf.tres.bak_2026-10-28`) und
-`mitschnitt.service` neu gestartet. Laut Notice läuft das alte Format jetzt in der Special
-Queue (`mode_1`).
+Ins Archiv `docs/uebergabe-archiv-2026-10-28.md` verschoben (Statistikquellen, Abdeckung der Replays, Upload Bedingungen, Bazzite Update Notice).
 
 ## Stand 29.10.2026
 
@@ -68,6 +30,23 @@ zwei Tage, warnt die Action, der Satz bleibt stehen. Gebaut auf Branch `claude/f
 Tests grün, Probelauf: 29.10. bis 01.11., 9.295 Partien, EB05 64 %. Offen: Push und Merge nach
 OK des Nutzers, danach den Lauf der Action prüfen. Annahme: der gespeicherte Start 27.10. wird
 beim Lesen auf 29.10. gezogen. Update Log: seit 29.10. keine neue Meldung von OPBounty.
+
+## Redesign 02.11.2026
+
+Branch `claude/website-redesign-bc8edc`. Nutzer wählte nach der Vergleichsseite
+(`.impeccable/vorschau/richtungen.html`, gitignored) Richtung B Linear / Raycast, alle Reiter,
+nur dunkel, am Handy untere Leiste. Spec `specs/features/redesign.md` freigegeben, v0 freigegeben.
+Alle fünf Phasen gebaut: Tokens und Geist, Rahmen mit Pillen und unterer Leiste, alle Ansichten
+bei 1280 und 390 px geprüft (kein seitliches Scrollen), ⌘K Palette (`Palette` in App.jsx, Logik
+in `src/leadersuche.js`, Test `tests/leadersuche.test.js`), Doku und Changelog. Tests und Build
+grün. Committet auf dem Branch, nicht gepusht; Push und Merge nur mit Ok des Nutzers.
+Vorschau: launch.json Eintrag `redesign` (`.impeccable/review/vite.redesign.mjs`, Port 5181,
+Daten aus dem Hauptcheckout). `.impeccable/config.json` (Hook Ausnahmen) bleibt uncommittet.
+
+Annahmen: Palette öffnet den Leader in Decks, Matchups, Matrix (als Fokus), Mulligan und Guide im
+selben Reiter, aus allen anderen in Decklists. Text 3 `#7c828d` hat 5.16 auf Grund, aber nur 4.25
+auf `--flaeche-2`; dort steht er kaum. Schriften laden latin 83 KB statt vorher 130 KB; das CSS
+wächst gzip um etwa 1 KB.
 
 ## Entscheidung 29.10.2026
 
@@ -138,8 +117,8 @@ sagt „push direkt“.
 
 ## Design
 
-Seit dem 22.10.2026 „Spielhilfe“ aus Metacoach, freigegeben nach einer Vorschau
-(`.impeccable/vorschau/`, lokal mit entschlüsselten Daten, gitignored). Quellen der Wahrheit sind
+Seit dem 02.11.2026 „Werkzeug“ (Linear / Raycast), eigenes Gesicht statt der Spielhilfe aus
+Metacoach. Quellen der Wahrheit sind
 `DESIGN.md` und `.impeccable/design.json`. Der Sombrero bleibt strohgelb.
 
 ## Lokal prüfen ohne Passwort

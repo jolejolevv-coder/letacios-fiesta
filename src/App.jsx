@@ -28,6 +28,7 @@ import { eigeneNummer, partieLesen } from "./zuglager.js";
 import { netzBauen } from "./wertnetz.js";
 import { NOTENFOLGE, partieAnalysieren } from "./spielbewertung.js";
 import { CHANGELOG } from "./changelog.js";
+import { leaderSuchen } from "./leadersuche.js";
 import { animieren, DAUER, NACHLAUF_MS, zahlText } from "./zaehler.js";
 import { fokusOrdnen, GUT, matrixOrdnen, SCHWACH, seite as wrSeite, sortAusText, ton as wrTon, wrKlasse } from "./winrate.js";
 import { ankerBauen, fehlerSuchen, FEHLERNOTEN, kurveBauen, markenBauen, spielerZuordnen } from "./analyse.js";
@@ -35,8 +36,8 @@ import { ankerBauen, fehlerSuchen, FEHLERNOTEN, kurveBauen, markenBauen, spieler
 /* --------------------------------------------------------------------------
    Kleine Helfer
 
-   Gestaltet nach der Spielhilfe von Metacoach (DESIGN.md): nummerierte Zeilen mit
-   Zebra, Zahlen rechtsbuendig in Saira, eine Akzentfarbe. Gut und schlecht stehen in
+   Gestaltet als ruhiges Werkzeug (DESIGN.md): nummerierte Zeilen mit Haarlinien,
+   Zahlen rechtsbuendig in Geist Mono, eine Akzentfarbe. Gut und schlecht stehen in
    Gewicht und in zwei gedaempften Signalfarben, Seegruen und Ziegelrot (src/winrate.js).
    -------------------------------------------------------------------------- */
 
@@ -92,9 +93,12 @@ const ZEICHEN = {
   rueck: ["M3 12a9 9 0 0 1 15.5-6.2L21 8", "M21 3v5h-5", "M21 12a9 9 0 0 1-15.5 6.2L3 16", "M3 21v-5h5"],
   rechts: ["m9 6 6 6-6 6"],
   links: ["m15 6-6 6 6 6"],
+  suche: ["M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14z", "m20 20-4-4"],
+  gitter: ["M4 4h7v7H4z", "M13 4h7v7h-7z", "M4 13h7v7H4z", "M13 13h7v7h-7z"],
+  mehr: ["M5 12h.01", "M12 12h.01", "M19 12h.01"],
 };
 // Pfeile etwas kraeftiger als die Bildzeichen, wie in Metacoach.
-const STRICH = { dreh: 1.9, rueck: 1.9, rechts: 1.9, links: 1.9 };
+const STRICH = { dreh: 1.9, rueck: 1.9, rechts: 1.9, links: 1.9, mehr: 3 };
 
 function Zeichen({ name, groesse = 18 }) {
   return (
@@ -3238,6 +3242,11 @@ const REITER = [
 ];
 const REITER_NAME = { spieler: "Player", replay: "Replay" };
 
+/* Am Handy liegen vier Reiter in der unteren Leiste, im Daumenbereich; die übrigen stehen
+   hinter More. So fällt keiner weg. */
+const HANDY_LEISTE = [["decks", "karte"], ["matchups", "schwert"], ["matrix", "gitter"], ["beste", "krone"]];
+const HANDY_MEHR = REITER.filter(([k]) => !HANDY_LEISTE.some(([l]) => l === k));
+
 /** Ein Klick mit Taste oder Mittelknopf oeffnet wie gewohnt einen neuen Tab. */
 const eigenerKlick = (e) => !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0);
 
@@ -3306,10 +3315,81 @@ function Analyse({ leader, namen }) {
 }
 
 /* --------------------------------------------------------------------------
+   ⌘K Palette
+
+   Sucht die Leader des geladenen Satzes nach Name und Kartennummer (src/leadersuche.js).
+   Pfeiltasten waehlen, Enter oeffnet, Escape schliesst; danach kehrt der Fokus dorthin
+   zurueck, wo er vorher war.
+   -------------------------------------------------------------------------- */
+
+function Palette({ eintraege, waehlen, schliessen }) {
+  const [text, setText] = useState("");
+  const [aktiv, setAktiv] = useState(0);
+  const eingabeRef = useRef(null);
+  const treffer = useMemo(() => leaderSuchen(eintraege, text), [eintraege, text]);
+
+  useEffect(() => {
+    const vorher = document.activeElement;
+    eingabeRef.current?.focus();
+    return () => {
+      if (vorher && typeof vorher.focus === "function") vorher.focus();
+    };
+  }, []);
+  useEffect(() => setAktiv(0), [text]);
+
+  function taste(e) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setAktiv((a) => Math.min(a + 1, treffer.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setAktiv((a) => Math.max(a - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (treffer[aktiv]) waehlen(treffer[aktiv].id);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      schliessen();
+    }
+  }
+
+  return (
+    <div className="palette-huelle" onMouseDown={schliessen}>
+      <div className="palette" role="dialog" aria-modal="true" aria-label="Search leader"
+           onMouseDown={(e) => e.stopPropagation()}>
+        <div className="palette-feld">
+          <Zeichen name="suche" groesse={16} />
+          <input ref={eingabeRef} type="text" autoComplete="off" spellCheck={false}
+                 placeholder="Leader name or card number" value={text}
+                 role="combobox" aria-expanded="true" aria-controls="palette-liste"
+                 aria-activedescendant={treffer[aktiv] ? "palette-" + treffer[aktiv].id : undefined}
+                 onChange={(e) => setText(e.target.value)} onKeyDown={taste} />
+          <kbd>esc</kbd>
+        </div>
+        <ul id="palette-liste" role="listbox" className="palette-liste">
+          {treffer.map((e, i) => (
+            <li key={e.id} id={"palette-" + e.id} role="option" aria-selected={i === aktiv}
+                onMouseEnter={() => setAktiv(i)} onClick={() => waehlen(e.id)}>
+              <Kartenbild id={e.id} breite={24} />
+              <b>{e.name}</b>
+              <span className="z">{e.id}</span>
+              <small className="z">{fmtZahl(e.partien)} games</small>
+            </li>
+          ))}
+          {!treffer.length ? <li className="leer-satz">No leader matches that search.</li> : null}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------------------
    Die Seite
    -------------------------------------------------------------------------- */
 
 const MATRIX_HANDY_TOP = 8;
+// Reiter mit eigenem Leader; aus allen anderen oeffnet die Palette den Leader in Decklists.
+const LEADER_REITER = ["decks", "matchups", "matrix", "analyse", "book"];
 
 export default function App() {
   const [entsperrt, setEntsperrt] = useState(null);
@@ -3364,6 +3444,8 @@ export default function App() {
 
   const [quelleOffen, setQuelleOffen] = useState(false);
   const [leisteOffen, setLeisteOffen] = useState(false);
+  const [mehrOffen, setMehrOffen] = useState(false);
+  const [sucheOffen, setSucheOffen] = useState(false);
 
   const kopfRef = useRef(null);
   const quelleRef = useRef(null);
@@ -3386,6 +3468,29 @@ export default function App() {
       document.removeEventListener("keydown", taste);
     };
   }, [quelleOffen]);
+
+  /* Das Blatt More schliesst mit Escape und bei jedem Reiterwechsel. */
+  useEffect(() => {
+    if (!mehrOffen) return undefined;
+    const taste = (e) => {
+      if (e.key === "Escape") setMehrOffen(false);
+    };
+    document.addEventListener("keydown", taste);
+    return () => document.removeEventListener("keydown", taste);
+  }, [mehrOffen]);
+  useEffect(() => setMehrOffen(false), [reiter]);
+
+  /* ⌘K oder Ctrl K oeffnet und schliesst die Palette. */
+  useEffect(() => {
+    const taste = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSucheOffen((o) => !o);
+      }
+    };
+    document.addEventListener("keydown", taste);
+    return () => document.removeEventListener("keydown", taste);
+  }, []);
 
   /* Liegt eine Verschluesselung vor, und passt ein gemerktes Passwort noch? */
   useEffect(() => {
@@ -3621,6 +3726,28 @@ export default function App() {
       if (treffer) setGewaehlt(treffer.id);
     }
   }, [satz]);
+
+  const paletteEintraege = useMemo(() => {
+    if (!satz) return [];
+    return satz.leader
+      .filter((e) => e.listen.length > 0)
+      .map((e) => {
+        const id = kennung(e.id);
+        return { id, name: (namen[id] || {}).n || id, partien: e.w + e.l };
+      });
+  }, [satz, namen]);
+
+  /* Leader aus der Palette: im aktuellen Reiter, sonst in Decklists. */
+  const paletteWaehlen = useCallback((id) => {
+    setSucheOffen(false);
+    if (reiter === "matrix") {
+      fokusSetzen(id);
+      return;
+    }
+    const treffer = satz && satz.leader.find((e) => kennung(e.id) === id);
+    if (treffer) setGewaehlt(treffer.id);
+    if (!LEADER_REITER.includes(reiter)) setReiter("decks");
+  }, [reiter, satz, fokusSetzen]);
 
   /* Vor und Zurueck im Browser */
   useEffect(() => {
@@ -3899,7 +4026,7 @@ export default function App() {
   } else if (reiter === "analyse") {
     inhalt = <Analyse leader={leader} namen={namen} />;
   } else if (reiter === "book") {
-    inhalt = <Book namen={namen} startLeader={gewaehlt ? kennung(gewaehlt) : null} />;
+    inhalt = <Book key={gewaehlt} namen={namen} startLeader={gewaehlt ? kennung(gewaehlt) : null} />;
   } else if (reiter === "eigenes") {
     inhalt = <EigenesReplay namen={namen} />;
   } else if (reiter === "replay") {
@@ -3965,9 +4092,16 @@ export default function App() {
         <header ref={kopfRef} className="band">
           <a className="marke" href={PFADE.decks}
              onClick={(e) => { if (!eigenerKlick(e)) return; e.preventDefault(); setReiter("decks"); }}>
-            <Sombrero groesse={30} className="hut" />
+            <Sombrero groesse={26} className="hut" />
             <b>Letacios Fiesta</b>
           </a>
+
+          <button type="button" className="suche-knopf" aria-haspopup="dialog"
+                  onClick={() => setSucheOffen(true)}>
+            <Zeichen name="suche" groesse={15} />
+            <span>Search leader</span>
+            <kbd>⌘K</kbd>
+          </button>
 
           {/* Der Quellenchip zeigt, was geladen ist, und oeffnet erst auf Klick die
               Bedienelemente. */}
@@ -3986,7 +4120,7 @@ export default function App() {
           </div>
         </header>
 
-        {/* Neun Reiter: am Rechner eine Zeile, am Handy zwei Zeilen, nichts verborgen. */}
+        {/* Neun Reiter am Rechner in einer Zeile. Am Handy tritt die untere Leiste an ihre Stelle. */}
         <nav className="reiter" aria-label="Tabs">
           {REITER.map(([k, lang, kurz]) => (
             <a key={k} href={PFADE[k]} aria-current={reiter === k ? "page" : undefined}
@@ -4008,6 +4142,39 @@ export default function App() {
             </div>
           ) : buehne}
         </main>
+
+        <nav className="unten-leiste" aria-label="Tabs on phone">
+          {HANDY_LEISTE.map(([k, zeichen]) => (
+            <a key={k} href={PFADE[k]} aria-current={reiter === k ? "page" : undefined}
+               onClick={(e) => { if (!eigenerKlick(e)) return; e.preventDefault(); setReiter(k); }}>
+              <Zeichen name={zeichen} groesse={20} />
+              <span>{REITER.find(([r]) => r === k)[2]}</span>
+            </a>
+          ))}
+          <button type="button" aria-expanded={mehrOffen}
+                  className={HANDY_MEHR.some(([k]) => k === reiter) ? "aktiv" : undefined}
+                  onClick={() => setMehrOffen((o) => !o)}>
+            <Zeichen name="mehr" groesse={20} />
+            <span>More</span>
+          </button>
+        </nav>
+        {mehrOffen ? (
+          <div className="mehr-huelle" onClick={() => setMehrOffen(false)}>
+            <div className="mehr-blatt" role="dialog" aria-label="More tabs" onClick={(e) => e.stopPropagation()}>
+              {HANDY_MEHR.map(([k, lang]) => (
+                <a key={k} href={PFADE[k]} aria-current={reiter === k ? "page" : undefined}
+                   onClick={(e) => { if (!eigenerKlick(e)) return; e.preventDefault(); setReiter(k); }}>
+                  {lang}
+                  <Zeichen name="rechts" groesse={16} />
+                </a>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {sucheOffen ? (
+          <Palette eintraege={paletteEintraege} waehlen={paletteWaehlen} schliessen={() => setSucheOffen(false)} />
+        ) : null}
 
         <footer className="fuss">
           <span>

@@ -1,32 +1,31 @@
 @import "tailwindcss";
 
-/* Letacios Fiesta im Design "Spielhilfe" von Metacoach (22.10.2026). Grundlage ist
-   meta-coach/web/src/index.css unverändert, darunter die Ergänzungen für Fiesta. */
-
-/* Metacoach Spielhilfe (.impeccable/richtung.md, 22.10.2026). Nur dunkel. Dunkler Karton mit
-   leichtem Laminatglanz oben, eine Rundung für alles (10 px), eine Akzentfarbe Turn Order Blau
-   als Kopfband und Rand. Saira Semi Condensed für Überschriften und Zahlen, Source Sans 3 für
-   Text. Schätzung: Raute und kursiv, echte Zahlen aufrecht. */
+/* Letacios Fiesta im Design "Werkzeug" (Redesign 02.11.2026, specs/features/redesign.md):
+   warmes Schwarz, Haarlinien, ein Akzent Turn Order Blau nur für Fokus, Kennungen und aktive
+   Wahl. Geist für Text und Überschriften, Geist Mono für alle Zahlen. Nur dunkel.
+   Schätzung: Raute und kursiv, echte Zahlen aufrecht. Die Namen der Variablen stammen noch
+   aus der Spielhilfe von Metacoach, ihre Werte sind neu. */
 :root {
-  --grund: #0b0c0f;
-  --karton: #16181d;
-  --karton-hoch: #1c1f25;
-  --zebra: rgba(236, 231, 220, 0.03);
-  --hover: rgba(236, 231, 220, 0.045);
-  --linie: rgba(236, 231, 220, 0.085);
-  --linie-stark: rgba(236, 231, 220, 0.17);
-  --text: #ece7dc;
-  --text-2: #aca79c;
-  --text-3: #8a867e;
+  --grund: #08090a;
+  --karton: #0f1013;
+  --karton-hoch: #16171c;
+  --zebra: transparent;
+  --hover: rgba(255, 255, 255, 0.035);
+  --linie: rgba(255, 255, 255, 0.06);
+  --linie-stark: rgba(255, 255, 255, 0.12);
+  --linie-hover: rgba(255, 255, 255, 0.2);
+  --text: #f2f2f0;
+  --text-2: #9ca3af;
+  --text-3: #7c828d;
   --akzent: #2c66d6;
   --akzent-band: #3170e0;
   --akzent-tief: #1d4aa6;
   --akzent-hell: #93b3f3;
-  --akzent-flaeche: rgba(44, 102, 214, 0.15);
+  --akzent-flaeche: rgba(44, 102, 214, 0.14);
   --akzent-rand: rgba(44, 102, 214, 0.55);
-  --rueck: #111929;
-  --rueck-linie: rgba(147, 179, 243, 0.2);
-  --rueck-linie-leise: rgba(147, 179, 243, 0.08);
+  --rueck: #16171c;
+  --rueck-linie: rgba(255, 255, 255, 0.1);
+  --rueck-linie-leise: rgba(255, 255, 255, 0.05);
   --fehler: #f1a194;
   /* Zwei Signalfarben fuer Winrates (The Two Signals Rule), getrennt vom Akzent. */
   --gewinnt: #86e0c2;
@@ -37,10 +36,17 @@
   --ton-max: 0.28;
   --auf-akzent: #ffffff;
   --r: 10px;
-  --kopf-font: "Saira Semi Condensed", ui-sans-serif, system-ui, sans-serif;
-  --text-font: "Source Sans 3 Variable", "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
-  --dauer: 260ms;
-  --kurve: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --r-klein: 6px;
+  --r-gross: 12px;
+  --flaeche-2: #1e1f25;
+  --kopfzeile: #0c0d10;
+  --schatten: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --kopf-font: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --zahl-font: "Geist Mono Variable", ui-monospace, monospace;
+  --text-font: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --dauer: 350ms;
+  --dauer-kurz: 150ms;
+  --kurve: cubic-bezier(0.22, 1, 0.36, 1);
 
   color-scheme: dark;
   background-color: var(--grund);
@@ -49,7 +55,7 @@
 }
 
 @theme {
-  --font-sans: "Source Sans 3 Variable", "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
@@ -57,7 +63,7 @@
     margin: 0;
     background: var(--grund);
     color: var(--text);
-    font: 400 15px/1.45 var(--text-font);
+    font: 400 14.5px/1.5 var(--text-font);
     font-feature-settings: "kern";
     -webkit-font-smoothing: antialiased;
   }
@@ -119,15 +125,10 @@
 }
 .karte {
   position: relative;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.055) 0, rgba(255, 255, 255, 0.012) 90px, rgba(255, 255, 255, 0) 180px),
-    var(--karton);
-  border: 1px solid rgba(44, 102, 214, 0.5);
-  border-radius: var(--r);
+  background: var(--karton);
+  border: 1px solid var(--linie);
+  border-radius: var(--r-gross);
   overflow: hidden;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 24px 60px rgba(0, 0, 0, 0.5);
 }
 
 /* ------------------------------------------------------------------------------ Kopf */
@@ -136,9 +137,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 9px 16px 9px 18px;
-  background: linear-gradient(180deg, var(--akzent-band), var(--akzent));
-  color: var(--auf-akzent);
+  padding: 12px 16px 10px 18px;
+  color: var(--text);
 }
 .marke {
   display: flex;
@@ -151,73 +151,84 @@
   flex: none;
 }
 .marke b {
-  font: 700 19px/1 var(--kopf-font);
-  letter-spacing: 0.01em;
+  font: 600 16px/1 var(--kopf-font);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 .marke span {
-  font: 500 12px/1 var(--kopf-font);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font: 500 12.5px/1 var(--kopf-font);
   opacity: 0.86;
   padding-left: 9px;
-  border-left: 1px solid rgba(255, 255, 255, 0.35);
+  border-left: 1px solid var(--linie-stark);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.wahl {
-  display: inline-flex;
-  flex: none;
-  padding: 2px;
-  border-radius: var(--r);
-  background: rgba(5, 15, 40, 0.28);
-}
-.wahl button {
-  border: 0;
-  background: transparent;
+/* Suchfeld im Kopf: ein Knopf, der die Palette öffnet (⌘K oder Ctrl K). */
+.suche-knopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 340px;
+  height: 34px;
+  margin-left: auto;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--linie-stark);
+  border-radius: var(--r-klein);
+  background: var(--karton-hoch);
+  color: var(--text-3);
+  font-size: 13.5px;
   cursor: pointer;
-  font: 500 13px/1 var(--kopf-font);
-  letter-spacing: 0.02em;
-  padding: 7px 11px;
-  border-radius: var(--r);
-  color: rgba(255, 255, 255, 0.9);
-  white-space: nowrap;
+  transition: border-color var(--dauer-kurz) ease-out, color var(--dauer-kurz) ease-out;
 }
-.wahl button[aria-pressed="true"] {
-  background: #fff;
-  color: var(--akzent-tief);
-  font-weight: 600;
+.suche-knopf span {
+  flex: 1;
+  text-align: left;
 }
-.wahl button:hover:not([aria-pressed="true"]) {
-  background: rgba(255, 255, 255, 0.12);
+.suche-knopf:hover {
+  border-color: var(--linie-hover);
+  color: var(--text-2);
 }
-.wahl button:focus-visible {
-  outline-color: #fff;
+kbd {
+  font: 500 11px/1 var(--zahl-font);
+  color: var(--text-2);
+  background: var(--flaeche-2);
+  border: 1px solid var(--linie-stark);
+  border-radius: 4px;
+  padding: 3px 5px;
 }
 
+/* Reiter als Pillen in einer Zeile; der aktive liegt eine Stufe heller mit feinem Ring. */
 .reiter {
   display: flex;
   flex-wrap: wrap;
   gap: 2px;
-  padding: 0 12px;
+  padding: 0 12px 10px;
   border-bottom: 1px solid var(--linie);
 }
 .reiter a {
-  font: 500 14px/1 var(--kopf-font);
-  letter-spacing: 0.02em;
+  font: 500 13.5px/1 var(--kopf-font);
   color: var(--text-2);
   text-decoration: none;
-  padding: 13px 11px 11px;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  padding: 8px 11px;
+  border-radius: var(--r-klein);
+  transition: color var(--dauer-kurz) ease-out, background-color var(--dauer-kurz) ease-out;
 }
 .reiter a:hover {
   color: var(--text);
+  background: var(--hover);
 }
 .reiter a[aria-current="page"] {
   color: var(--text);
-  font-weight: 600;
-  border-bottom-color: var(--akzent);
+  background: var(--flaeche-2);
+  box-shadow: inset 0 0 0 1px var(--linie-stark);
+}
+
+/* Untere Leiste und Blatt More gibt es nur am Handy (siehe Breiten). */
+.unten-leiste,
+.mehr-huelle {
+  display: none;
 }
 
 /* ---------------------------------------------------------------------------- Inhalt */
@@ -270,10 +281,8 @@
   align-items: center;
   gap: 12px;
   margin: 0 0 10px;
-  font: 600 12.5px/1.2 var(--kopf-font);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--akzent-hell);
+  font: 500 13px/1.2 var(--kopf-font);
+  color: var(--text-2);
 }
 .abschnitt > h2::after,
 .zwischen::after {
@@ -303,9 +312,10 @@
 }
 
 .z {
-  font-family: var(--kopf-font);
+  font-family: var(--zahl-font);
   font-variant-numeric: tabular-nums lining-nums;
   font-weight: 500;
+  white-space: nowrap;
 }
 .klein {
   font-size: 13px;
@@ -372,9 +382,7 @@
   display: inline-block;
   padding: 3px 6px 2px;
   border-radius: var(--r);
-  font: 600 10.5px/1.1 var(--kopf-font);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font: 500 11.5px/1.1 var(--kopf-font);
   vertical-align: 1px;
   border: 1px solid var(--linie-stark);
   color: var(--text-2);
@@ -519,20 +527,17 @@
   min-height: 0;
   overflow: hidden;
 }
-/* Die Rückseite ist ein eigenes Blatt: dunkelblauer Karton, oben das schmale Band der
-   Vorderseite, links das Etikett „Rückseite“, darunter ein weicher Schatten nach unten. */
+/* Die Rückseite ist eine eigene Tafel: eine Stufe heller als die Fläche, feiner Rand,
+   oben das Etikett „Back“, kaum Schatten. */
 .rueck-blatt {
   position: relative;
   margin: 6px 0 12px;
   padding: 16px 14px 13px;
-  background:
-    linear-gradient(180deg, var(--akzent-band), var(--akzent)) top / 100% 4px no-repeat,
-    linear-gradient(180deg, rgba(147, 179, 243, 0.07), rgba(147, 179, 243, 0) 70px),
-    var(--rueck);
-  border: 1px solid var(--akzent-rand);
-  border-radius: var(--r);
+  background: var(--rueck);
+  border: 1px solid var(--linie-stark);
+  border-radius: var(--r-gross);
   overflow: hidden;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--schatten);
   opacity: 0;
   transform: translateY(-6px);
   transition:
@@ -549,9 +554,7 @@
   align-items: center;
   gap: 6px 10px;
   margin-bottom: 10px;
-  font: 600 11.5px/1.2 var(--kopf-font);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font: 500 12px/1.2 var(--kopf-font);
   color: var(--akzent-hell);
 }
 .rueck-blatt .hinweis {
@@ -593,9 +596,7 @@
   text-align: left;
   padding: 0 8px 7px;
   border-bottom: 1px solid var(--linie-stark);
-  font: 600 11px/1.2 var(--kopf-font);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font: 500 12px/1.2 var(--kopf-font);
   color: var(--text-3);
   white-space: nowrap;
 }
@@ -650,7 +651,7 @@
 }
 .zelle b {
   display: block;
-  font: 500 13.5px/1.2 var(--kopf-font);
+  font: 500 13.5px/1.2 var(--zahl-font);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -668,8 +669,9 @@
   display: inline-flex;
   flex: none;
   padding: 2px;
-  border-radius: var(--r);
+  border-radius: var(--r-klein);
   border: 1px solid var(--linie-stark);
+  background: var(--grund);
 }
 .schalter button,
 .sitzwahl button {
@@ -677,23 +679,21 @@
   background: transparent;
   cursor: pointer;
   padding: 7px 13px;
-  border-radius: var(--r);
-  font: 600 13px/1 var(--kopf-font);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  border-radius: 4px;
+  font: 500 13px/1 var(--kopf-font);
   color: var(--text-2);
   white-space: nowrap;
 }
 .schalter button {
-  text-transform: none;
-  letter-spacing: 0.02em;
   font-weight: 500;
   padding: 6px 11px;
 }
+/* Aktive Wahl: eine Stufe heller mit feinem Ring, Blau bleibt dem Fokus. */
 .schalter button[aria-checked="true"],
 .sitzwahl button[aria-pressed="true"] {
-  background: var(--akzent);
-  color: var(--auf-akzent);
+  background: var(--flaeche-2);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--linie-stark);
 }
 .schalter button:hover:not([aria-checked="true"]),
 .sitzwahl button:hover:not([aria-pressed="true"]) {
@@ -707,10 +707,10 @@
   gap: 8px;
   min-height: 36px;
   padding: 0 14px;
-  border-radius: var(--r);
+  border-radius: var(--r-klein);
   border: 1px solid transparent;
-  font: 600 14px/1 var(--kopf-font);
-  letter-spacing: 0.03em;
+  font: 500 13.5px/1 var(--kopf-font);
+  transition: background-color var(--dauer-kurz) ease-out, border-color var(--dauer-kurz) ease-out;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
@@ -725,10 +725,11 @@
 .knopf.rand {
   border-color: var(--linie-stark);
   color: var(--text);
-  background: transparent;
+  background: var(--karton-hoch);
 }
 .knopf.rand:hover:not(:disabled) {
-  border-color: var(--akzent-hell);
+  border-color: var(--linie-hover);
+  background: var(--flaeche-2);
 }
 .knopf.leise {
   background: transparent;
@@ -751,19 +752,19 @@
 .feld {
   display: block;
   width: 100%;
-  min-height: 38px;
+  min-height: 36px;
   padding: 7px 11px;
-  border-radius: var(--r);
+  border-radius: var(--r-klein);
   border: 1px solid var(--linie-stark);
-  background: var(--grund);
+  background: var(--karton-hoch);
   color: var(--text);
-  font-size: 15px;
+  font-size: 14px;
 }
 .feld::placeholder {
   color: var(--text-3);
 }
 .feld:hover {
-  border-color: rgba(236, 231, 220, 0.28);
+  border-color: var(--linie-hover);
 }
 .feld:focus-visible {
   outline: 2px solid var(--akzent-hell);
@@ -773,7 +774,7 @@
 select.feld {
   appearance: none;
   padding-right: 34px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23aca79c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 11px center;
 }
@@ -795,9 +796,7 @@ input[type="date"].feld {
   min-width: 0;
 }
 .fl > span {
-  font: 600 11.5px/1.2 var(--kopf-font);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font: 500 12px/1.2 var(--kopf-font);
   color: var(--text-3);
 }
 .fl.eng {
@@ -928,10 +927,25 @@ input[type="date"].feld {
 }
 
 /* ------------------------------------------------- Übersicht: Matchup Tafel */
+/* Jede Tafel ist ein gerahmter Block; der Spaltenkopf davor bildet seinen oberen Rand. */
 .tafel {
   list-style: none;
   margin: 0;
   padding: 0;
+  border: 1px solid var(--linie);
+  border-radius: var(--r-gross);
+  overflow: hidden;
+}
+.tafel-spalten + .tafel {
+  border-top: 0;
+  border-radius: 0 0 var(--r-gross) var(--r-gross);
+}
+.tafel > .zeile:last-child {
+  border-bottom: 0;
+}
+.tafel .tafel {
+  border: 0;
+  border-radius: 0;
 }
 .tafel-spalten,
 .tafel .vorn {
@@ -941,11 +955,11 @@ input[type="date"].feld {
   align-items: center;
 }
 .spalten {
-  padding: 0 10px 8px;
-  border-bottom: 1px solid var(--linie-stark);
-  font: 600 11.5px/1.2 var(--kopf-font);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  padding: 9px 10px 8px;
+  background: var(--kopfzeile);
+  border: 1px solid var(--linie);
+  border-radius: var(--r-gross) var(--r-gross) 0 0;
+  font: 500 12px/1.2 var(--kopf-font);
   color: var(--text-3);
 }
 .spalten .rechts {
@@ -965,7 +979,7 @@ input[type="date"].feld {
   background: var(--hover) !important;
 }
 .nr {
-  font: 600 13.5px/1 var(--kopf-font);
+  font: 600 13.5px/1 var(--zahl-font);
   font-variant-numeric: tabular-nums;
   color: var(--text-3);
 }
@@ -986,7 +1000,7 @@ input[type="date"].feld {
 }
 .kartennr {
   white-space: nowrap;
-  font: 500 12px/1 var(--kopf-font);
+  font: 500 12px/1 var(--zahl-font);
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
@@ -1073,9 +1087,7 @@ input[type="date"].feld {
 }
 .ruhig h2 {
   margin: 0 0 8px;
-  font: 600 11.5px/1.2 var(--kopf-font);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font: 500 12px/1.2 var(--kopf-font);
   color: var(--text-3);
 }
 .ruhig p {
@@ -1102,13 +1114,11 @@ input[type="date"].feld {
 .schritte-lauf em {
   font-style: normal;
   color: var(--text-3);
-  font-family: var(--kopf-font);
+  font-family: var(--zahl-font);
   font-variant-numeric: tabular-nums;
 }
 .schritte-lauf b {
-  font: 600 12px/1.4 var(--kopf-font);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font: 500 12.5px/1.4 var(--kopf-font);
   color: var(--text-3);
 }
 .schritte-lauf b.fehlt {
@@ -1163,9 +1173,7 @@ input[type="date"].feld {
 }
 .leiste-block h3 {
   margin: 0 0 8px;
-  font: 600 11.5px/1 var(--kopf-font);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font: 500 12px/1 var(--kopf-font);
   color: var(--text-3);
 }
 .pikto-liste {
@@ -1196,7 +1204,7 @@ input[type="date"].feld {
   border-radius: var(--r);
   border: 1px solid var(--linie-stark);
   text-decoration: none;
-  font: 600 14px/1 var(--kopf-font);
+  font: 600 14px/1 var(--zahl-font);
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
@@ -1238,7 +1246,7 @@ input[type="date"].feld {
   border-radius: var(--r);
   background: var(--akzent-flaeche);
   border: 1px solid var(--akzent-rand);
-  font: 700 22px/1 var(--kopf-font);
+  font: 700 22px/1 var(--zahl-font);
   color: var(--akzent-hell);
   font-variant-numeric: tabular-nums;
 }
@@ -1249,7 +1257,7 @@ input[type="date"].feld {
   top: 58px;
   bottom: -14px;
   width: 1px;
-  background: linear-gradient(180deg, rgba(44, 102, 214, 0.45), rgba(44, 102, 214, 0));
+  background: var(--linie-stark);
 }
 .schritt:last-child::before {
   display: none;
@@ -1295,9 +1303,7 @@ input[type="date"].feld {
   top: 3px;
 }
 .hilfe-zeile .label {
-  font: 600 12.5px/1.2 var(--kopf-font);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font: 500 13px/1.2 var(--kopf-font);
   color: var(--text-3);
 }
 .saetze {
@@ -1338,9 +1344,7 @@ input[type="date"].feld {
   gap: 8px;
   cursor: pointer;
   list-style: none;
-  font: 600 13px/1 var(--kopf-font);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font: 500 13.5px/1 var(--kopf-font);
   color: var(--akzent-hell);
   padding: 9px 12px;
   border: 1px solid var(--linie-stark);
@@ -1385,9 +1389,7 @@ input[type="date"].feld {
   background: var(--zebra);
 }
 .sitz-satz .tab-name {
-  font: 600 12.5px/1 var(--kopf-font);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font: 500 13px/1 var(--kopf-font);
   color: var(--text-3);
   padding-left: 9px;
   border-left: 1px solid transparent;
@@ -1431,7 +1433,7 @@ input[type="date"].feld {
   border-radius: var(--r);
   background: var(--akzent-flaeche);
   border: 1px solid var(--akzent-rand);
-  font: 700 17px/1 var(--kopf-font);
+  font: 700 17px/1 var(--zahl-font);
   color: var(--akzent-hell);
   font-variant-numeric: tabular-nums;
 }
@@ -1613,9 +1615,7 @@ input[type="date"].feld {
 }
 .partie summary .ausgang {
   margin-left: 8px;
-  font: 600 11px/1 var(--kopf-font);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font: 500 12px/1 var(--kopf-font);
   color: var(--text-3);
 }
 .partie summary .ausgang.sieg {
@@ -1713,7 +1713,7 @@ input[type="date"].feld {
 .aussagen {
   flex: none;
   text-align: right;
-  font: 600 18px/1 var(--kopf-font);
+  font: 600 18px/1 var(--zahl-font);
   font-variant-numeric: tabular-nums;
 }
 .aussagen small {
@@ -1845,17 +1845,13 @@ input[type="date"].feld {
     font-size: 12.5px;
   }
   .reiter {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, auto));
-    justify-content: space-between;
-    gap: 0;
-    padding: 0 4px;
+    display: none;
   }
-  .reiter a {
-    padding: 12px 6px 10px;
-    text-align: center;
-    font-size: 13px;
-    white-space: nowrap;
+  .suche-knopf {
+    max-width: none;
+  }
+  .suche-knopf kbd {
+    display: none;
   }
   .inhalt {
     padding: 16px 14px 20px;
@@ -1873,6 +1869,10 @@ input[type="date"].feld {
   /* Übersicht */
   .tafel-spalten {
     display: none;
+  }
+  .tafel-spalten + .tafel {
+    border-top: 1px solid var(--linie);
+    border-radius: var(--r-gross);
   }
   .tafel .vorn {
     grid-template-columns: 20px 26px minmax(0, 1fr) 58px 58px 26px;
@@ -1915,9 +1915,7 @@ input[type="date"].feld {
   }
   .sitzwr .sitz {
     display: block;
-    font: 600 10px/1 var(--kopf-font);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font: 500 11px/1 var(--kopf-font);
     color: var(--text-3);
   }
   .tafel .vorn > .dreh {
@@ -2231,11 +2229,8 @@ input[type="date"].feld {
   padding: 16px 18px 6px;
   border: 0;
   border-radius: 0;
-  border-bottom: 1px solid var(--akzent-rand);
-  box-shadow: inset 0 8px 18px rgba(0, 0, 0, 0.35);
-  background:
-    linear-gradient(180deg, var(--akzent-band), var(--akzent)) top / 100% 3px no-repeat,
-    var(--grund);
+  border-bottom: 1px solid var(--linie);
+  background: var(--grund);
 }
 .tafel .zeile.offen > .vorn {
   background: var(--akzent-flaeche) !important;
@@ -2303,22 +2298,21 @@ input[type="date"].feld {
 /* ===========================================================================
    Fiesta: Ergänzungen aus der Vorschau (.impeccable/vorschau/fiesta.css)
    =========================================================================== */
-/* Fiesta in der Spielhilfe von Metacoach: nur Ergänzungen zu spielhilfe.css (der Kopie von
-   meta-coach/web/src/index.css). Alles hier nutzt dieselben Zeichen: Karton, Blatt, eine
-   Rundung, Turn Order Blau, Saira für Zahlen und Labels, Source Sans für Sätze. */
+/* Ergänzungen für Fiesta. Alles hier nutzt dieselben Tokens wie oben: Flächen, Haarlinien,
+   ein Akzentblau, Geist Mono für Zahlen, Geist für Sätze. */
 
 
 
 /* ------------------------------------------------------------ Kopf mit Marke */
 .marke .hut { flex: none; display: block; }
 .quelle-chip {
-  display: inline-flex; align-items: center; gap: 8px; flex: none;
-  border: 0; border-radius: var(--r); padding: 7px 11px;
-  background: rgba(5, 15, 40, 0.28); color: #fff; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px; flex: none; height: 34px;
+  border: 1px solid var(--linie-stark); border-radius: var(--r-klein); padding: 0 10px;
+  background: transparent; color: var(--text-2); cursor: pointer;
   font: 600 13px/1 var(--kopf-font); letter-spacing: 0.02em; white-space: nowrap;
 }
-.quelle-chip .z { font-weight: 500; color: rgba(255, 255, 255, 0.9); }
-.quelle-chip:hover { background: rgba(255, 255, 255, 0.12); }
+.quelle-chip .z { font-weight: 500; color: var(--text); }
+.quelle-chip:hover { background: var(--hover); color: var(--text); }
 
 /* Neun Reiter: am Rechner eine Zeile, am Handy zwei Zeilen (5 und 4), nichts verborgen. */
 .reiter a .kurz { display: none; }
@@ -2341,31 +2335,39 @@ input[type="date"].feld {
 .leiste-kopf .schalter { justify-self: start; }
 .leiste-kopf .schalter button { padding: 5px 9px; font-size: 12.5px; }
 .leiste-liste { list-style: none; margin: 0; padding: 0; overflow-y: auto; }
+/* Leaderliste wie eine Seitenleiste in einem Werkzeug: Zeilen ohne Trennlinie, die gewählte
+   liegt als helle Fläche mit feinem Ring. */
+.leiste-liste { padding: 8px 10px 8px 14px; }
 .leiste-liste li a {
-  display: grid; grid-template-columns: 22px 24px minmax(0, 1fr) auto; gap: 0 10px;
-  align-items: center; padding: 5px 14px 5px 24px; text-decoration: none;
-  border-bottom: 1px solid var(--linie); position: relative;
+  display: grid; grid-template-columns: 20px 24px minmax(0, 1fr) auto; gap: 0 10px;
+  align-items: center; padding: 6px 8px; text-decoration: none;
+  border-radius: var(--r-klein); position: relative;
+  transition: background-color var(--dauer-kurz) ease-out;
 }
-.leiste-liste li:nth-child(even) a { background: var(--zebra); }
 .leiste-liste li a:hover { background: var(--hover); }
-.leiste-liste li a[aria-current="true"] { background: var(--akzent-flaeche); }
-.leiste-liste li a[aria-current="true"] b { color: var(--akzent-hell, var(--akzent)); }
-.leiste-liste .nr { font-size: 12.5px; }
-.leiste-liste b { display: block; font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.leiste-liste small { display: block; font: 500 12px/1.2 var(--kopf-font); color: var(--text-3); font-variant-numeric: tabular-nums; }
-.leiste-liste .wr { font-size: 13.5px; }
+.leiste-liste li a[aria-current="true"] { background: var(--karton-hoch); box-shadow: inset 0 0 0 1px var(--linie-stark); }
+.leiste-liste .nr { font-size: 11px; font-weight: 400; }
+.leiste-liste b { display: block; font-weight: 500; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Unterzeile in Geist mit Tabellenziffern: Mono wäre hier zu breit und bräche um. */
+.leiste-liste small { display: block; font: 400 11.5px/1.3 var(--text-font); color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.leiste-liste .wr { font-size: 12.5px; }
 .leiste-knopf { display: none; }
 
 /* --------------------------------------------------------- Leader im Kopf */
+/* Kennzahlen als ruhige Kacheln. */
 .kennzeile {
-  display: flex; flex-wrap: wrap; gap: 10px 28px; margin: 16px 0 0; padding: 12px 0 0;
-  border-top: 1px solid var(--linie);
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px;
+  margin: 16px 0 0; padding: 0;
 }
-.kennzeile div { display: grid; gap: 3px; }
+.kennzeile div {
+  display: grid; gap: 4px; align-content: start;
+  padding: 9px 12px 10px; background: var(--karton-hoch);
+  border: 1px solid var(--linie); border-radius: var(--r);
+}
 .kennzeile dt {
-  font: 600 11px/1.2 var(--kopf-font); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3);
+  font: 500 12px/1.2 var(--kopf-font); color: var(--text-3);
 }
-.kennzeile dd { margin: 0; font: 600 19px/1.1 var(--kopf-font); font-variant-numeric: tabular-nums lining-nums; }
+.kennzeile dd { margin: 0; font: 500 18px/1.1 var(--zahl-font); letter-spacing: -0.02em; font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
 .kennzeile dd small { margin-left: 5px; font: 500 12px/1 var(--kopf-font); color: var(--text-3); }
 
 /* ---------------------------------------------------------- Decklisten */
@@ -2379,13 +2381,13 @@ input[type="date"].feld {
 .streifen .karte-klein b {
   position: absolute; right: -3px; bottom: -3px; min-width: 13px; height: 13px; padding: 0 2px;
   display: grid; place-items: center; border-radius: var(--r);
-  background: var(--akzent); color: #fff; font: 600 9.5px/1 var(--kopf-font); font-variant-numeric: tabular-nums;
+  background: var(--akzent); color: var(--auf-akzent); font: 600 9.5px/1 var(--zahl-font); font-variant-numeric: tabular-nums;
 }
 .listen .zahlzelle { text-align: right; font-size: 13.5px; }
 .listen .rueck-blatt { margin: 4px 10px 12px 50px; }
 .deckteile { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; }
 .deckteile .tab td { padding: 4px 6px; }
-.deckteile .anz { width: 26px; font: 600 13.5px/1 var(--kopf-font); color: var(--akzent-hell); font-variant-numeric: tabular-nums; }
+.deckteile .anz { width: 26px; font: 600 13.5px/1 var(--zahl-font); color: var(--akzent-hell); font-variant-numeric: tabular-nums; }
 .rueck-fuss { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--rueck-linie); }
 .etiketten { display: flex; flex-wrap: wrap; gap: 5px; }
 .mehr { display: flex; justify-content: center; margin-top: 14px; }
@@ -2406,13 +2408,13 @@ input[type="date"].feld {
 }
 .matrix .ecke {
   left: 0; z-index: 3; text-align: left; padding: 0 10px 8px;
-  font: 600 11px/1.2 var(--kopf-font); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3);
+  font: 500 12px/1.2 var(--kopf-font); color: var(--text-3);
 }
 .matrix tbody th {
   position: sticky; left: 0; z-index: 2; background: var(--karton); text-align: left;
   padding: 5px 12px 5px 10px; border-right: 1px solid var(--linie-stark); font-weight: 400;
 }
-.matrix tbody tr:nth-child(even) th { background: #1a1c21; }
+.matrix tbody tr:nth-child(even) th { background: var(--karton); }
 .matrix tbody tr:nth-child(even) td { background: var(--zebra); }
 .matrix .kopfzeile { display: grid; grid-template-columns: 22px 26px minmax(0, 1fr); gap: 0 10px; align-items: center; min-width: 210px; }
 .matrix .kopfzeile b { display: block; font-weight: 600; font-size: 14px; white-space: nowrap; }
@@ -2436,7 +2438,7 @@ input[type="date"].feld {
 }
 .ladder .vorn { cursor: pointer; padding-top: 5px; padding-bottom: 5px; }
 .ladder .spieler b { font-weight: 600; font-size: 15px; }
-.ladder .bounty { text-align: right; font: 600 14.5px/1 var(--kopf-font); font-variant-numeric: tabular-nums; }
+.ladder .bounty { text-align: right; font: 600 14.5px/1 var(--zahl-font); font-variant-numeric: tabular-nums; }
 .aufstellung { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; min-width: 0; }
 .aufstellung .eintrag { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .aufstellung .eintrag b { font-weight: 600; font-size: 14px; white-space: nowrap; }
@@ -2452,7 +2454,7 @@ input[type="date"].feld {
 }
 .rat-zeilen li:nth-child(even) { background: var(--zebra); }
 .rat-zeilen svg { color: var(--akzent-hell); position: relative; top: 3px; }
-.rat-zeilen .label { font: 600 12.5px/1.2 var(--kopf-font); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.rat-zeilen .label { font: 500 13px/1.2 var(--kopf-font); color: var(--text-3); }
 .rat-zeilen p { margin: 0; font-size: 17px; line-height: 1.35; }
 .rat-zeilen p b { font-weight: 600; }
 .tafel-spalten.mull,
@@ -2468,11 +2470,11 @@ input[type="date"].feld {
 /* --------------------------------------------------------------- Analyze */
 .kurve { display: block; width: 100%; height: 120px; margin-top: 6px; }
 .kurve-huelle { position: relative; padding: 8px 0 0; }
-.kurve-achse { display: flex; justify-content: space-between; font: 500 11.5px/1 var(--kopf-font); color: var(--text-3); font-variant-numeric: tabular-nums; margin-top: 4px; }
+.kurve-achse { display: flex; justify-content: space-between; font: 500 11.5px/1 var(--zahl-font); color: var(--text-3); font-variant-numeric: tabular-nums; margin-top: 4px; }
 .genau { display: flex; flex-wrap: wrap; gap: 10px 32px; }
-.genau .z.gross { font: 600 25px/1 var(--kopf-font); font-variant-numeric: tabular-nums; }
+.genau .z.gross { font: 600 25px/1 var(--zahl-font); font-variant-numeric: tabular-nums; }
 .genau div { display: grid; gap: 4px; }
-.genau dt { font: 600 11px/1.2 var(--kopf-font); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+.genau dt { font: 500 12px/1.2 var(--kopf-font); color: var(--text-3); }
 .genau dd { margin: 0; }
 .noten-zeile { display: flex; flex-wrap: wrap; gap: 6px 8px; margin-top: 12px; }
 .tafel-spalten.entsch,
@@ -2489,7 +2491,7 @@ input[type="date"].feld {
 .entsch .wahltext b { font-weight: 600; }
 .entsch .lage { font-size: 13.5px; color: var(--text-2); }
 .entsch .zeile.fehler > .vorn { background: var(--akzent-flaeche); }
-.etikett.voll { background: var(--akzent); border-color: var(--akzent); color: #fff; }
+.etikett.voll { background: var(--akzent); border-color: var(--akzent); color: var(--auf-akzent); }
 
 /* ------------------------------------------------------------ Breiten */
 @media (max-width: 960px) {
@@ -2501,7 +2503,7 @@ input[type="date"].feld {
     width: 100%; padding: 8px 10px; border: 1px solid var(--linie-stark); border-radius: var(--r);
     background: var(--grund); color: var(--text); text-align: left; cursor: pointer;
   }
-  .leiste-knopf .fl-label { display: block; font: 600 11px/1.2 var(--kopf-font); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+  .leiste-knopf .fl-label { display: block; font: 500 12px/1.2 var(--kopf-font); color: var(--text-3); }
   .leiste-knopf b { display: block; font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .leiste-knopf svg { color: var(--text-2); }
   .deckteile { grid-template-columns: 1fr; }
@@ -2511,10 +2513,51 @@ input[type="date"].feld {
   .quelle-chip { padding: 6px 9px; font-size: 12.5px; }
   .quelle-chip .lang { display: none; }
   .marke b { font-size: 16px; }
-  .reiter { grid-template-columns: repeat(5, minmax(0, 1fr)); row-gap: 0; padding: 0 4px; }
-  .reiter a { padding: 11px 2px 9px; font-size: 13px; }
-  .reiter a .lang { display: none; }
-  .reiter a .kurz { display: inline; }
+  .marke b { display: none; }
+  .blatt { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+
+  /* Untere Leiste: vier Reiter und More, Tippfläche mindestens 44 px hoch. */
+  .unten-leiste {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    background: rgba(14, 15, 18, 0.92);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--linie-stark);
+  }
+  .unten-leiste a,
+  .unten-leiste button {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    min-height: 48px; padding: 4px 0; border: 0; border-radius: var(--r);
+    background: transparent; color: var(--text-3); text-decoration: none; cursor: pointer;
+    font: 500 11px/1 var(--kopf-font);
+  }
+  .unten-leiste [aria-current="page"],
+  .unten-leiste .aktiv,
+  .unten-leiste [aria-expanded="true"] {
+    color: var(--text); background: var(--flaeche-2);
+  }
+
+  /* Blatt More: legt sich von unten über die Seite, ein Tipp daneben schliesst es. */
+  .mehr-huelle {
+    display: block; position: fixed; inset: 0; z-index: 55;
+    background: rgba(0, 0, 0, 0.5);
+  }
+  .mehr-blatt {
+    position: absolute; left: 8px; right: 8px; bottom: calc(68px + env(safe-area-inset-bottom));
+    padding: 6px; background: var(--rueck);
+    border: 1px solid var(--linie-stark); border-radius: var(--r-gross);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    animation: hoch var(--dauer) var(--kurve);
+  }
+  .mehr-blatt a {
+    display: flex; align-items: center; justify-content: space-between;
+    min-height: 48px; padding: 0 12px; border-radius: var(--r);
+    color: var(--text); text-decoration: none; font-size: 15px;
+  }
+  .mehr-blatt a + a { border-top: 1px solid var(--linie); }
+  .mehr-blatt a svg { color: var(--text-3); }
+  .mehr-blatt a[aria-current="page"] { background: var(--flaeche-2); }
 
   .kennzeile { gap: 10px 20px; }
   .kennzeile dd { font-size: 17px; }
@@ -2538,7 +2581,7 @@ input[type="date"].feld {
   .listen .vorn > .dreh { grid-area: dreh; align-self: start; width: 26px; height: 26px; }
   .listen .zahlzelle::before {
     content: attr(data-label); display: block; margin-bottom: 2px;
-    font: 600 10px/1 var(--kopf-font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3);
+    font: 500 11px/1 var(--kopf-font); color: var(--text-3);
   }
   .listen .rueck-blatt { margin: 2px 4px 10px 6px; padding-left: 10px; padding-right: 10px; }
   .streifen .kb-rahmen { width: 19px !important; height: 26px !important; }
@@ -2581,10 +2624,10 @@ input[type="date"].feld {
   .mull .vorn > .z-wrb { grid-area: wrb; }
   .mull .vorn > .z-wrw { grid-area: wrw; }
   .mull .vorn > .z-b, .mull .vorn > .z-w { display: none; }
-  .mull .vorn > .meta-handy { grid-area: meta; display: block; font: 500 12px/1.2 var(--kopf-font); color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .mull .vorn > .meta-handy { grid-area: meta; display: block; font: 500 12px/1.2 var(--zahl-font); color: var(--text-3); font-variant-numeric: tabular-nums; }
   .mull .zahlzelle::before {
     content: attr(data-label); display: block; margin-bottom: 2px;
-    font: 600 10px/1 var(--kopf-font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3);
+    font: 500 11px/1 var(--kopf-font); color: var(--text-3);
   }
 
   .tafel-spalten.entsch { display: none; }
@@ -2604,7 +2647,7 @@ input[type="date"].feld {
 .meta-handy { display: none; }
 
 /* Eingabefelder gleich hoch, auch Zahl und Suche */
-input.feld { height: 38px; }
+input.feld { height: 36px; }
 @media (max-width: 760px) {
   .steuer { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px 10px; align-items: end; }
   .steuer > * { width: auto !important; min-width: 0; max-width: none; }
@@ -2633,9 +2676,9 @@ input.feld { height: 38px; }
 }
 
 /* ==========================================================================
-   Fiesta: was über die Vorschau hinaus gebraucht wird. Dieselben Zeichen wie
-   oben: Karton, eine Rundung, Turn Order Blau, Saira für Zahlen, Source Sans
-   für Sätze. Die einzige zweite Farbe ist das Stroh des Sombreros.
+   Fiesta: was über die Vorschau hinaus gebraucht wird. Dieselben Tokens wie
+   oben: Flächen, Haarlinien, ein Akzentblau, Geist Mono für Zahlen, Geist für
+   Sätze. Die einzige zweite Farbe ist das Stroh des Sombreros.
    ========================================================================== */
 
 :root {
@@ -2646,14 +2689,88 @@ input.feld { height: 38px; }
 .karte { overflow: clip; }
 .inhalt { min-width: 0; }
 .zahl {
-  font-family: var(--kopf-font);
+  font-family: var(--zahl-font);
   font-variant-numeric: tabular-nums lining-nums;
   white-space: nowrap;
 }
 .rechts { text-align: right; }
 .nur-handy { display: none; }
 :focus-visible { outline: 2px solid var(--akzent-hell); outline-offset: 2px; }
-.band :focus-visible { outline-color: #fff; }
+@keyframes hoch { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ⌘K Palette: schwebt im oberen Drittel, eine Eingabe, darunter höchstens acht Leader. */
+.palette-huelle {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12vh 16px 16px;
+  background: rgba(0, 0, 0, 0.5);
+}
+.palette {
+  width: min(560px, 100%);
+  border: 1px solid var(--linie-stark);
+  border-radius: var(--r-gross);
+  background: var(--karton);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  animation: hoch var(--dauer) var(--kurve);
+}
+.palette-feld {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--linie);
+  color: var(--text-3);
+}
+.palette-feld input {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: 400 15px/1 var(--text-font);
+  outline: none;
+}
+.palette-feld input::placeholder { color: var(--text-3); }
+.palette-liste {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+}
+.palette-liste li[role="option"] {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: var(--r-klein);
+  cursor: pointer;
+}
+.palette-liste li[aria-selected="true"] {
+  background: var(--flaeche-2);
+  box-shadow: inset 0 0 0 1px var(--linie-stark);
+}
+.palette-liste b {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.palette-liste .z { font-size: 12px; color: var(--text-2); }
+.palette-liste small.z { color: var(--text-3); min-width: 88px; text-align: right; }
+.palette-liste .leer-satz { padding: 14px 10px; }
+@media (max-width: 760px) {
+  .palette-huelle { padding-top: 10px; }
+  .palette-liste small.z { display: none; }
+}
 button { color: inherit; }
 
 /* Reiter sind Knöpfe mit Adresse: Links, die die Seite ohne Neuladen umschalten. */
@@ -2670,17 +2787,15 @@ button { color: inherit; }
 /* ------------------------------------------------------------ Quelle im Band */
 .band { position: relative; }
 .quelle-huelle { position: relative; flex: none; }
-.quelle-chip[aria-expanded="true"] { background: rgba(255, 255, 255, 0.16); }
+.quelle-chip[aria-expanded="true"] { background: var(--flaeche-2); color: var(--text); }
 .quelle-chip svg { transition: transform var(--dauer) var(--kurve); }
 .quelle-chip[aria-expanded="true"] svg { transform: rotate(180deg); }
 .quelle-tafel {
   position: absolute; right: 0; top: calc(100% + 10px); z-index: 50;
   width: min(92vw, 620px); padding: 16px 16px 14px;
-  background:
-    linear-gradient(180deg, var(--akzent-band), var(--akzent)) top / 100% 4px no-repeat,
-    var(--rueck);
-  border: 1px solid var(--akzent-rand); border-radius: var(--r);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  background: var(--rueck);
+  border: 1px solid var(--linie-stark); border-radius: var(--r-gross);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
   color: var(--text);
 }
 .quelle-tafel .steuer { margin-top: 12px; }
@@ -2739,8 +2854,8 @@ button { color: inherit; }
 }
 .rang .vorn { cursor: default; }
 .rang .name b { font-weight: 600; font-size: 15px; }
-.rang .anteil .z { width: 48px; }
-.rang .rating { font: 600 15px/1 var(--kopf-font); text-align: right; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.rang .anteil .z { width: 58px; text-align: right; }
+.rang .rating { font: 600 15px/1 var(--zahl-font); text-align: right; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .rang .rating.gut { color: var(--text); font-weight: 700; }
 .rang .rating.schwach { color: var(--text-3); font-weight: 500; }
 
@@ -2767,9 +2882,9 @@ button { color: inherit; }
   padding: 14px 0; border-top: 1px solid var(--linie);
 }
 .chronik > li:first-child { border-top: 0; }
-.chronik h2 { margin: 2px 0 0; font: 600 15px/1.2 var(--kopf-font); color: var(--akzent-hell); font-variant-numeric: tabular-nums; }
+.chronik h2 { margin: 2px 0 0; font: 500 14px/1.3 var(--kopf-font); color: var(--text-2); font-variant-numeric: tabular-nums; }
 .chronik ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0; }
-.chronik ul li { padding: 6px 8px; border-radius: var(--r); font-size: 15.5px; line-height: 1.45; }
+.chronik ul li { padding: 6px 8px; border-radius: var(--r); font-size: 14.5px; line-height: 1.55; }
 .chronik ul li:nth-child(even) { background: var(--zebra); }
 
 /* ---------------------------------------------------------- Spielerseite */
@@ -2795,7 +2910,7 @@ button { color: inherit; }
 .spiele .fremd small { display: block; font-size: 12.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .spiele .zeit { font: 500 12.5px/1 var(--kopf-font); color: var(--text-3); text-align: right; white-space: nowrap; }
 .spiele .dauer { font: 500 13px/1 var(--kopf-font); color: var(--text-2); text-align: right; }
-.etikett.voll { background: var(--akzent); border-color: var(--akzent); color: #fff; }
+.etikett.voll { background: var(--akzent); border-color: var(--akzent); color: var(--auf-akzent); }
 .ausgang { width: 26px; text-align: center; padding-left: 0; padding-right: 0; }
 .rueck-fuss .link { text-decoration: underline; text-underline-offset: 3px; }
 
@@ -2807,7 +2922,7 @@ button { color: inherit; }
   white-space: normal; overflow-wrap: anywhere; word-break: break-all;
 }
 .schritt-text { display: grid; gap: 6px; padding: 4px 8px 10px; font-size: 15px; min-width: 0; }
-.schritt-text .label { font: 600 12px/1.2 var(--kopf-font); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); margin-top: 6px; }
+.schritt-text .label { font: 500 12.5px/1.2 var(--kopf-font); color: var(--text-3); margin-top: 6px; }
 .schritt-text p { margin: 0; }
 .schritt-text .klein { margin: 0; }
 .ablage {
@@ -2839,7 +2954,7 @@ button { color: inherit; }
 .r-steuer .gruppe { display: flex; align-items: center; gap: 4px; }
 .rknopf { min-width: 36px; padding: 0 10px; font-size: 13.5px; }
 .rknopf[aria-pressed="true"] { border-color: var(--akzent); background: var(--akzent-flaeche); color: var(--akzent-hell); }
-.r-stand { font: 500 13.5px/1 var(--kopf-font); color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.r-stand { font: 500 13.5px/1 var(--zahl-font); color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .r-stand span { color: var(--text-3); }
 .r-log { max-height: 70vh; overflow-y: auto; padding: 10px; border: 1px solid var(--linie); border-radius: var(--r); background: var(--grund); }
 @media (max-width: 639px) {
@@ -2873,7 +2988,7 @@ button { color: inherit; }
 .z-deck, .z-trash, .z-dond { padding-bottom: 12px; }
 .zonenpaar { display: flex; flex-direction: column; align-items: center; gap: 5px; }
 .zonenpaar .zonenname { text-align: center; padding-bottom: 3px; }
-.zonenname { color: var(--text-3); font: 600 10.5px/1.2 var(--kopf-font); text-transform: uppercase; letter-spacing: 0.1em; padding: 2px 0 5px; }
+.zonenname { color: var(--text-3); font: 500 11.5px/1.2 var(--kopf-font); padding: 2px 0 5px; }
 .rkarten { display: flex; gap: 6px; flex-wrap: wrap; min-height: calc(74px * var(--sk)); align-items: flex-start; }
 .brett .rhand { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
 .brettleer { color: var(--text-3); font-size: 13px; padding: 22px 4px; }
@@ -2890,7 +3005,7 @@ button { color: inherit; }
   background: var(--grund) center / cover no-repeat;
   display: flex; align-items: flex-end; justify-content: center; padding-bottom: 3px;
 }
-.stapel .zahl { font-size: 12px; font-weight: 600; color: #fff; background: rgba(0, 0, 0, 0.72); border-radius: var(--r); padding: 1px 5px; }
+.stapel .zahl { font-size: 12px; font-weight: 600; color: var(--auf-akzent); background: rgba(0, 0, 0, 0.72); border-radius: var(--r); padding: 1px 5px; }
 .stapel.sk-karte { background-image: url("/rueckseiten/karte.jpg"); }
 .stapel.sk-don { background-image: url("/rueckseiten/don.jpg"); }
 .stapel.leer { background-image: none; align-items: center; padding-bottom: 0; color: var(--text-3); font-size: 11px; }
@@ -2912,7 +3027,7 @@ button { color: inherit; }
 .rkopf .rname.eigen { color: var(--akzent-hell); }
 .pille {
   border: 1px solid var(--linie-stark); border-radius: var(--r); padding: 3px 8px 2px;
-  color: var(--text-3); font: 600 11px/1.2 var(--kopf-font); letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-3); font: 500 12px/1.2 var(--kopf-font);
 }
 .pille b { color: var(--text); font-variant-numeric: tabular-nums; margin-left: 2px; }
 .lifeleiste { display: flex; gap: 3px; }
@@ -3005,10 +3120,10 @@ button { color: inherit; }
   .mu .vorn > .z-first { grid-area: first; text-align: left; }
   .mu .vorn > .z-second { grid-area: second; text-align: left; }
   .mu .vorn > .z-partien, .mu .vorn > .z-w, .mu .vorn > .z-l { display: none; }
-  .mu .vorn > .meta-handy { grid-area: meta; display: block; font: 500 12px/1.2 var(--kopf-font); color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .mu .vorn > .meta-handy { grid-area: meta; display: block; font: 500 12px/1.2 var(--zahl-font); color: var(--text-3); font-variant-numeric: tabular-nums; }
   .mu .zahlzelle::before, .rang .zahlzelle::before, .gespielt .zahlzelle::before, .ladder.mit-zahlen .zahlzelle::before {
     content: attr(data-label); display: block; margin-bottom: 2px;
-    font: 600 10px/1 var(--kopf-font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3);
+    font: 500 11px/1 var(--kopf-font); color: var(--text-3);
   }
 
   .tafel-spalten.rang { display: none; }
@@ -3026,7 +3141,7 @@ button { color: inherit; }
   .rang .vorn > .anteil .balken { display: none; }
   .rang .vorn > .anteil .z { width: auto; text-align: left; }
   .rang .vorn > .z-wr { grid-area: wr; text-align: left; }
-  .rang .anteil::before { content: "Share"; display: block; margin-bottom: 2px; font: 600 10px/1 var(--kopf-font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+  .rang .anteil::before { content: "Share"; display: block; margin-bottom: 2px; font: 500 11px/1 var(--kopf-font); color: var(--text-3); }
   .rang .anteil { display: block; }
 
   .tafel-spalten.ladder.mit-zahlen { display: none; }
@@ -3076,8 +3191,7 @@ button { color: inherit; }
 /* ------------------------------------------------------- Belege im Guide */
 .beleg-titel {
   display: flex; align-items: center; gap: 7px;
-  margin: 14px 0 6px; font: 600 11.5px/1.2 var(--kopf-font);
-  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2);
+  margin: 14px 0 6px; font: 500 12px/1.2 var(--kopf-font); color: var(--text-2);
 }
 .beleg-titel:first-of-type { margin-top: 2px; }
 .beleg-titel svg { color: var(--akzent-hell); flex: none; }
@@ -3116,7 +3230,7 @@ button { color: inherit; }
   width: auto; flex: 1 1 260px; min-width: 0;
 }
 .fokus-kopf .matrix-leader b { display: block; font: 600 17px/1.15 var(--kopf-font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fokus-kopf .matrix-leader small { display: block; margin-top: 3px; font: 500 12.5px/1.2 var(--kopf-font); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.fokus-kopf .matrix-leader small { display: block; margin-top: 3px; font: 500 12.5px/1.2 var(--zahl-font); color: var(--text-3); font-variant-numeric: tabular-nums; }
 .fokus-kopf .matrix-leader small .wr { font-size: inherit; }
 .tafel-spalten.fokus, .fokus .vorn {
   grid-template-columns: 26px 26px minmax(0, 1fr) 70px 84px;
@@ -3186,6 +3300,6 @@ button { color: inherit; }
 @keyframes vorschau-auf { from { opacity: 0; } to { opacity: 1; } }
 @keyframes vorschau-heben { from { transform: translateY(8px) scale(0.98); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .vorschau-schleier, .vorschau { animation: none; }
+  .vorschau-schleier, .vorschau, .mehr-blatt, .palette { animation: none; }
   .vorschau-bild .gross { transition: none; }
 }
