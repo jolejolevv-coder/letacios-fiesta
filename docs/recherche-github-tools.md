@@ -40,11 +40,62 @@ Voraussichtlich ja, aber nicht belegt.
 
 Vorgeschlagener Prüfschritt, nur auf Freigabe des Nutzers: ein einzelner Probeaufruf von `/api/leaderboard/mode_0` und ein Vergleich der obersten 100 Plätze mit unserer OCR Liste desselben Tages. Weicht die Liste ab oder fehlt `Western`, ist das Thema erledigt.
 
+## Vergleich der Ranglisten, 02.11.2026
+
+Seine Seite (Stand 01.11., "Last updated 2026-11-01") gegen unsere entschlüsselte Bestenliste (Stand 02.11., 100 Spieler), jeweils die ersten 40 Plätze. Gelesen wurde seine Seite im Web, seine API nicht aufgerufen.
+
+* **Es ist dieselbe Ladder.** Gleiche Namen, gleiche Bountywerte auf die Zahl genau, zum Beispiel BRefe 3.444,5 gegen 3.445, Paul Hartale 3.240,5 gegen 3.240, Ponina 3.104,8 gegen 3.105, MircoMorscio 3.080,7 gegen 3.081, elmatador 3.007,4 gegen 3.007, cal206 2.982,4 gegen 2.982. Die Reihenfolge weicht ab, weil ein Tag dazwischen liegt.
+* **Unsere OCR macht Namensfehler.** Bei seinen Namen steht, was OPBounty führt, bei uns, was die Texterkennung liest:
+
+| Seine Seite | Unsere Liste |
+|---|---|
+| a1A1 | alAl |
+| Salva1 | Salval |
+| Jioh | vioh |
+| currygravy2 | currygravy |
+| HyperK | Hyperk |
+| Typo Vampire | TypoVampire |
+| Kakashiha | kakashiha |
+
+  Die Verwechslungen sind 1/l/I, J/v, fehlende Ziffern am Ende, Leerzeichen und Groß und Kleinschreibung. Für eine Zuordnung über `user_id` oder Namen ist das ein Problem, die Zahlen selbst stimmen.
+* **Tiefe:** Wir haben 100 Spieler, er 10.000 (Standard). Dazu je Spieler Partien, Siegquote und die häufigsten Leader mit Quote und Partienzahl. Unsere Liste zeigt je Spieler zwar Leader, aber die Partienzahl je Leader steht dort nicht in den obersten Feldern, die ich geprüft habe.
+* **Herkunft:** Er zeigt Länder, "All countries". Unsere Liste führt die westliche Ladder, die Namen stimmen trotzdem überein. Die Abgrenzung "westlich" macht bei uns also vermutlich eine Auswahl der Region, und seine API liefert alles.
+* **Grenze des Vergleichs:** Ein Stichtag Abstand, nur 40 Plätze, und seine Daten sind nicht gegen die API selbst geprüft. Gegen die API muss der Vergleich noch laufen, bevor man die OCR ersetzt.
+
+Fazit: Die Web API ist genauer (keine Namensfehler) und tiefer (10.000 statt 100). Das Ergebnis des Vergleichs spricht für sie.
+
+## Was er von Card Kaizoku abruft
+
+Alles aus dem Quellcode (`ingest/sources/kaizoku.py`, `kaizoku_players.py`, `run.py`, Workflow `daily.yml`). Nicht gelesen: `ingest/http.py` (Header), `normalize.py`.
+
+| Was | Adresse | Wie oft |
+|---|---|---|
+| `card_data.json` | `GET https://cdn.cardkaizoku.com/card_data.json` | 1 je Lauf |
+| Manifest | `GET https://cdn.cardkaizoku.com/manifest.json?t=0` | 1 je Lauf |
+| Wochenstände aus dem Manifest: `stats`, `decklist`, `cardstats`, `leaderboard`, `matchuptech`, `hands` für den Datensatz `op17_lw_p` | `GET https://cdn.cardkaizoku.com/<Pfad aus manifest.simStats.files>?v=<Datum>` | wöchentlich, bei Datumswechsel |
+| Tagesdateien Statistik und Decklisten je Set | `GET https://cdn.cardkaizoku.com/stats/stats_<SET>_y_p_<YYYYMMDD>.json` und `.../stats/decklist_<SET>_y_p_<YYYYMMDD>.json` | täglich, Rückblick 12 Tage, 2 Anfragen je fehlendem Tag |
+| Spielersuche | `POST https://api.cardkaizoku.com/search` mit `{"searchTerm": Name, "playerId": Name}` | nur für neue oder geänderte Namen, 7 Tage Pause bei Fehlschlag |
+| Spielerstatistik | `GET https://api.cardkaizoku.com/player-stats?playerId=<id>&startDate=<>&endDate=<>` (28 Tage) | 1 je gefundenem Spieler, bis zu 1.000 Spieler aus der Ladder |
+
+* **Zugang:** im Code kein Schlüssel und keine Anmeldung. Abstand zwischen Aufrufen 0,4 Sekunden, 4 Arbeiter. Der Workflow läuft täglich 08:00 UTC, ein Kommentar sagt, die Spielerabrufe seien "rate limited and can take an hour".
+* **Was daraus entsteht:** Winrates und Decklisten je Leader, Kartenstatistik, Matchupdaten, je Spieler die genauen Decks, Münzwurf, Matchups und Leader. Beim Spielerzweig steht im Code "used with permission".
+* **Bewertung nach unseren Regeln:** Erlaubt ist bei uns nur `card_data.json`. Alles andere in der Tabelle geht darüber hinaus und bleibt für uns tabu: Manifest, Wochenstände, Tagesdateien und beide Spielerabrufe. Der Spielerzweig ist zudem eine Abfrage von Daten einzelner Spieler. Nichts davon übernehmen.
+
+## Sein Replay Player (Study Games)
+
+Beschrieben nach der Seite und dem Quellcode auf GitHub, nichts ausgeführt.
+
+* **Bedienung:** Seite `/replays/` fragt zwei Leader ab (die 32 meistgespielten, mit Tausch Knopf). Für das Paar zeigt sie vier Gruppen: jeweils Leader A oder B gewinnt als Erster oder Zweiter. In jeder Gruppe stehen fünf abgeschlossene Partien mit hohem Bounty, mit Datum, Bounty beider Seiten und "N turns · lethal / conceded / ended at N life". Stand: 9.013 Partien vom 02.10. bis 31.10. Spielernamen werden nicht gezeigt.
+* **Einzelpartie `/replays/g/`:** Spielfeld beider Seiten (Charakter, Leader, Stage, Deck, Trash, Leben, DON!! Deck und Kostenbereich, gedrehte Karten, Powerwerte, Angriff und Ziel hervorgehoben, Handansicht), dazu ein Ereignisprotokoll (Draw, DON, Play, Attack, Battle, Damage, Blocked, Counter, Trash, Mulligan, Effect, End turn, Concede) mit Schieberegler und Tastatur oder Wischbedienung, und "Copy for sim" für die Deckliste.
+* **Technik:** Astro, statische Seite auf Cloudflare Pages, Viewer in reinem TypeScript (`g.astro` 445 Zeilen, 46 KB), Datenbündel je Leaderpaar `/replays/data/<A>__<B>.json` mit bereits gelesenen Zügen. Das Combat Log wird in `src/lib/replayParse.ts` im Browser gelesen. Kartenbilder von OnePiece.gg.
+* **Lizenz:** keine. Rechtlich heißt das: alle Rechte vorbehalten. Wir übernehmen daraus keinen Code.
+* **Für uns:** Wir haben bereits ein Replay Gerüst (`src/replay.js`, Reiter Replays, "Analyze my replay" mit `src/zuglager.js`). Was ihm voraus ist, ist die Auswahl: Leaderpaar mit Tausch Knopf, vier Gruppen nach Sieger und Zugreihenfolge, fünf Beispielpartien je Gruppe, und die Spielfeldansicht mit Ereignisprotokoll. Das lässt sich als Idee nachbauen, ohne seinen Code zu kopieren. Ein Spec dazu liegt noch nicht vor (`specs/features/` wäre der Ort).
+
 ## Was nicht zu den Regeln passt
 
 * **Firestore mit der im Client eingebauten Anmeldung:** Laut Quellcode von `optcg-data` (`opbounty_matches.py`) nutzt er "a shared client sign-in that ships inside the app". Das heißt, eine im Client steckende Anmeldung wird herausgezogen und wiederverwendet. Das ist ein Eingriff in den Client und wird von uns nicht übernommen. Die `Replays` Abfrage selbst entspräche dem, was wir schon tun (nur `PublicUsers` und `Replays`).
 * **Seine Matchdateien (`data/matches/public/YYYY-MM-DD.json.gz` ab 22.08.2026):** Zusammenfassungen derselben Replays, die wir schon haben. Sie bringen keine zusätzlichen Partien, und das Repo hat keine Lizenz. Nicht übernehmen.
-* **Kaizoku:** Sein Code ruft dort ein Manifest, bis zu sechs Dateien und mehrere Spielerabfragen ab. Das geht über `card_data.json` hinaus und bleibt bei uns tabu.
+* **Kaizoku:** Siehe Abschnitt oben. Alles außer `card_data.json` geht darüber hinaus und bleibt bei uns tabu.
 
 ## Weitere Funde, nicht nötig
 
@@ -61,6 +112,7 @@ Vorgeschlagener Prüfschritt, nur auf Freigabe des Nutzers: ein einzelner Probea
 
 1. Die Web API von `stats.tcgmatchmaking.com` prüfen, zuerst mit einem einzelnen Probeaufruf (siehe oben). Hält der Vergleich, ersetzt sie die OCR der Bestenliste und liefert zusätzlich Piloten und Decklisten je Leader.
 2. Die OCR als Rückfall behalten.
+2a. Den Replay Player nach seinem Vorbild selbst bauen (Auswahl nach Leaderpaar, vier Gruppen, Spielfeld mit Protokoll), ohne seinen Code zu übernehmen. Zuerst ein Spec in `specs/features/`.
 3. `optcg-data` selbst nicht einbinden und nichts davon übernehmen, vor allem nicht den Firestore Weg.
 4. Für mehr Replays gibt es nichts. Es bleibt bei Firestore `Replays` mit rund 30 % Abdeckung.
 
