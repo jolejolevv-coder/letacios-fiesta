@@ -4,6 +4,16 @@
    Git Historie zusammengefasst. */
 export const CHANGELOG = [
   {
+    tag: "2026-11-02",
+    punkte: [
+      "New look: a calmer dark design with thin lines instead of stripes, key figures as tiles, framed tables and numbers in a monospaced font.",
+      "Search any leader by name or card number with the search field at the top, or press Cmd K (Ctrl K on Windows). Enter opens the leader in the current tab.",
+      "On the phone the tabs now sit in a bar at the bottom, within reach of your thumb. More holds the rest.",
+      "Win rates now carry a small scale from 30 to 70 % with a tick at 50 %, in the leader tiles and in the deck and matchup tables, so you see at a glance how far above or below even a number is.",
+      "The leader tiles put win rate first and larger. Wins and losses moved under Games.",
+    ],
+  },
+  {
     tag: "2026-10-28",
     punkte: [
       "OP17 + EB05 Standard and EB05 Heroines Event are back, counted from game replays since October 27, because OPBounty stopped publishing its statistics on October 26. Replays cover about half of all games and carry no mulligan data, so those columns stay empty for now.",
