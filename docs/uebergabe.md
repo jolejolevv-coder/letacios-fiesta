@@ -176,9 +176,14 @@ Bilanz je Gegnerleader (Spielerseite und Decklisten): Quelle liefert je Liste nu
 
 Nutzer: "Bau alle drei Stufen" (A, B, C) und "erkläre, wo man die Daten in unsere vorhandenen Reiter einbaut". Stufe A ist PR 22 (offen, nicht gemerged). B und C kommen auf denselben Branch. Stufe C (Spielerabfragen `POST api.cardkaizoku.com/search`, `GET /player-stats`) ist damit ausdrücklich freigegeben; es gehen nur Namen der Top 100 hinaus, Ergebnis nur verschlüsselt ins Paket. Dateien in Scratchpad (manifest, cardstats 607 KB, leaderboard 9 KB, matchuptech 458 KB, hands 24 KB, curve 1,1 MB): Formate noch zu lesen. Vorbild für die Formate: github.com/alexfrey317/optcg-data `ingest/sources/kaizoku_curves.py` und `kaizoku_players.py`, nur Idee, kein Code kopieren.
 
-## Auftrag: Kaizoku Reiter entfernen, als Dataset einbauen (2026-11-02)
+## Kaizoku als Dataset (umgesetzt 02.11.2026)
 
-Wunsch des Nutzers: Der eigene Reiter "Kaizoku stats" macht keinen Sinn. Kaizoku soll als eigenes Dataset in der bestehenden Quellenauswahl (`quelleOffen` Dropdown in `src/App.jsx`, `verzeichnis`) waehlbar sein, der Reiter faellt weg.
+Der Reiter "Kaizoku stats" ist weg (`/kaizoku` leitet auf Decklists). Kaizoku ist in der Quellenauswahl unter "Data set" waehlbar ("Card Kaizoku, last week (other source)", Schluessel `kaizoku`). `kaizokuZuSatz` in `src/daten.js` bildet `kaizoku.json.gz` auf die Leader Form von `eindampfen` ab (Test: `tests/kaizoku_satz.test.js`), danach rechnen Decklists, Ranking, Matchups und Matrix ohne Sonderweg. Stufe B (`kaizoku_b.json.gz`): Karten, Starthand, Zugkurve in Decklists, Techkarten in Matchups, nur wenn die Quelle Kaizoku ist. Das Record einer Kaizoku Liste klappt die volle Bilanz je Gegnerleader auf. Spielerseite "Kaizoku (last 28 days)" unveraendert.
 
-Stand: nichts umgesetzt. Kaizoku Daten: `public/kaizoku.json.gz` (Leader mit `w,m,gegner[[opp,m,w]],listen[{d,pilot,w,m,gegner}]`), `kaizoku_b.json.gz` (Karten, Hand, Tech, Kurve je Leader), `kaizoku_spieler.json.gz` (Spielerseite, bleibt). Eigene Daten haben die Form `{leader:[{id,w,l,fw,fl,sw,sl,geg,gm,gw,...,listen:[{d,w,l,...}]}]}` (siehe `aktualisieren.py` `eindampfen`). Plan: Kaizoku Pakete beim Laden in diese Form umwandeln (Adapter in `src/daten.js`, mit Test), als Quelle anbieten, Reiter `kaizoku` samt `Kaizoku` Komponente, `PFADE.kaizoku`, Renderzweig und `kaizoku` State entfernen; Stufe B Teile (Karten, Hand, Kurve, Tech) in Leader Ansicht der passenden Reiter zeigen, wenn Quelle Kaizoku. Vorher pruefen: PR 21 Reste (`src/niederlagen.js`, `tests/niederlagen.test.js`, Deckzeile Record Button) mit `git grep`, entfernen falls ungenutzt. Annahme: keine Rueckfrage noetig.
-Details: `docs/kaizoku-einbau.md`.
+PR 21 Reste: `src/niederlagen.js`, sein Test und der Record Knopf in der Deckzeile sind NICHT ungenutzt (Record Knopf zeigt bei unseren Daten die bekannten Partien je Gegner), deshalb geblieben.
+
+Annahmen:
+* Kaizoku kennt keine Partienzahl als Erster oder Zweiter. Je Leader wird mit der Haelfte der Partien geschaetzt (Quote stimmt, Anzahl ist keine Messung); je Liste und je Gegner bleiben First und Second leer ("–"), Dauer ebenso. Die Seite sagt das unter den Kaizoku Teilen.
+* Kaizoku nur im Modus "Ready sets", nicht im Zeitraum.
+* Das Passwort Gate und die verschluesselten Dateien sind unveraendert; `kaizoku*.json.gz` wird wie bisher von der Action geschrieben.
+Geprueft im Browser mit echten Daten (Decklists, Matchups, Matrix, Ranking), Tests und Build gruen.

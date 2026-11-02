@@ -389,6 +389,8 @@ export function verschmelzen(saetze, name) {
         let z = ziel.listen.get(schluessel);
         if (!z) {
           z = { d: li.d, w: 0, l: 0, fw: 0, fl: 0, sw: 0, sl: 0, dauerSumme: 0, dauerPartien: 0 };
+        // Nur Kaizoku fuehrt die Bilanz je Gegnerleader einer Liste ([Leader, Partien, Siege]).
+        if (li.gegner) z.gegner = li.gegner;
           ziel.listen.set(schluessel, z);
         }
         for (const f of ZAEHLER) z[f] += li[f] || 0;
@@ -414,7 +416,56 @@ export function verschmelzen(saetze, name) {
   // Der Heroines Event Satz zaehlt Winrates nur gegen Event Leader, Decklisten aber gegen
   // alle Gegner (aktualisieren.py, event_satz). Die Seite sagt das an den Listen.
   const listenAlleGegner = saetze.some((s) => s && s.listen_alle_gegner);
-  return { name, stand, partien, leader: fertig, listenAlleGegner };
+  const quelle = (saetze.find((s) => s && s.quelle) || {}).quelle || "";
+  return { name, stand, partien, leader: fertig, listenAlleGegner, quelle };
+}
+
+/* --------------------------------------------------------------------------
+   Kaizoku als Quelle (docs/kaizoku-einbau.md). Der Adapter bildet kaizoku.json.gz auf die
+   Leader Form von `eindampfen` in aktualisieren.py ab, damit Decklists, Ranking,
+   Matchups und Matrix ohne Sonderweg rechnen.
+   -------------------------------------------------------------------------- */
+
+export const KAIZOKU_SCHLUESSEL = "kaizoku";
+export const KAIZOKU_DATEI = "kaizoku.json.gz";
+export const KAIZOKU_B_DATEI = "kaizoku_b.json.gz";
+const KAIZOKU_NAME = "Card Kaizoku, last week";
+
+/**
+ * Kaizoku nennt je Leader und Liste nur Gesamtzahlen und, fuer den Leader, die Siegquote als
+ * Erster und als Zweiter. Die Zahl der Partien als Erster oder Zweiter fehlt. Sie wird mit
+ * der Haelfte der Partien geschaetzt (Muenzwurf), nur damit die Quote stimmt; Zahl der
+ * Partien als Erster oder Zweiter ist damit keine Messung. Je Gegner und je Liste gibt es
+ * keine Aufteilung, dort bleibt sie leer.
+ */
+export function kaizokuZuSatz(roh) {
+  const leader = (roh.leader || []).map((l) => {
+    const m = l.m || 0;
+    const erste = Math.round(m / 2);
+    const zweite = m - erste;
+    const siegeSeite = (rate, n) => (rate == null ? [0, 0] : [Math.round(rate * n), n - Math.round(rate * n)]);
+    const [fw, fl] = siegeSeite(l.first, erste);
+    const [sw, sl] = siegeSeite(l.second, zweite);
+    const gegner = l.gegner || [];
+    return {
+      id: l.id,
+      w: l.w, l: m - l.w, fw, fl, sw, sl, dur: 0,
+      geg: gegner.map((g) => g[0]),
+      gm: gegner.map((g) => g[1]),
+      gw: gegner.map((g) => g[2]),
+      listen: (l.listen || []).map((li) => ({
+        d: li.d, w: li.w, l: li.m - li.w, fw: 0, fl: 0, sw: 0, sl: 0, dur: 0,
+        gegner: li.gegner || [],
+      })),
+    };
+  });
+  return { name: KAIZOKU_NAME, stand: roh.stand || "", partien: roh.partien || 0,
+           quelle: KAIZOKU_SCHLUESSEL, leader };
+}
+
+export async function kaizokuLaden() {
+  const roh = await holen(KAIZOKU_DATEI);
+  return verschmelzen([kaizokuZuSatz(roh)], KAIZOKU_NAME);
 }
 
 /** Ein fertiger Satz aus saetze/ hat schon die richtige Form, wird aber gleich behandelt. */
