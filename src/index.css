@@ -2750,6 +2750,10 @@ button { color: inherit; }
   grid-template-columns: 30px minmax(140px, 1fr) 76px 60px 70px 60px minmax(0, 1.5fr) 18px;
   gap: 0 14px;
 }
+.tafel-spalten.ladder.mit-zahlen.ohne-zeit,
+.ladder.mit-zahlen.ohne-zeit .vorn {
+  grid-template-columns: 30px minmax(140px, 1fr) 76px 60px 70px minmax(0, 1.5fr) 18px;
+}
 .ladder .zeile.ohne-ziel > .vorn { cursor: default; }
 
 /* --------------------------------------------------------- Matrix Sitze */
@@ -3034,6 +3038,7 @@ button { color: inherit; }
     grid-template-columns: 26px repeat(3, minmax(0, 1fr));
     grid-template-areas: "nr spieler spieler bounty" "nr partien wr zeit" "nr aufst aufst aufst";
   }
+  .ladder.mit-zahlen.ohne-zeit .vorn { grid-template-areas: "nr spieler spieler bounty" "nr partien wr wr" "nr aufst aufst aufst"; }
   .ladder.mit-zahlen .vorn > .z-partien { grid-area: partien; text-align: left; }
   .ladder.mit-zahlen .vorn > .z-wr { grid-area: wr; text-align: left; }
   .ladder.mit-zahlen .vorn > .z-zeit { grid-area: zeit; text-align: left; }
