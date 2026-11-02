@@ -47,7 +47,7 @@
         "displayName": "Stroh",
         "canonical": "#e8a33d",
         "oklch": "oklch(76.5% 0.140 72.9)",
-        "purpose": "Krempe und Krone des Sombreros, Favicon; einzige Markenfarbe."
+        "purpose": "Marke: Sombrero, Girlande, Ladehut, leere Zustände, aktiver Reiter ohne Leader."
       },
       "grund": {
         "role": "neutral",
@@ -155,6 +155,12 @@
         "displayName": "Ziegelrot Tönung",
         "canonical": "#d65a44",
         "purpose": "Nur als Tönung hinter einer verlierenden Winrate, höchstens 28 % Deckung."
+      },
+      "leaderfarbe": {
+        "role": "secondary",
+        "displayName": "Leaderfarbe",
+        "canonical": "var(--lf1)",
+        "purpose": "Kartenfarben des Leaders aus karten.json (r g b p y s), nur Flächen, Ränder, Girlande, Punkte und theme-color auf Decklists, Matchups, Mulligan; nie Zahlen."
       }
     },
     "typographyMeta": {

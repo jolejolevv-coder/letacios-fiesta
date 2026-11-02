@@ -7,19 +7,6 @@ bei Bedarf `README.md`, `PRODUCT.md` und `DESIGN.md`.
 
 Ins Archiv `docs/uebergabe-archiv-2026-10-28.md` verschoben (Statistikquellen, Abdeckung der Replays, Upload Bedingungen, Bazzite Update Notice).
 
-## Stand 29.10.2026
-
-OPBounty 2.7.8: CDN schreibt wieder seit 29.10. 02:27 UTC, 27. und 28.10. nachgeliefert
-(mode_0: 16.088 und 12.921 Partien, EB05 Anteil 31 und 33 %, Replays 56 bis 59 %). Grund
-vermutlich: Spieler mit eingebetteter Sim landen vorläufig in der OP17 Queue, mode_0 mischt
-also beide Kartenpools. Formatsatz bleibt bei den Replays (Empfehlung, Nutzer hat nicht
-widersprochen). Neu: Entwurf `specs/features/update-log.md` (Update Kanal per Folgen in eigenen
-Server, eigener Bot, Action liest per REST). Spec freigegeben, Folgen eingerichtet, Action bleibt täglich.
-Phase 1 gebaut auf Branch `claude/update-log` (150 Tests grün). Offen: Bot und Secrets
-`DISCORD_BOT_TOKEN`, `DISCORD_KANAL_ID` durch den Nutzer nach `docs/discord-bot-anleitung.md`,
-PR 13 gemergt, Lauf grün. Filter auf gespiegelte Nachrichten auf Branch
-`claude/update-log-filter`. Prüfen mit der nächsten echten Meldung von OPBounty.
-
 ## Stand 02.11.2026
 
 Seit v2.7.8 (29.10.) ist CDN mode_0 sauber (EB05 60 bis 70 %), eingebettete Sim spielt in
@@ -48,34 +35,20 @@ selben Reiter, aus allen anderen in Decklists. Text 3 `#7c828d` hat 5.16 auf Gru
 auf `--flaeche-2`; dort steht er kaum. Schriften laden latin 83 KB statt vorher 130 KB; das CSS
 wächst gzip um etwa 1 KB.
 
-## Signatur 02.11.2026 (offen, wartet auf Freigabe)
+## Signatur 02.11.2026 (gebaut, wartet auf Push)
 
-Feinschliff ist live (PR 18, c529b18). Nutzer findet die Seite generisch. Vier Richtungen gezeigt
-(`.impeccable/vorschau/signatur.html`): 1 Leaderfarbe und 3 Fiesta Marke ja, 2 Bounty Plakat
-(„tacky“) und 4 nein. Kombination als `.impeccable/vorschau/signatur-2.html`, Spec Entwurf
-`specs/features/signatur.md`. Nächster Schritt: Freigabe der Spec abwarten, dann Phase 1 auf
-neuem Branch von origin/main (der Worktree Branch ist gemergt und liegt hinter main, PR 19 und 20).
+Spec `specs/features/signatur.md` freigegeben („Freigeben, loslegen“), alle vier Phasen gebaut
+auf `claude/website-redesign-bc8edc` (mit main abgeglichen, PR 19 und 20 drin).
+`src/leaderfarben.js` (Test `tests/leaderfarben.test.js`) liefert Leaderfarben aus `karten.json`
+Feld `f`; App setzt `--lf1`, `--lf2`, Klasse `mit-leaderfarbe` und `theme-color` auf Decklists,
+Matchups und Mulligan. `src/Girlande.jsx`: Papel Picado über dem Kopf, flattert beim Wechsel.
+Farbpunkte in Matrix, Matchups, ⌘K. `.laedt` zeigt den wippenden Hut, `p.leer-satz` den stillen
+Hut, Texte überarbeitet. Geprüft bei 1440, 1100, 375: kein seitliches Scrollen, keine Zahl in
+Leaderfarbe. Ältere Abschnitte ins Archiv `docs/uebergabe-archiv-2026-10-28.md`.
 
-## Feinschliff nach Bewertung 02.11.2026
-
-Redesign ist live (PR 17, fe1ff70). Bewertung ergab 7.2 von 10. Auftrag des Nutzers: Bewertung so
-lange wiederholen und nachbessern, bis jede der fünf Dimensionen mindestens 9 hat. Arbeit auf dem
-Branch `claude/website-redesign-bc8edc` (auf main vorgespult). Lokal schon geändert: Zählkreise
-neutral, Leadertitel 32 px, Kacheln ab sieben in zwei Reihen zu vier, am Handy zwei Spalten.
-Danach umgesetzt: Akzent aus Schrittnummern und Rückseitenetiketten, doppelter Leadername am
-Handy weg, Winrate Skala (30 bis 70 %, Strich bei 50) in Kopfkacheln und in den Tafeln Decklists
-und Matchups, Leaderkopf mit sechs Kacheln (Win rate breit vorn, Siege und Niederlagen unter
-Games), `--text-3` heller (#878d98, Kontrast auf Fläche 2 über 4.5), Bounty immer mit einer
-Nachkommastelle. Zweite Bewertung: alle fünf Dimensionen 9. Tests und Build grün.
-
-Annahmen: Wins und Losses als eigene Kacheln entfallen, die Zahlen stehen unter Games. Der äußere
-Rahmen bleibt (bewusste Hülle wie bei Linear).
-
-## Entscheidung 29.10.2026
-
-`mitschnitt.timer` läuft auf Wunsch nur noch einmal am Tag, 05:30 UTC (vorher stündlich
-nachfassen bis 21:30 UTC). Auf dem Bazzite aktiv, alte Datei in `/tmp/mitschnitt.timer.bak`.
-Fällt der Termin aus, fehlt die Bestenliste des Tages.
+Annahmen: Guide und Analyze my replay bekommen keine Leaderfarbe, sie haben keinen Leaderkopf
+und wählen den Leader selbst (`LEADER_KOPF` in App.jsx). Leere Zeilen in Listen (Palette, Leiste) ohne Hut. Offene
+Fragen der Spec (Hutband, Konfetti) bleiben bei Nein.
 
 ## Nächste Schritte
 
@@ -152,7 +125,7 @@ und nie ausgegeben.
 
 ## Tests
 
-`npm test` (53 Tests) und `npx vite build`.
+`npm test` (58 Tests) und `npx vite build`.
 
 ## Zuletzt behoben
 

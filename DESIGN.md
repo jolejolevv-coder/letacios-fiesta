@@ -192,7 +192,9 @@ Fast schwarzer Grund, drei Flächenstufen, Weiß in Tönungen als Linie, dazu ei
 
 ### Secondary
 - **Weiß auf Blau** (`auf-akzent`): Schrift auf vollem Blau.
-- **Stroh** (`stroh`, #e8a33d): Krempe und Krone des Sombreros (`STROH` in `src/Sombrero.jsx`) und im Favicon. Die einzige Markenfarbe; sie erbt den Akzent nicht.
+- **Stroh** (`stroh`, #e8a33d): Sombrero, Favicon, jedes zweite Fähnchen der Girlande, Ladehut und Hut der leeren Zustände, aktiver Reiter auf Seiten ohne Leader. Die Markenfarbe; sie erbt den Akzent nicht.
+- **Leaderfarbe** (`--lf1`, `--lf2`, aus `karten.json` Feld `f` über `src/leaderfarben.js`): Rot #e5484d, Grün #30a46c, Blau #3e7bfa, Lila #9b5de5, Gelb #f5c518, Schwarz als Silber #a1a1aa. Nur auf Decklists, Matchups und Mulligan: Farbschein und großes Bild im Leaderkopf, Hauptkachel, Unterstrich des aktiven Reiters, Fähnchen, `theme-color`. Ohne Leader stehen beide auf Stroh.
+- **Fiestafarben** (`FIESTA` in `src/leaderfarben.js`): Stroh, Rosa #e05d6f, Grün, Lila, Blau; nur die Girlande auf Seiten ohne Leader.
 
 ### Signal
 Zwei gedämpfte Töne nur für die Lesart einer Winrate, nie für Flächen der Oberfläche, Knöpfe oder Auswahl.
@@ -207,7 +209,9 @@ Zwei gedämpfte Töne nur für die Lesart einer Winrate, nie für Flächen der O
 - **Fehlerrot** (`fehler`): nur Fehler.
 
 ### Named Rules
-**The One Blue Rule.** Turn Order Blau ist die einzige Buntfarbe der Bedienung, und es erscheint nur als Fokus, Kennung oder aktive Wahl, nie als Fläche zur Dekoration. Stroh gehört nur dem Sombrero.
+**The One Blue Rule.** Turn Order Blau ist die einzige Buntfarbe der Bedienung, und es erscheint nur als Fokus, Kennung oder aktive Wahl, nie als Fläche zur Dekoration. Stroh gehört der Marke.
+
+**The Leader Color Rule.** Die Kartenfarben des Leaders färben Flächen, Ränder, Fähnchen und Punkte, nie eine Zahl, damit Rot und Grün der Karten nicht mit den Signalen der Winrate kollidieren. Farbpunkte (`Farbpunkte` in App.jsx) stehen vor Leadernamen in Matrix, Matchups und ⌘K.
 
 **The Two Signals Rule.** Gut und schlecht einer Winrate stehen in Seegrün und Ziegelrot, sonst nirgends: ab 55 % fett in Seegrün, unter 45 % in Ziegelrot, dazwischen Text 2 (`wrKlasse` und `ton` in `src/winrate.js`). Ohne Wert steht Text 3, nie Rot. Die Matrix tönt jede Zelle in Richtung ihrer Seite; der Spiegel trägt einen Rahmenring. Das Rating im Ranking ist keine Winrate.
 
@@ -255,7 +259,7 @@ Flach. Die Ebenen sind Grund, Karton, Karton hoch und Fläche 2, getrennt von Ha
 
 ## Motion
 
-**The Calm Motion Rule.** Hover und Farbwechsel 150 ms ease out (`--dauer-kurz`), Aufklappen und Erscheinen 350 ms mit `cubic-bezier(0.22, 1, 0.36, 1)` (`--dauer`, `--kurve`). Nichts federt. `prefers-reduced-motion` schaltet Übergänge und Versatz ab. Der Zähler der Kennzeile (`Zaehler`) springt dann auf den Endwert.
+**The Calm Motion Rule.** Hover und Farbwechsel 150 ms ease out (`--dauer-kurz`), Aufklappen und Erscheinen 350 ms mit `cubic-bezier(0.22, 1, 0.36, 1)` (`--dauer`, `--kurve`). Nichts federt. `prefers-reduced-motion` schaltet Übergänge und Versatz ab. Der Zähler der Kennzeile (`Zaehler`) springt dann auf den Endwert. Zwei Ausnahmen mit Charakter: die Girlande (`src/Girlande.jsx`) flattert einmal 900 ms beim Leaderwechsel, der Ladehut (`.laedt::before`) wippt; beide stehen bei reduzierter Bewegung still.
 
 ## Components
 

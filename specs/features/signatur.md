@@ -1,6 +1,6 @@
 # Signatur „Fiesta in Leaderfarbe“
 
-Stand 02.11.2026, Entwurf zur Freigabe. Vorschau: `.impeccable/vorschau/signatur-2.html`
+Stand 02.11.2026, freigegeben und gebaut. Vorschau: `.impeccable/vorschau/signatur-2.html`
 (lokal), erste Runde mit vier Richtungen in `.impeccable/vorschau/signatur.html`.
 
 ## Goal
@@ -45,17 +45,17 @@ Richtung 4 nein. Neue Ideen erwünscht, gesammelt in der Vorschau unter „Was i
 
 ## Acceptance criteria
 
-- [ ] Auf jeder Leaderseite tragen Kopf, Hauptkachel, aktiver Reiter und Girlande die Kartenfarben
+- [x] Auf jeder Leaderseite tragen Kopf, Hauptkachel, aktiver Reiter und Girlande die Kartenfarben
       des Leaders; zweifarbige Leader als Verlauf und abwechselnde Fähnchen.
-- [ ] Keine Zahl ist in Leaderfarbe gesetzt; Win rates bleiben Seegrün, Ziegelrot oder neutral.
-- [ ] Seiten ohne Leader zeigen die Girlande in Fiestafarben und den aktiven Reiter in Stroh.
-- [ ] Am Handy färbt sich die Browserleiste (`theme-color`) mit dem Leader.
-- [ ] Die Girlande flattert beim Leaderwechsel einmal, bei `prefers-reduced-motion` gar nicht.
-- [ ] Ladezustände zeigen den wippenden Hut, alle `leer-satz` Texte sind überarbeitet.
-- [ ] Kontrast von Text auf getönten Flächen mindestens 4.5.
-- [ ] Kein seitliches Scrollen am Handy außer Matrix und Replaybrett.
-- [ ] Kein messbarer Leistungsverlust: Girlande als SVG ohne Bilder, keine neue Schrift.
-- [ ] `npm test` und `npx vite build` grün, Prüfung bei 1440, 1100 und 375 px.
+- [x] Keine Zahl ist in Leaderfarbe gesetzt; Win rates bleiben Seegrün, Ziegelrot oder neutral.
+- [x] Seiten ohne Leader zeigen die Girlande in Fiestafarben und den aktiven Reiter in Stroh.
+- [x] Am Handy färbt sich die Browserleiste (`theme-color`) mit dem Leader.
+- [x] Die Girlande flattert beim Leaderwechsel einmal, bei `prefers-reduced-motion` gar nicht.
+- [x] Ladezustände zeigen den wippenden Hut, alle `leer-satz` Texte sind überarbeitet.
+- [x] Kontrast von Text auf getönten Flächen mindestens 4.5.
+- [x] Kein seitliches Scrollen am Handy außer Matrix und Replaybrett.
+- [x] Kein messbarer Leistungsverlust: Girlande als SVG ohne Bilder, keine neue Schrift.
+- [x] `npm test` und `npx vite build` grün, Prüfung bei 1440, 1100 und 375 px.
 
 ## Implementation plan
 
