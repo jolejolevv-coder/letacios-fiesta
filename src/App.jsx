@@ -6,6 +6,7 @@ import {
   anmelden,
   anzahl,
   bildpfad,
+  bildpfadCdn,
   deckSchluessel,
   grossesBild,
   holen,
@@ -112,6 +113,8 @@ function Zeichen({ name, groesse = 18 }) {
 
 function Bild({ id, className = "", alt = "", breite, hoehe }) {
   const [kaputt, setKaputt] = useState(false);
+  // Erst das CDN, bei einem Fehler die eigene Datei, danach der Platzhalter.
+  const [eigene, setEigene] = useState(false);
   // Ohne Kennung (etwa ein unbekannter Leader in einer Partie) steht ein leerer Platzhalter.
   if (!id) return <span className={className + " kb-kaputt"} aria-hidden="true" />;
   if (kaputt) {
@@ -125,14 +128,14 @@ function Bild({ id, className = "", alt = "", breite, hoehe }) {
   }
   return (
     <img
-      src={bildpfad(id)}
+      src={eigene ? bildpfad(id) : bildpfadCdn(id)}
       alt={alt}
       width={breite}
       height={hoehe}
       loading="lazy"
       decoding="async"
       className={className}
-      onError={() => setKaputt(true)}
+      onError={() => (eigene ? setKaputt(true) : setEigene(true))}
     />
   );
 }
