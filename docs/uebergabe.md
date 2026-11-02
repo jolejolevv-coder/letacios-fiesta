@@ -164,3 +164,12 @@ und nie ausgegeben.
 * Nie `standalone` setzen.
 * Keine Gedankenstriche in Texten.
 * Mihawk OP14-020 ignorieren.
+
+## Stand 02.11.2026, Bestenliste per Web API
+
+Spec `specs/features/bestenliste-web-api.md` (freigegeben). Phase 0 und 1 gebaut auf Branch
+`claude/recherche-github-tools-69b80a`: `bestenliste_api.py`, Schalter `--api` in
+`bestenliste_einbauen.py`, 12 Tests. `playerId` der API ist die `user_id`. Offen: Phase 2
+(Parallelbetrieb, Vergleich gegen die OCR Liste), Entscheidung wo der Abruf läuft
+(Empfehlung Bazzite), dann Phase 3 Umschalten. Replay Gefühl und Kaizoku Daten haben
+Entwürfe in `specs/features/`. Recherche: `docs/recherche-github-tools.md`.

@@ -119,6 +119,9 @@ def main():
                    help="pcap; ohne Angabe holt der Laeufer die Liste selbst")
     p.add_argument("--fotos", help="Ordner mit seite_N.png; Bestenliste per OCR, seit "
                                    "OPBounty 2.7 der Weg (werkzeuge/bestenliste_ocr.py)")
+    p.add_argument("--api", action="store_true",
+                   help="Top 100 aus der Web API von OPBounty statt per OCR "
+                        "(bestenliste_api.py, specs/features/bestenliste-web-api.md)")
     p.add_argument("--stand", help="Datum der Aufnahme, sonst heute")
     p.add_argument("--fortschreiben", action="store_true",
                    help="alten Bestand behalten statt ihn zu ersetzen; mischt "
@@ -132,7 +135,11 @@ def main():
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
     stand = a.stand or datetime.date.today().isoformat()
-    if a.fotos:
+    if a.api:
+        from bestenliste_api import top_holen
+        neu = top_holen()
+        quelle = "Web API"
+    elif a.fotos:
         sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "werkzeuge"))
         from bestenliste_ocr import aus_fotos
         neu = aus_fotos(a.fotos, seitenpasswort(), ZIEL)

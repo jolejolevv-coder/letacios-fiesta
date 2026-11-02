@@ -1,6 +1,6 @@
 # Bestenliste aus der OPBounty Web API
 
-Entwurf vom 02.11.2026, wartet auf Freigabe. Grundlage: `docs/recherche-github-tools.md`.
+Entwurf vom 02.11.2026, am selben Tag vom Nutzer freigegeben ("Bestenliste zuerst"). Phase 0 und 1 gebaut. Grundlage: `docs/recherche-github-tools.md`.
 
 ## Goal
 
@@ -18,19 +18,28 @@ Die Top 100 der Bestenliste kommen aus der Web API von `stats.tcgmatchmaking.com
 * Rate Limit nach seinen Angaben rund 12 Anfragen je Burst und IP, er wartet 2 Sekunden zwischen Aufrufen.
 * Kennung wie bei ihm: ehrlicher Bot `User-Agent` mit Hinweis auf das Projekt, `Accept: application/json`, Wiederholung bis 5 mal bei 429 und 5xx mit Wartezeit ab 2 Sekunden, verdoppelt bis 60.
 
+## Probeaufruf vom 02.11.2026, 13:18 UTC (Phase 0)
+
+* `POST /auth/session` ohne Körper und ohne Zugangsdaten: HTTP 200, `{"token", "expires_in": 7200}`.
+* `GET /api/leaderboard/mode_0?page=1&per_page=100` mit Bearer Token: HTTP 200, 32 KB, 100 Zeilen. Kopf: `totalPlayers` 31374, `totalPages` 314, `gameMode`, `timestamp`. `per_page=100` ist erlaubt.
+* Zeile: `rank`, `username`, `displayName`, `rating` (das ist der Bounty), `wins`, `losses`, `matches`, `winRate`, `leaderMostPlayed`, `topLeaders[{code, winRate, matches}]`, `isPremium`, `playerId`, `country`, `isMarine`.
+* **`playerId` ist unsere `user_id`.** Von 50 Spielern der OCR Liste mit bekannter `user_id`, die in der API Top 100 stehen, hatten alle denselben Namen (bis auf OCR Fehler). Die OCR Liste kennt nur für 57 von 100 eine `user_id`, die API liefert sie für alle 100.
+* Bounty: Die API ist live, unsere Liste von 05:30 UTC. Abweichungen bis rund 300 sind Tagesbewegung, kein Lesefehler. Der Namensvergleich zeigt die OCR Fehler (a1A1 als alAl, Salva1 als Salval, Jioh als vioh).
+* Gelesen wurden zwei Aufrufe, ein Token, 2 Sekunden Abstand, Kennung mit Projektlink.
+
 ## Acceptance criteria
 
-- [ ] Ein Probeaufruf (mit Ok des Nutzers) bestätigt: Sitzung ohne Zugangsdaten, `per_page=100` erlaubt, Antwortfelder bekannt. Die Felder stehen danach in diesem Spec.
+- [x] Probeaufruf bestätigt Sitzung ohne Zugangsdaten, `per_page=100` und die Felder (siehe oben).
 - [ ] Die Top 100 der API stimmen im Parallelbetrieb mit der OCR Liste desselben Tages bei Bounty auf eine Nachkommastelle überein; Abweichungen stehen im Vergleichsbericht (Namen, Rang).
-- [ ] Hat die API keine `user_id`, bleibt die Zuordnung wie heute (`spieler_daten.py`) und der Name aus der API dient als Anker.
+- [x] `playerId` der API ist die `user_id`, der Abruf setzt sie für alle 100 Zeilen.
 - [ ] Fällt die API aus oder ändert die Form, bleibt die OCR Liste stehen und die Action meldet es (Wache wie in `selbstlauf.md` Phase 3).
-- [ ] Tests mit festen Beispielantworten (Fixtures), ein Fehlerfall je Statuscode.
+- [x] Tests mit Attrappe für das Netz (`tests/test_bestenliste_api.py`, 12 Tests, grün): Ablauf, Zeilenformat, Rundung, Sortierung, 429 mit Wiederholung, Aufgeben, 403 ohne Wiederholung, fehlendes Token, zu wenige Zeilen, doppelter Rang, steigender Bounty, unbekannte Form.
 - [ ] Keine Zugangsdaten in Notizen oder im Repo. Das Token wird je Lauf neu geholt und nicht gespeichert.
 
 ## Implementation plan
 
-Phase 0: Probeaufruf durch den Nutzer oder mit seinem Ok, Felder festhalten.
-Phase 1: Modul `bestenliste_api.py` mit Sitzung, Abruf, Wiederholung, Zuordnung, Tests.
+Phase 0 (erledigt): Probeaufruf, Felder festgehalten.
+Phase 1 (erledigt): `bestenliste_api.py` und Schalter `--api` in `bestenliste_einbauen.py`, Tests grün. Der Schalter ersetzt die Liste wie `--fotos`, ohne `--api` bleibt alles wie vorher.
 Phase 2: Parallelbetrieb eine Woche, Vergleichsbericht (Name, Bounty, Rang).
 Phase 3: Umschalten auf die API, OCR als Rückfall, Eintrag in Changelog und Übergabe.
 
