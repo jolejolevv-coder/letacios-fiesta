@@ -1,6 +1,10 @@
-# Spielerseite: Bountyverlauf und Niederlagen nach Gegnerdeck
+# Decklisten: Bilanz je Gegnerleader
 
-Status: Freigegeben am 02.11.2026, aber nur "Verloren gegen" mit dem Leader des Gegners. Der Bountyverlauf entfällt (die API liefert ihn nicht, eine eigene Sammlung ist nicht gewünscht). Phase 1 gebaut: `src/niederlagen.js`, Abschnitt "Lost to" auf der Spielerseite, 4 Tests. Ohne eigenen Replaylink in der Zeile; Replays stehen weiter unter "Recent games". Die Teile zum Bountyverlauf unten bleiben als Entwurf stehen, falls die API später einen Verlauf liefert.
+Status: Geändert am 02.11.2026 auf Wunsch des Nutzers. Nicht mehr auf der Spielerseite, sondern bei den Decklisten: Auf der Rückseite einer Liste öffnet ein Klick auf das Record (zum Beispiel 38 – 31) die Aufteilung nach Leader des Gegners (Siege und Niederlagen). Der Bountyverlauf entfällt.
+
+Befund: Die Quelle der Listen (CDN, `aktualisieren.py`) trägt je Liste nur Gesamtzahlen, keine Aufteilung nach Gegner. Gebaut ist deshalb die Bilanz aus den aufgezeichneten Partien der Bestenliste Spieler (`src/niederlagen.js`, 4 Tests). Das ist ein Ausschnitt, und die Seite nennt die Zahl der bekannten Partien. Eine vollständige Aufteilung gäbe es nur, wenn eine Quelle sie je Liste führt (Kaizoku, siehe `kaizoku-daten.md`, ungeprüft) oder wenn wir alle Replays je Liste auswerten (die Replays liegen nicht im Repo).
+
+Der Rest dieser Datei ist der ursprüngliche Entwurf für die Spielerseite und gilt nicht mehr.
 
 ## Goal
 

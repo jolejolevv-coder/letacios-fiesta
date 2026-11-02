@@ -30,7 +30,7 @@ import { netzBauen } from "./wertnetz.js";
 import { NOTENFOLGE, partieAnalysieren } from "./spielbewertung.js";
 import { CHANGELOG } from "./changelog.js";
 import { leaderSuchen } from "./leadersuche.js";
-import { NIEDERLAGEN_ZEILEN_MAX, niederlagenNachLeader } from "./niederlagen.js";
+import { BILANZ_ZEILEN_MAX, bilanzNachLeader, partienJeListe } from "./niederlagen.js";
 import { animieren, DAUER, NACHLAUF_MS, zahlText } from "./zaehler.js";
 import { fokusOrdnen, GUT, matrixOrdnen, SCHWACH, seite as wrSeite, sortAusText, ton as wrTon, wrKlasse } from "./winrate.js";
 import { ankerBauen, fehlerSuchen, FEHLERNOTEN, kurveBauen, markenBauen, spielerZuordnen } from "./analyse.js";
@@ -606,10 +606,18 @@ function Quelle({ verzeichnis, wahl, setWahl, laedt }) {
    steht auf der Rueckseite.
    -------------------------------------------------------------------------- */
 
-function Deckzeile({ nr, liste, leaderId, spielerIndex, namen }) {
+function Deckzeile({ nr, liste, leaderId, spielerIndex, partienIndex, namen }) {
   const g = liste.w + liste.l;
   const [offen, setOffen] = useState(false);
   const [kopiert, setKopiert] = useState(false);
+  const [bilanzOffen, setBilanzOffen] = useState(false);
+  // Bekannte Partien dieser Liste je Gegnerleader. Die Quelle der Listen kennt keine
+  // Aufteilung nach Gegner; das hier sind nur die aufgezeichneten Partien der Bestenliste.
+  const bilanz = useMemo(() => {
+    if (!bilanzOffen || !partienIndex) return null;
+    const partien = partienIndex.get(deckSchluessel(liste.d, leaderId)) || [];
+    return { partien: partien.length, zeilen: bilanzNachLeader(partien) };
+  }, [bilanzOffen, partienIndex, liste, leaderId]);
   // Wer diese Liste gespielt hat, soweit bekannt. Die Quelle sind die letzten neun
   // Partien der Spieler aus der Bestenliste, also ein Ausschnitt: bei den meisten
   // Listen bleibt es leer, und dann steht auch nichts da.
@@ -664,7 +672,16 @@ function Deckzeile({ nr, liste, leaderId, spielerIndex, namen }) {
         <Decktabellen eintraege={liste.d} namen={namen} />
         <div className="rueck-fuss">
           <dl className="rueck-zeilen">
-            <div><dt>Record</dt><dd className="z">{liste.w} – {liste.l}</dd></div>
+            <div>
+              <dt>Record</dt>
+              <dd className="z">
+                <button type="button" className="knopf leise" aria-expanded={bilanzOffen}
+                        title="Wins and losses by opponent leader"
+                        onClick={() => setBilanzOffen((o) => !o)}>
+                  {liste.w} – {liste.l}
+                </button>
+              </dd>
+            </div>
             <div><dt>Std. error</dt><dd className="z">± {fehler(g).toFixed(1)}</dd></div>
             <div><dt>Duration</dt><dd className="z">{fmtDauer(liste.dur)}</dd></div>
           </dl>
@@ -672,6 +689,30 @@ function Deckzeile({ nr, liste, leaderId, spielerIndex, namen }) {
             {kopiert ? "Copied" : "Copy decklist"}
           </button>
         </div>
+        {bilanz ? (
+          <div className="rueck-fuss" style={{ display: "block" }}>
+            <span className="rueck-marke" style={{ margin: 0 }}>By opponent leader</span>
+            {bilanz.zeilen.length ? (
+              <ul className="bilanz-liste">
+                {bilanz.zeilen.slice(0, BILANZ_ZEILEN_MAX).map((z) => {
+                  const id = kennung(z.leader);
+                  return (
+                    <li key={z.leader}>
+                      <Kartenbild id={z.leader} breite={22} />
+                      <span>{(namen[id] || {}).n || id}</span>
+                      <span className="z">{z.siege} – {z.niederlagen}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+            <p className="lesart">
+              {bilanz.partien
+                ? `Only ${bilanz.partien} of this list's ${g} games are recorded per opponent (recent games of leaderboard players). A sample, not the full record.`
+                : "No per opponent games are recorded for this list. The source only gives totals per list."}
+            </p>
+          </div>
+        ) : null}
         {gespieltVon.length ? (
           <div className="rueck-fuss">
             <span className="rueck-marke" style={{ margin: 0 }}>Played by</span>
@@ -3116,8 +3157,6 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen }) {
   const partien = (daten && daten.partien) || [];
   const leader = (eintrag.leader || []).filter((l) => l.leader);
   const nurWr = leader.every((l) => l.partien == null);
-  const verloren = useMemo(() => niederlagenNachLeader(partien), [partien]);
-  const verlorenGesamt = verloren.reduce((a, z) => a + z.niederlagen, 0);
   return (
     <>
       <button type="button" onClick={zurueck} className="knopf leise zurueck-knopf">
@@ -3177,42 +3216,6 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen }) {
             );
           })}
         </ol>
-      </Abschnitt>
-
-      <Abschnitt titel="Lost to">
-        {verloren.length ? (
-          <>
-            <div className="tafel-spalten spalten gespielt">
-              <span>Nr</span><span /><span>Opponent leader</span>
-              <span className="rechts">Lost</span><span className="rechts">Share</span><span className="rechts">Record</span>
-            </div>
-            <ol className="tafel gespielt">
-              {verloren.slice(0, NIEDERLAGEN_ZEILEN_MAX).map((z, i) => {
-                const id = kennung(z.leader);
-                return (
-                  <li key={z.leader} className="zeile">
-                    <div className="vorn">
-                      <span className="nr">{nr2(i + 1)}</span>
-                      <Kartenbild id={z.leader} breite={30} />
-                      <span className="name gegner">
-                        <b>{(namen[id] || {}).n || id}</b><span className="kartennr">{id}</span>
-                      </span>
-                      <Zelle k="z-a" label="Lost" wert={String(z.niederlagen)} />
-                      <Zelle k="z-b" label="Share" wert={z.anteil.toFixed(0) + " %"} />
-                      <Zelle k="z-c" label="Record" wert={`${z.siege} – ${z.niederlagen}`} />
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-            <p className="lesart">
-              Based on the {partien.length} recorded games ({verlorenGesamt} lost). Only recent games are
-              recorded, so this is a sample, not the whole season. Record is wins – losses against that leader.
-            </p>
-          </>
-        ) : (
-          <p className="leer-satz">{partien.length ? "No lost games among the recorded ones." : "No recent games recorded for this player."}</p>
-        )}
       </Abschnitt>
 
       <Abschnitt titel="Recent games">
@@ -3634,6 +3637,7 @@ export default function App() {
 
   /* Wer hat welche Liste gespielt? Einmal bauen, nicht je Liste neu. */
   const spielerIndex = useMemo(() => spielerJeListe(spielerAlle), [spielerAlle]);
+  const partienIndex = useMemo(() => partienJeListe(spielerAlle), [spielerAlle]);
 
   /* Adresse der Spielerseite mitfuehren. */
   useEffect(() => {
@@ -3990,7 +3994,7 @@ export default function App() {
           <ol className="tafel listen">
             {listen.slice(0, sichtbar).map((l, i) => (
               <Deckzeile key={l.d.join("|") + i} nr={i + 1} liste={l} leaderId={leader.id}
-                         spielerIndex={spielerIndex} namen={namen} />
+                         spielerIndex={spielerIndex} partienIndex={partienIndex} namen={namen} />
             ))}
           </ol>
           {!listen.length ? <p className="leer-satz">No list matches these filters.</p> : null}

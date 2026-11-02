@@ -3350,3 +3350,7 @@ button { color: inherit; }
   .vorschau-schleier, .vorschau, .mehr-blatt, .palette { animation: none; }
   .vorschau-bild .gross { transition: none; }
 }
+
+/* Decklisten: Bilanz je Gegnerleader auf der Rückseite */
+.bilanz-liste { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 4px; }
+.bilanz-liste li { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 10px; font-size: 13.5px; }
