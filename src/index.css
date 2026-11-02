@@ -3371,7 +3371,7 @@ button { color: inherit; }
 .bilanz-liste { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 4px; }
 .bilanz-liste li { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 10px; font-size: 13.5px; }
 @media (max-width: 720px) { .kz-tab th:nth-child(n+5), .kz-tab td:nth-child(n+5) { display: none; } }
-=======
+
 /* ============================================================ Signatur: Fiesta in Leaderfarbe
    Die Leaderfarbe (--lf1, --lf2) liegt nur auf Flaechen, Kanten und Bild, nie auf Zahlen. */
 .leaderkopf {
@@ -3450,4 +3450,3 @@ p.leer-satz::before { opacity: .7; }
   50% { transform: rotate(9deg) translateY(-2px); }
 }
 @media (prefers-reduced-motion: reduce) { .laedt::before { animation: none; } }
->>>>>>> 68dfe959c2cbc86093de32686687fb3df8c69c08
