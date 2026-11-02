@@ -40,11 +40,11 @@ Die Top 100 der Bestenliste kommen aus der Web API von `stats.tcgmatchmaking.com
 
 Phase 0 (erledigt): Probeaufruf, Felder festgehalten.
 Phase 1 (erledigt): `bestenliste_api.py` und Schalter `--api` in `bestenliste_einbauen.py`, Tests grün. Der Schalter ersetzt die Liste wie `--fotos`, ohne `--api` bleibt alles wie vorher.
-Phase 2: Parallelbetrieb eine Woche, Vergleichsbericht (Name, Bounty, Rang).
+Phase 2 (gebaut): Probebetrieb in der GitHub Action, Schritt "Bestenliste Web API gegen OCR" (`werkzeuge/bestenliste_vergleich.py`, `continue-on-error`). Er ändert keine Daten und schreibt nur Zahlen in die Zusammenfassung des Laufs (Namen gleich, ähnlich, anders, user_id Abdeckung, Median Rangabstand und Bountyabstand, Ausreißer), weil die Logs eines öffentlichen Repos öffentlich sind. Läuft nach dem Merge mit dem täglichen Lauf 06:20 UTC. Eine Woche beobachten.
 Phase 3: Umschalten auf die API, OCR als Rückfall, Eintrag in Changelog und Übergabe.
 
 ## Open questions
 
-* Wo läuft der Abruf: in der GitHub Action (gemeinsame IP Bereiche, Rate Limit eng) oder auf dem Bazzite Server (feste Heim IP)? Empfehlung: Server, weil die Bestenliste dort ohnehin entsteht.
+* Wo läuft der Abruf: entschieden am 02.11.2026 für die GitHub Action. Risiko: gemeinsame IP Bereiche und ein enges Rate Limit. Der Probebetrieb zeigt, ob das hält (ein Lauf am Tag, zwei Aufrufe). Scheitert er, bleibt der Bazzite als Weg.
 * Wie oft: einmal täglich nach der OCR Zeit (05:30 UTC) oder öfter? Sein Vorbild holt einmal am Tag.
 * Enthält die Antwort Spielerkennungen, die `user_id` ersetzen könnten?

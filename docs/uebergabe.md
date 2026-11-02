@@ -173,3 +173,10 @@ Spec `specs/features/bestenliste-web-api.md` (freigegeben). Phase 0 und 1 gebaut
 (Parallelbetrieb, Vergleich gegen die OCR Liste), Entscheidung wo der Abruf läuft
 (Empfehlung Bazzite), dann Phase 3 Umschalten. Replay Gefühl und Kaizoku Daten haben
 Entwürfe in `specs/features/`. Recherche: `docs/recherche-github-tools.md`.
+
+Entscheidung 02.11.2026: Der Abruf der Bestenliste läuft in der GitHub Action. Phase 2 gebaut:
+Schritt "Bestenliste Web API gegen OCR" in `veroeffentlichen.yml`, Skript
+`werkzeuge/bestenliste_vergleich.py` (nur Zahlen im Log, weil das Repo öffentlich ist).
+Nach dem Merge eine Woche die Zusammenfassungen der täglichen Läufe lesen, dann Phase 3
+(Umschalten). Der Schritt braucht `SEITEN_PASSWORT`, das es schon gibt. Nicht geprüft: ob
+GitHub Runner von der API geblockt werden (erster Lauf zeigt es).

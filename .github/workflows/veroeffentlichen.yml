@@ -169,6 +169,16 @@ jobs:
         run: python3 frische_partien.py
         continue-on-error: true
 
+      # Probebetrieb der Bestenliste aus der Web API (specs/features/bestenliste-web-api.md,
+      # Phase 2). Er aendert nichts an den Daten der Seite. Er haelt die Top 100 der API
+      # gegen die OCR Liste im Repo und schreibt nur Zahlen in die Zusammenfassung, weil die
+      # Logs eines oeffentlichen Repos oeffentlich sind.
+      - name: Bestenliste Web API gegen OCR
+        env:
+          SEITEN_PASSWORT: ${{ secrets.SEITEN_PASSWORT }}
+        run: python3 werkzeuge/bestenliste_vergleich.py
+        continue-on-error: true
+
       - name: Replays holen
         run: python3 replays_holen.py
         continue-on-error: true
