@@ -32,6 +32,7 @@ import { netzBauen } from "./wertnetz.js";
 import { NOTENFOLGE, partieAnalysieren } from "./spielbewertung.js";
 import { CHANGELOG } from "./changelog.js";
 import { leaderSuchen } from "./leadersuche.js";
+import { BILANZ_ZEILEN_MAX, bilanzNachLeader, partienJeListe } from "./niederlagen.js";
 import { animieren, DAUER, NACHLAUF_MS, zahlText } from "./zaehler.js";
 import { fokusOrdnen, GUT, matrixOrdnen, SCHWACH, seite as wrSeite, sortAusText, ton as wrTon, wrKlasse } from "./winrate.js";
 import { ankerBauen, fehlerSuchen, FEHLERNOTEN, kurveBauen, markenBauen, spielerZuordnen } from "./analyse.js";
@@ -618,10 +619,18 @@ function Quelle({ verzeichnis, wahl, setWahl, laedt }) {
    steht auf der Rueckseite.
    -------------------------------------------------------------------------- */
 
-function Deckzeile({ nr, liste, leaderId, spielerIndex, namen }) {
+function Deckzeile({ nr, liste, leaderId, spielerIndex, partienIndex, namen }) {
   const g = liste.w + liste.l;
   const [offen, setOffen] = useState(false);
   const [kopiert, setKopiert] = useState(false);
+  const [bilanzOffen, setBilanzOffen] = useState(false);
+  // Bekannte Partien dieser Liste je Gegnerleader. Die Quelle der Listen kennt keine
+  // Aufteilung nach Gegner; das hier sind nur die aufgezeichneten Partien der Bestenliste.
+  const bilanz = useMemo(() => {
+    if (!bilanzOffen || !partienIndex) return null;
+    const partien = partienIndex.get(deckSchluessel(liste.d, leaderId)) || [];
+    return { partien: partien.length, zeilen: bilanzNachLeader(partien) };
+  }, [bilanzOffen, partienIndex, liste, leaderId]);
   // Wer diese Liste gespielt hat, soweit bekannt. Die Quelle sind die letzten neun
   // Partien der Spieler aus der Bestenliste, also ein Ausschnitt: bei den meisten
   // Listen bleibt es leer, und dann steht auch nichts da.
@@ -676,7 +685,16 @@ function Deckzeile({ nr, liste, leaderId, spielerIndex, namen }) {
         <Decktabellen eintraege={liste.d} namen={namen} />
         <div className="rueck-fuss">
           <dl className="rueck-zeilen">
-            <div><dt>Record</dt><dd className="z">{liste.w} – {liste.l}</dd></div>
+            <div>
+              <dt>Record</dt>
+              <dd className="z">
+                <button type="button" className="knopf leise" aria-expanded={bilanzOffen}
+                        title="Wins and losses by opponent leader"
+                        onClick={() => setBilanzOffen((o) => !o)}>
+                  {liste.w} – {liste.l}
+                </button>
+              </dd>
+            </div>
             <div><dt>Std. error</dt><dd className="z">± {fehler(g).toFixed(1)}</dd></div>
             <div><dt>Duration</dt><dd className="z">{fmtDauer(liste.dur)}</dd></div>
           </dl>
@@ -684,6 +702,30 @@ function Deckzeile({ nr, liste, leaderId, spielerIndex, namen }) {
             {kopiert ? "Copied" : "Copy decklist"}
           </button>
         </div>
+        {bilanz ? (
+          <div className="rueck-fuss" style={{ display: "block" }}>
+            <span className="rueck-marke" style={{ margin: 0 }}>By opponent leader</span>
+            {bilanz.zeilen.length ? (
+              <ul className="bilanz-liste">
+                {bilanz.zeilen.slice(0, BILANZ_ZEILEN_MAX).map((z) => {
+                  const id = kennung(z.leader);
+                  return (
+                    <li key={z.leader}>
+                      <Kartenbild id={z.leader} breite={22} />
+                      <span>{(namen[id] || {}).n || id}</span>
+                      <span className="z">{z.siege} – {z.niederlagen}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+            <p className="lesart">
+              {bilanz.partien
+                ? `Only ${bilanz.partien} of this list's ${g} games are recorded per opponent (recent games of leaderboard players). A sample, not the full record.`
+                : "No per opponent games are recorded for this list. The source only gives totals per list."}
+            </p>
+          </div>
+        ) : null}
         {gespieltVon.length ? (
           <div className="rueck-fuss">
             <span className="rueck-marke" style={{ margin: 0 }}>Played by</span>
@@ -3114,7 +3156,7 @@ function Partie({ nr, p, namen, replayOeffnen }) {
   );
 }
 
-function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen }) {
+function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen, kzSpieler }) {
   if (!eintrag) {
     return (
       <>
@@ -3189,6 +3231,21 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen }) {
         </ol>
       </Abschnitt>
 
+      {kzSpieler ? (
+        <Abschnitt titel="Kaizoku (last 28 days)">
+          <p className="lesart" style={{ marginTop: 0 }}>
+            {kzSpieler.m} ranked games ({kzSpieler.w} won) found for this player at Card Kaizoku. Kaizoku only sees
+            games played in the simulator, so this can be only part of the games.
+          </p>
+          <ol className="kz-listen">
+            {kzSpieler.decks.map((d, i) => (
+              <KaizokuListe key={d.d.join("|")} nr={i + 1} namen={namen}
+                            liste={{ d: d.d, w: d.w, m: d.m, pilot: 1, gegner: d.gegner }} />
+            ))}
+          </ol>
+        </Abschnitt>
+      ) : null}
+
       <Abschnitt titel="Recent games">
         {partien.length ? (
           <>
@@ -3212,6 +3269,210 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen }) {
 }
 
 /* --------------------------------------------------------------------------
+   Kaizoku: Statistik und Decklisten von Card Kaizoku, getrennt von unseren Zahlen
+   (specs/features/kaizoku-daten.md, Stufe A). Gesamtzahlen ohne Spielerbezug; das
+   Record einer Liste klappt die Bilanz je Gegnerleader auf, vollstaendig und nicht
+   nur ein Ausschnitt.
+   -------------------------------------------------------------------------- */
+
+const KZ_LISTEN_SICHTBAR = 10;
+const KZ_ZUEGE = 8;
+const KZ_MINDEST_PARTIEN = 30;       // darunter ist die Siegquote eines Leaders kaum lesbar
+
+function KaizokuListe({ liste, nr, namen }) {
+  const [bilanz, setBilanz] = useState(false);
+  const [karten, setKarten] = useState(false);
+  const rate = proz(liste.w, liste.m);
+  return (
+    <li className="kz-liste">
+      <div className="kz-kopf">
+        <span className="nr">{nr2(nr)}</span>
+        <button type="button" className="knopf leise" aria-expanded={bilanz}
+                title="Wins and losses by opponent leader" onClick={() => setBilanz((o) => !o)}>
+          {liste.w} – {liste.m - liste.w}
+        </button>
+        <span className={"z " + wrKlasse(rate)}>{fmtProz(liste.w, liste.m)}</span>
+        <span className="z">{fmtZahl(liste.m)} games</span>
+        <span className="z">{liste.pilot} {liste.pilot === 1 ? "pilot" : "pilots"}</span>
+        <button type="button" className="knopf leise" aria-expanded={karten}
+                onClick={() => setKarten((o) => !o)}>{karten ? "Hide list" : "Show list"}</button>
+      </div>
+      {karten ? <Decktabellen eintraege={liste.d} namen={namen} /> : null}
+      {bilanz ? (
+        <ul className="bilanz-liste">
+          {liste.gegner.length ? liste.gegner.map(([gid, m, w]) => {
+            const id = kennung(gid);
+            return (
+              <li key={gid}>
+                <Kartenbild id={gid} breite={22} />
+                <span>{(namen[id] || {}).n || id}</span>
+                <span className="z">{w} – {m - w}</span>
+              </li>
+            );
+          }) : <li><span /><span>No opponent split for this list.</span><span /></li>}
+        </ul>
+      ) : null}
+    </li>
+  );
+}
+
+/* Stufe B: Kartenwerte, Starthaende, Zugkurve und Techkarten eines Leaders. */
+function kzName(namen, code) {
+  const id = kennung(code);
+  return (namen[id] || {}).n || id;
+}
+
+function kzKombi(namen, kombi) {
+  if (kombi === "NO_PLAY") return "No play";
+  return kombi.split("+").map((c) => kzName(namen, c)).join(" + ");
+}
+
+function KaizokuWochen({ b, leaderId, namen }) {
+  const e = b && b.leader ? b.leader[leaderId] : null;
+  if (b === null) return <p className="laedt">Loading card stats ...</p>;
+  if (!e) return <p className="leer-satz">No card stats for this leader.</p>;
+  const teil = (seite) => (e.kurve && e.kurve[seite]) || [];
+  const gegner = Object.entries(e.tech || {});
+  return (
+    <>
+      <Abschnitt titel="Cards in the deck">
+        {e.karten.length ? (
+          <table className="tab kz-tab">
+            <thead><tr><th>Card</th><th>In decks</th><th>Win rate with</th><th>Avg copies</th></tr></thead>
+            <tbody>
+              {e.karten.slice(0, 20).map(([c, nutzung, wr, kopien]) => (
+                <tr key={c}>
+                  <td><Kartenbild id={c} breite={22} /> {kzName(namen, c)}</td>
+                  <td className="z">{(100 * nutzung).toFixed(0)} %</td>
+                  <td className={"z " + wrKlasse(100 * wr)}>{(100 * wr).toFixed(1)} %</td>
+                  <td className="z">{kopien.toFixed(1)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : <p className="leer-satz">No card stats.</p>}
+      </Abschnitt>
+      <Abschnitt titel="Opening hand">
+        {e.hand.length ? (
+          <ul className="bilanz-liste">
+            {e.hand.slice(0, 10).map(([c, anteil]) => (
+              <li key={c}><Kartenbild id={c} breite={22} /><span>{kzName(namen, c)}</span>
+                <span className="z">{(100 * anteil).toFixed(0)} % of hands</span></li>
+            ))}
+          </ul>
+        ) : <p className="leer-satz">No hand stats.</p>}
+      </Abschnitt>
+      <Abschnitt titel="Turn plays">
+        {teil("first").length || teil("second").length ? (
+          <table className="tab kz-tab">
+            <thead><tr><th>Turn</th><th>Going first</th><th>Going second</th></tr></thead>
+            <tbody>
+              {Array.from({ length: KZ_ZUEGE }, (_, i) => i + 1).map((t) => {
+                const a = teil("first").find((z) => z[0] === t);
+                const c = teil("second").find((z) => z[0] === t);
+                if (!a && !c) return null;
+                const zelle = (z) => (z ? z[1].slice(0, 2).map(([k, r]) => `${kzKombi(namen, k)} (${(100 * r).toFixed(0)} %)`).join(", ") : "–");
+                return <tr key={t}><td className="z">{t}</td><td style={{ textAlign: "left" }}>{zelle(a)}</td><td style={{ textAlign: "left" }}>{zelle(c)}</td></tr>;
+              })}
+            </tbody>
+          </table>
+        ) : <p className="leer-satz">No turn data.</p>}
+      </Abschnitt>
+      <Abschnitt titel="Tech cards by opponent">
+        {gegner.length ? (
+          <ul className="bilanz-liste kz-tech">
+            {gegner.map(([opp, karten]) => (
+              <li key={opp}>
+                <Kartenbild id={opp} breite={22} />
+                <span>vs {kzName(namen, opp)}</span>
+                <span className="z">{karten.map(([c]) => kzName(namen, c)).join(", ")}</span>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="leer-satz">No tech cards with strong evidence.</p>}
+        <p className="lesart">Cards that helped this leader win against that opponent, only those Kaizoku marks as strong evidence.</p>
+      </Abschnitt>
+    </>
+  );
+}
+
+function Kaizoku({ daten, namen }) {
+  const [gewaehlt, setGewaehlt] = useState(null);
+  const [alle, setAlle] = useState(false);
+  const [wochen, setWochen] = useState(null);
+  useEffect(() => {
+    let abgebrochen = false;
+    holen("kaizoku_b.json.gz")
+      .then((d) => !abgebrochen && setWochen(d))
+      .catch(() => !abgebrochen && setWochen({ leader: {} }));
+    return () => {
+      abgebrochen = true;
+    };
+  }, []);
+  const leader = useMemo(() => (daten ? daten.leader : []), [daten]);
+  const aktiv = leader.find((l) => l.id === gewaehlt) || leader[0];
+  const sichtbar = alle ? leader : leader.filter((l) => l.m >= KZ_MINDEST_PARTIEN);
+  const stand = daten && daten.stand
+    ? `${daten.stand.slice(6, 8)}.${daten.stand.slice(4, 6)}.${daten.stand.slice(0, 4)}` : "";
+  if (!aktiv) return <p className="leer-satz">No Kaizoku data yet.</p>;
+  return (
+    <>
+      <section className="vorspann">
+        <h1>Kaizoku stats</h1>
+        <p className="lead">
+          Leader stats and decklists from Card Kaizoku, {stand ? <>as of <strong>{stand}</strong>, </> : null}
+          last week's games ({fmtZahl(daten.partien)} in total). These are not our numbers: they come from another
+          source and another sample, so they can differ from the other tabs. Weighted win rate is Kaizoku's own
+          adjustment, its formula is not published.
+        </p>
+      </section>
+      <Abschnitt titel="Leaders">
+        <table className="tab kz-tab">
+          <thead>
+            <tr><th>Leader</th><th>Games</th><th>Win rate</th><th>Weighted</th><th>Play rate</th><th>First</th><th>Second</th></tr>
+          </thead>
+          <tbody>
+            {sichtbar.map((l) => {
+              const id = kennung(l.id);
+              return (
+                <tr key={l.id} className={l.id === aktiv.id ? "kz-aktiv" : ""} onClick={() => setGewaehlt(l.id)}>
+                  <td><Kartenbild id={l.id} breite={22} /> {(namen[id] || {}).n || l.name || id}</td>
+                  <td className="z">{fmtZahl(l.m)}</td>
+                  <td className={"z " + wrKlasse(100 * l.roh)}>{(100 * l.roh).toFixed(1)} %</td>
+                  <td className="z">{(100 * l.gewichtet).toFixed(1)} %</td>
+                  <td className="z">{(100 * l.rate).toFixed(1)} %</td>
+                  <td className="z">{l.first == null ? "–" : (100 * l.first).toFixed(1) + " %"}</td>
+                  <td className="z">{l.second == null ? "–" : (100 * l.second).toFixed(1) + " %"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <button type="button" className="knopf leise" onClick={() => setAlle((o) => !o)}>
+          {alle ? `Only leaders with ${KZ_MINDEST_PARTIEN}+ games` : "Show all leaders"}
+        </button>
+      </Abschnitt>
+      <Abschnitt titel={"Decklists: " + ((namen[kennung(aktiv.id)] || {}).n || aktiv.name || aktiv.id)}>
+        {aktiv.listen.length ? (
+          <>
+            <ol className="kz-listen">
+              {aktiv.listen.slice(0, KZ_LISTEN_SICHTBAR).map((li, i) => (
+                <KaizokuListe key={li.d.join("|")} liste={li} nr={i + 1} namen={namen} />
+              ))}
+            </ol>
+            <p className="lesart">
+              Best and most played lists of the week, same list counted once. A tap on the record shows
+              wins and losses against each opponent leader.
+            </p>
+          </>
+        ) : <p className="leer-satz">No lists for this leader.</p>}
+      </Abschnitt>
+      <KaizokuWochen b={wochen} leaderId={aktiv.id} namen={namen} />
+    </>
+  );
+}
+
+/* --------------------------------------------------------------------------
    Adressen
 
    Der Reiter steht im Pfad, der gewaehlte Leader als Abfrage dahinter. Damit ist jede
@@ -3227,6 +3488,7 @@ const PFADE = {
   matrix: "/matrix",
   rang: "/rankings",
   beste: "/leaderboard",
+  kaizoku: "/kaizoku",
   spieler: "/player",
   replay: "/replay",
   analyse: "/mulligan",
@@ -3288,6 +3550,7 @@ const REITER = [
   ["matrix", "Matchup matrix", "Matrix"],
   ["rang", "Power rankings", "Ranking"],
   ["beste", "Leaderboard", "Ladder"],
+  ["kaizoku", "Kaizoku stats", "Kaizoku"],
   ["analyse", "Mulligan", "Mulligan"],
   ["book", "Guide", "Guide"],
   ["eigenes", "Analyze my replay", "Analyze"],
@@ -3475,6 +3738,8 @@ export default function App() {
   const [namen, setNamen] = useState({});
   // null heisst "noch nicht geholt", false heisst "nicht da". Beides ist erlaubt.
   const [beste, setBeste] = useState(null);
+  const [kaizoku, setKaizoku] = useState(null);
+  const [kzSpieler, setKzSpieler] = useState(null);
   const [spielerAlle, setSpielerAlle] = useState(null);
   const [spielerId, setSpielerId] = useState(
     () => new URLSearchParams(window.location.search).get("id") || null
@@ -3594,6 +3859,30 @@ export default function App() {
     };
   }, [entsperrt, reiter, beste]);
 
+  /* Kaizoku Statistik. Eigene Datei, darf fehlen. */
+  useEffect(() => {
+    if (entsperrt !== true || kaizoku !== null || reiter !== "kaizoku") return;
+    let abgebrochen = false;
+    holen("kaizoku.json.gz")
+      .then((d) => !abgebrochen && setKaizoku(d))
+      .catch(() => !abgebrochen && setKaizoku(false));
+    return () => {
+      abgebrochen = true;
+    };
+  }, [entsperrt, reiter, kaizoku]);
+
+  /* Kaizoku Zahlen der Top 100 (Stufe C). Eigene Datei, darf fehlen. */
+  useEffect(() => {
+    if (entsperrt !== true || kzSpieler !== null || reiter !== "spieler") return;
+    let abgebrochen = false;
+    holen("kaizoku_spieler.json.gz")
+      .then((d) => !abgebrochen && setKzSpieler(d))
+      .catch(() => !abgebrochen && setKzSpieler(false));
+    return () => {
+      abgebrochen = true;
+    };
+  }, [entsperrt, reiter, kzSpieler]);
+
   /* Die Partien je Spieler. Eigene Datei, fuer die Spielerseite und den Deckreiter
      (wer hat welche Liste gespielt), und sie darf ebenso fehlen wie die Bestenliste. */
   useEffect(() => {
@@ -3610,6 +3899,7 @@ export default function App() {
 
   /* Wer hat welche Liste gespielt? Einmal bauen, nicht je Liste neu. */
   const spielerIndex = useMemo(() => spielerJeListe(spielerAlle), [spielerAlle]);
+  const partienIndex = useMemo(() => partienJeListe(spielerAlle), [spielerAlle]);
 
   /* Adresse der Spielerseite mitfuehren. */
   useEffect(() => {
@@ -3955,6 +4245,14 @@ export default function App() {
     inhalt = <p className="laedt">Loading</p>;
   } else if (reiter === "changelog") {
     inhalt = <Changelog />;
+  } else if (reiter === "kaizoku") {
+    inhalt = kaizoku === null ? (
+      <p className="laedt">Loading Kaizoku stats ...</p>
+    ) : kaizoku === false ? (
+      <p className="leer-satz">No Kaizoku data available yet.</p>
+    ) : (
+      <Kaizoku daten={kaizoku} namen={namen} />
+    );
   } else if (reiter === "decks") {
     inhalt = (
       <>
@@ -3992,7 +4290,7 @@ export default function App() {
           <ol className="tafel listen">
             {listen.slice(0, sichtbar).map((l, i) => (
               <Deckzeile key={l.d.join("|") + i} nr={i + 1} liste={l} leaderId={leader.id}
-                         spielerIndex={spielerIndex} namen={namen} />
+                         spielerIndex={spielerIndex} partienIndex={partienIndex} namen={namen} />
             ))}
           </ol>
           {!listen.length ? <p className="leer-satz">No list matches these filters. Loosen one of them.</p> : null}
@@ -4133,6 +4431,7 @@ export default function App() {
           : null}
         daten={spielerAlle && spielerAlle.spieler ? spielerAlle.spieler[String(spielerId)] : null}
         namen={namen}
+        kzSpieler={kzSpieler && kzSpieler.spieler ? kzSpieler.spieler[String(spielerId)] : null}
         zurueck={() => setReiter("beste")}
         replayOeffnen={(pfad, ldr) => {
           setReplayPfad(pfad);
