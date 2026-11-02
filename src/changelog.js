@@ -11,6 +11,9 @@ export const CHANGELOG = [
       "On the phone the tabs now sit in a bar at the bottom, within reach of your thumb. More holds the rest.",
       "Win rates now carry a small scale from 30 to 70 % with a tick at 50 %, in the leader tiles and in the deck and matchup tables, so you see at a glance how far above or below even a number is.",
       "The leader tiles put win rate first and larger. Wins and losses moved under Games.",
+      "Each leader page now wears the card colors of its leader: a glow and the big card art behind the title, the main tile, the active tab and on the phone the browser bar.",
+      "A papel picado garland hangs above the header. It flutters when you switch leaders and shows the Fiesta colors on pages without a leader.",
+      "Color dots in front of leader names in the matrix, the matchups and the search. While data loads, the sombrero bobs.",
     ],
   },
   {

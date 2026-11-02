@@ -2,6 +2,8 @@ import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutE
 import { createPortal } from "react-dom";
 import gsap from "gsap";
 import Sombrero from "./Sombrero.jsx";
+import Girlande from "./Girlande.jsx";
+import { fahnenFarben, FARBNAME, farbBuchstaben, LEADERFARBE, leaderTon, themaFarbe } from "./leaderfarben.js";
 import {
   anmelden,
   anzahl,
@@ -173,6 +175,17 @@ function Kartenbild({ id, breite = 26, alt = "", vorschau = false, name = "" }) 
    lesen kann. Das grosse Bild kommt von Metacoach (grossesBild in daten.js); bis es da ist,
    steht das kleine Bild vergroessert als Platzhalter. Faellt Metacoach aus, bleibt es dabei.
    -------------------------------------------------------------------------- */
+
+/* Kartenfarben eines Leaders als kleine Punkte vor dem Namen; Farbe nur als Fläche, nie auf Zahlen. */
+function Farbpunkte({ f }) {
+  const buchstaben = farbBuchstaben(f);
+  if (!buchstaben.length) return null;
+  return (
+    <span className="farbpunkte" title={buchstaben.map((b) => FARBNAME[b]).join(", ")}>
+      {buchstaben.map((b) => <i key={b} style={{ background: LEADERFARBE[b] }} />)}
+    </span>
+  );
+}
 
 const VorschauKontext = createContext(null);
 const FOKUSSIERBAR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -761,7 +774,7 @@ function Matchups({ leader, mindest, namen, sortiert, setSortiert }) {
   }, [leader, mindest, sortiert]);
 
   if (!zeilen.length) {
-    return <p className="leer-satz">No opponent reaches that game count.</p>;
+    return <p className="leer-satz">No opponent has that many games yet. Lower the minimum.</p>;
   }
 
   const kopf = (t, k) => <SortKopf text={t} schluessel={k} sortiert={sortiert} setSortiert={setSortiert} />;
@@ -779,7 +792,7 @@ function Matchups({ leader, mindest, namen, sortiert, setSortiert }) {
             <div className="vorn">
               <span className="nr">{nr2(i + 1)}</span>
               <Kartenbild id={r.id} breite={26} />
-              <span className="name gegner"><b>{(namen[r.id] || {}).n || r.id}</b><span className="kartennr">{r.id}</span></span>
+              <span className="name gegner"><b><Farbpunkte f={(namen[r.id] || {}).f} />{(namen[r.id] || {}).n || r.id}</b><span className="kartennr">{r.id}</span></span>
               <Zelle k="z-partien" label="Games" wert={fmtZahl(r.m)} />
               <Zelle k="z-wr" label="Win rate" wert={fmtProz(r.w, r.m)} klasse={wrKlasseWG(r.w, r.m)}
                      skala={r.m > 0 ? proz(r.w, r.m) : null} />
@@ -855,7 +868,7 @@ function MatrixFokus({ eintrag, satz, mindest, namen, sitzModus, setFokus, sort,
         </MatrixLeader>
         <button type="button" className="knopf rand" onClick={() => setFokus(null)}>Show all</button>
       </div>
-      {!zeilen.length ? <p className="leer-satz">No opponent reaches {mindest} games.</p> : (
+      {!zeilen.length ? <p className="leer-satz">No opponent has {mindest} games yet. Lower the minimum.</p> : (
         <>
           <div className={"tafel-spalten spalten fokus" + (sitzModus ? " sitze" : "")} role="row">
             <span role="columnheader">Nr</span><span role="columnheader" /><span role="columnheader">Opponent</span>
@@ -920,7 +933,7 @@ function Matrix({ satz, top, mindest, namen, sitzModus, setSitzModus, fokus, set
                         sitzModus={sitzModus} setFokus={setFokus} sort={sort} setSort={setSort} />;
   }
   if (!leader.length) {
-    return <p className="leer-satz">No data in this range.</p>;
+    return <p className="leer-satz">Nothing was played in this range. Widen it.</p>;
   }
 
   const name = (id) => (namen[kennung(id)] || {}).n || kennung(id);
@@ -952,7 +965,7 @@ function Matrix({ satz, top, mindest, namen, sitzModus, setSitzModus, fokus, set
                       <span className="nr">{nr2(i + 1)}</span>
                       <Kartenbild id={kennung(zeile.id)} breite={26} />
                       <span className="kn" style={{ minWidth: 0 }}>
-                        <b>{name(zeile.id)}</b>
+                        <b><Farbpunkte f={(namen[kennung(zeile.id)] || {}).f} />{name(zeile.id)}</b>
                         <small>{kennung(zeile.id)} · {fmtProz(zeile.w, g)}</small>
                       </span>
                     </span>
@@ -1247,7 +1260,7 @@ function Bestenliste({ daten, namen, oeffnen }) {
             );
           })}
         </ol>
-        {!spieler.length ? <p className="leer-satz">No player matches.</p> : null}
+        {!spieler.length ? <p className="leer-satz">No player by that name. Check the spelling.</p> : null}
         {ocr ? (
           <p className="lesart">
             Since OPBounty 2.7 the leaderboard is read from the game screen. It shows the win rate of each
@@ -1773,7 +1786,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck, zeilenDirekt, analyseDire
   }, [i, logOffen]);
 
   if (zeilen === null) {
-    return <p className="laedt">Loading replay ...</p>;
+    return <p className="laedt">Loading the replay</p>;
   }
   if (zeilen === false || !schritte.length) {
     return (
@@ -1783,7 +1796,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck, zeilenDirekt, analyseDire
             <Zeichen name="links" groesse={16} />Back
           </button>
         ) : null}
-        <p className="leer-satz">No replay stored for this game. The client only uploads part of them.</p>
+        <p className="leer-satz">No replay stored for this game. The client uploads only some of them.</p>
       </>
     );
   }
@@ -1987,11 +2000,11 @@ function MulliganJeGegner({ leaderId, namen }) {
     return () => { ab = true; };
   }, [leaderId]);
 
-  if (daten === undefined) return <Abschnitt titel="Mulligan by matchup"><p className="laedt">Loading mulligan data ...</p></Abschnitt>;
+  if (daten === undefined) return <Abschnitt titel="Mulligan by matchup"><p className="laedt">Loading mulligan data</p></Abschnitt>;
   if (daten === null) {
     return (
       <Abschnitt titel="Mulligan by matchup">
-        <p className="leer-satz">No per matchup mulligan data for this leader yet.</p>
+        <p className="leer-satz">No mulligan data per matchup for this leader yet. It fills up with the next data days.</p>
       </Abschnitt>
     );
   }
@@ -2472,7 +2485,7 @@ function ZugBelege({ b, T, mindest, name }) {
 
 function MulliganBelege({ a, mindest, name }) {
   const m = mulliganBelege(a, mindest);
-  if (!m) return <p className="leer-satz">No mulligan numbers for this seat.</p>;
+  if (!m) return <p className="leer-satz">No mulligan numbers for this seat yet.</p>;
   return (
     <>
       <dl className="rueck-zeilen">
@@ -2559,9 +2572,9 @@ function Book({ namen, startLeader }) {
     </p>
   );
   const kopf = (titel) => <section className="vorspann"><h1>{titel}</h1>{lead}</section>;
-  if (liste === undefined) return <>{kopf("Guide")}<p className="laedt">Loading the guide ...</p></>;
+  if (liste === undefined) return <>{kopf("Guide")}<p className="laedt">Loading the guide</p></>;
   if (liste === null) return <>{kopf("Guide")}<MetacoachHinweis fehler={listeFehler} was="guide" /></>;
-  if (!liste.length) return <>{kopf("Guide")}<p className="leer-satz">No leader has a book yet.</p></>;
+  if (!liste.length) return <>{kopf("Guide")}<p className="leer-satz">No leader has a guide yet. Check back after the next data day.</p></>;
 
   const b = daten ? bookAusschnitt(daten, gegner, sitz) : null;
   const mindest = b?.grenzen?.min_zelle ?? BOOK_MIN_ZELLE;
@@ -2603,10 +2616,10 @@ function Book({ namen, startLeader }) {
       </div>
 
       {daten === undefined ? (
-        <p className="laedt">Loading the guide ...</p>
+        <p className="laedt">Loading the guide</p>
       ) : daten === null ? (
         datenFehler?.grund === "fehlt"
-          ? <p className="leer-satz" style={{ marginTop: 16 }}>No guide for this leader right now.</p>
+          ? <p className="leer-satz" style={{ marginTop: 16 }}>No guide for this leader yet. It appears once enough games are in.</p>
           : <MetacoachHinweis fehler={datenFehler} was="guide" />
       ) : !b ? (
         <p className="leer-satz" style={{ marginTop: 16 }}>Not in the guide.</p>
@@ -3069,7 +3082,7 @@ function EigenesReplay({ namen }) {
       ) : null}
 
       {laedtModell ? (
-        <p className="laedt">Loading the model ...</p>
+        <p className="laedt">Loading the model</p>
       ) : (
         <>
           {analyse && ich ? <EigeneAnalyse analyse={analyse} ich={ich} eigenName={spielerName(ich).split("#")[0]} /> : null}
@@ -3248,7 +3261,7 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen, kzSpieler }) {
             <p className="lesart">A tap on a game turns it over and shows the list and the replay.</p>
           </>
         ) : (
-          <p className="leer-satz">No recent games recorded for this player.</p>
+          <p className="leer-satz">No recent games recorded for this player. Try another day.</p>
         )}
       </Abschnitt>
     </>
@@ -3674,12 +3687,12 @@ function Palette({ eintraege, waehlen, schliessen }) {
             <li key={e.id} id={"palette-" + e.id} role="option" aria-selected={i === aktiv}
                 onMouseEnter={() => setAktiv(i)} onClick={() => waehlen(e.id)}>
               <Kartenbild id={e.id} breite={24} />
-              <b>{e.name}</b>
+              <b><Farbpunkte f={e.f} />{e.name}</b>
               <span className="z">{e.id}</span>
               <small className="z">{fmtZahl(e.partien)} games</small>
             </li>
           ))}
-          {!treffer.length ? <li className="leer-satz">No leader matches that search.</li> : null}
+          {!treffer.length ? <li className="leer-satz">No leader by that name. Try a card number like OP17-058.</li> : null}
         </ul>
       </div>
     </div>
@@ -3692,6 +3705,8 @@ function Palette({ eintraege, waehlen, schliessen }) {
 
 const MATRIX_HANDY_TOP = 8;
 // Reiter mit eigenem Leader; aus allen anderen oeffnet die Palette den Leader in Decklists.
+/* Reiter mit Leaderkopf; nur dort traegt die Seite die Leaderfarbe. */
+const LEADER_KOPF = ["decks", "matchups", "analyse"];
 const LEADER_REITER = ["decks", "matchups", "matrix", "analyse", "book"];
 
 export default function App() {
@@ -4003,6 +4018,24 @@ export default function App() {
     [satz, gewaehlt]
   );
 
+  /* Leaderfarbe: auf Seiten mit Leaderkopf faerben die Kartenfarben Kopf, Hauptkachel, aktiven
+     Reiter, Girlande und die Browserleiste am Handy. Sonst gilt Stroh (siehe signatur.md). */
+  const leaderFarbe = leader && LEADER_KOPF.includes(reiter) ? (namen[kennung(leader.id)] || {}).f || "" : "";
+  useEffect(() => {
+    const wurzel = document.documentElement;
+    const ton = leaderTon(leaderFarbe);
+    if (ton) {
+      wurzel.style.setProperty("--lf1", ton.eins);
+      wurzel.style.setProperty("--lf2", ton.zwei);
+    } else {
+      wurzel.style.removeProperty("--lf1");
+      wurzel.style.removeProperty("--lf2");
+    }
+    wurzel.classList.toggle("mit-leaderfarbe", Boolean(ton));
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", themaFarbe(leaderFarbe));
+  }, [leaderFarbe]);
+
   const leaderListe = useMemo(() => {
     if (!satz) return [];
     const q = suche.trim().toUpperCase();
@@ -4063,7 +4096,7 @@ export default function App() {
       .filter((e) => e.listen.length > 0)
       .map((e) => {
         const id = kennung(e.id);
-        return { id, name: (namen[id] || {}).n || id, partien: e.w + e.l };
+        return { id, name: (namen[id] || {}).n || id, f: (namen[id] || {}).f, partien: e.w + e.l };
       });
   }, [satz, namen]);
 
@@ -4112,7 +4145,7 @@ export default function App() {
     );
   }
 
-  const leaderbezogen = reiter === "decks" || reiter === "matchups" || reiter === "analyse";
+  const leaderbezogen = LEADER_KOPF.includes(reiter);
   const reiterName = REITER_NAME[reiter] || (REITER.find(([k]) => k === reiter) || REITER[0])[1];
   const zahlFeld = (setzen, max) => (e) => {
     const n = Math.round(Number(e.target.value));
@@ -4167,18 +4200,26 @@ export default function App() {
             </li>
           );
         })}
-        {!leaderListe.length ? <li className="leer-satz">No leader matches that search.</li> : null}
+        {!leaderListe.length ? <li className="leer-satz">No leader by that name. Try a card number like OP17-058.</li> : null}
       </ol>
     </aside>
   ) : null;
 
   /* Titel und Kennzeile des gewaehlten Leaders */
   const leaderKopf = leader ? (
-    <section className="vorspann">
+    <section className="vorspann leaderkopf">
+      <Bild id={lid} className="kopf-bild" />
       <div className="titelzeile">
-        <Kartenbild id={lid} breite={36} />
-        <h1>{leaderName}</h1>
-        <span className="kartennr">{lid}</span>
+        <Kartenbild id={lid} breite={44} />
+        <div>
+          <h1>{leaderName}</h1>
+          <p className="farbzeile">
+            {farbBuchstaben((namen[lid] || {}).f).map((k) => (
+              <span key={k}><i style={{ background: LEADERFARBE[k] }} />{FARBNAME[k]}</span>
+            ))}
+            <span className="kartennr">{lid}</span>
+          </p>
+        </div>
       </div>
       <dl className="kennzeile leader-zeile">
         <Kennzahl etikett="Win rate"
@@ -4201,7 +4242,7 @@ export default function App() {
 
   let inhalt = null;
   if (!leader) {
-    inhalt = <p className="laedt">Loading ...</p>;
+    inhalt = <p className="laedt">Loading</p>;
   } else if (reiter === "changelog") {
     inhalt = <Changelog />;
   } else if (reiter === "kaizoku") {
@@ -4252,7 +4293,7 @@ export default function App() {
                          spielerIndex={spielerIndex} partienIndex={partienIndex} namen={namen} />
             ))}
           </ol>
-          {!listen.length ? <p className="leer-satz">No list matches these filters.</p> : null}
+          {!listen.length ? <p className="leer-satz">No list matches these filters. Loosen one of them.</p> : null}
           {listen.length > sichtbar ? (
             <div className="mehr">
               <button type="button" className="knopf rand" onClick={() => setSichtbar((n) => n + 36)}>
@@ -4378,11 +4419,11 @@ export default function App() {
         zurueck={() => setReiter(spielerId ? "spieler" : "beste")}
       />
     ) : (
-      <p className="leer-satz">No replay selected.</p>
+      <p className="leer-satz">Pick a game to watch its replay.</p>
     );
   } else if (reiter === "spieler") {
     inhalt = beste === null || spielerAlle === null ? (
-      <p className="laedt">Loading ...</p>
+      <p className="laedt">Loading</p>
     ) : (
       <Spieler
         eintrag={beste && beste.spieler
@@ -4402,9 +4443,9 @@ export default function App() {
     );
   } else {
     inhalt = beste === null ? (
-      <p className="laedt">Loading the ladder ...</p>
+      <p className="laedt">Loading the ladder</p>
     ) : beste === false ? (
-      <p className="leer-satz">No ladder snapshot available yet.</p>
+      <p className="leer-satz">No ladder snapshot yet. It appears after the next data day.</p>
     ) : (
       <Bestenliste
         daten={beste}
@@ -4430,6 +4471,7 @@ export default function App() {
     <VorschauBuehne>
     <div className="blatt">
       <div className="karte">
+        <Girlande farben={fahnenFarben(leaderFarbe)} />
         <header ref={kopfRef} className="band">
           <a className="marke" href={PFADE.decks}
              onClick={(e) => { if (!eigenerKlick(e)) return; e.preventDefault(); setReiter("decks"); }}>
