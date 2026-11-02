@@ -426,18 +426,20 @@ export function verschmelzen(saetze, name) {
    Matchups und Matrix ohne Sonderweg rechnen.
    -------------------------------------------------------------------------- */
 
-/* Die Kaizoku Quellen: Schluessel in der Quellenwahl, Dateien, Name wie in der Auswahl.
-   Beide sind das Standardformat OP17 + EB05 der letzten Woche; die zweite zaehlt nur die
-   besten Spieler (Kaizoku "top20"). */
+/* Die Kaizoku Quellen: Schluessel in der Quellenwahl, Datensatz bei Kaizoku, Name wie in der
+   Auswahl. Dateien: kaizoku_<datensatz>.json.gz und kaizoku_<datensatz>_b.json.gz
+   (kaizoku_holen.py, kaizoku_wochen.py). Alle sind die Woche bis zum Stand; "top 10" und
+   "top 20" zaehlen nur die besten Spieler. */
+const kaizokuQuelle = (datensatz, name) => ({
+  datei: `kaizoku_${datensatz}.json.gz`, bDatei: `kaizoku_${datensatz}_b.json.gz`,
+  name: "Card Kaizoku, " + name,
+});
 export const KAIZOKU_QUELLEN = {
-  kaizoku: {
-    datei: "kaizoku.json.gz", bDatei: "kaizoku_b.json.gz",
-    name: "Card Kaizoku, OP17 + EB05 Standard, last week",
-  },
-  kaizoku_top: {
-    datei: "kaizoku_top.json.gz", bDatei: "kaizoku_top_b.json.gz",
-    name: "Card Kaizoku, OP17 + EB05 Standard, last week, top players",
-  },
+  kaizoku_eb05_lw_p: kaizokuQuelle("eb05_lw_p", "OP17 + EB05 Standard, last week"),
+  kaizoku_eb05_lw_p_top20: kaizokuQuelle("eb05_lw_p_top20", "OP17 + EB05 Standard, last week, top 20"),
+  kaizoku_op17_lw_p: kaizokuQuelle("op17_lw_p", "OP17 Standard, last week"),
+  kaizoku_op17_lw_p_top20: kaizokuQuelle("op17_lw_p_top20", "OP17 Standard, last week, top 20"),
+  kaizoku_op17_lw_p_top10: kaizokuQuelle("op17_lw_p_top10", "OP17 Standard, last week, top 10"),
 };
 export const istKaizokuQuelle = (schluessel) => Object.hasOwn(KAIZOKU_QUELLEN, schluessel);
 
@@ -451,7 +453,7 @@ export const istKaizokuQuelle = (schluessel) => Object.hasOwn(KAIZOKU_QUELLEN, s
 /** Kaizoku schreibt den Stand als 20261102, die Seite rechnet mit 2026-11-02. */
 export const kaizokuStand = (s) => (/^\d{8}$/.test(s || "") ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : s || "");
 
-export function kaizokuZuSatz(roh, schluessel = "kaizoku") {
+export function kaizokuZuSatz(roh, schluessel = "kaizoku_eb05_lw_p") {
   const leader = (roh.leader || []).map((l) => {
     const m = l.m || 0;
     const erste = Math.round(m / 2);

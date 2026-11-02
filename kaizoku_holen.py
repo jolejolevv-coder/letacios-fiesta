@@ -22,14 +22,18 @@ import time
 from bestenliste_api import ApiFehler, anfrage
 
 BASIS = "https://cdn.cardkaizoku.com/"
-DATENSATZ = "eb05_lw_p"        # aktuelle Woche, Standardformat OP17 + EB05 (bis 02.11.2026 op17_lw_p)
+DATENSATZ = "eb05_lw_p"        # aktuelle Woche, Standardformat OP17 + EB05
 ABSTAND_S = 0.4                # Pause zwischen zwei Abrufen, wie im Vorbild
 MINDEST_LEADER = 30            # weniger gilt als kaputte Antwort
 LISTEN_JE_LEADER = 20          # Kaizoku führt je Leader bis zu 20 beste und 20 meistgespielte
 PUBLIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "public")
-ZIEL = os.path.join(PUBLIC, "kaizoku.json.gz")
-# Datensatz -> Zieldatei. Der zweite ist dieselbe Woche, nur die besten Spieler (Kaizoku "top20").
-DATENSAETZE = {DATENSATZ: ZIEL, DATENSATZ + "_top20": os.path.join(PUBLIC, "kaizoku_top.json.gz")}
+# Alle Datensaetze, die die Seite zur Wahl stellt (src/daten.js KAIZOKU_QUELLEN): aktuelles
+# Format, das Format davor, und je die besten 10 oder 20 Spieler. Kaizoku fuehrt nicht fuer
+# jedes Format beide Auswahlen (EB05 nur top20).
+DATENSAETZE = {
+    datensatz: os.path.join(PUBLIC, f"kaizoku_{datensatz}.json.gz")
+    for datensatz in ("eb05_lw_p", "eb05_lw_p_top20", "op17_lw_p", "op17_lw_p_top20", "op17_lw_p_top10")
+}
 
 
 def pfade_holen(manifest, datensatz=DATENSATZ):

@@ -3291,7 +3291,7 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen, kzSpieler }) {
    Kaizoku als Quelle (docs/kaizoku-einbau.md). Die Zahlen laufen ueber den Adapter in
    daten.js durch Decklists, Ranking, Matchups und Matrix. Hier stehen nur die Teile, die
    unsere Daten nicht kennen: die Techkarten (Stufe B). Kartenwerte, Starthand und Zugkurve
-   stehen in kaizoku_b.json.gz, sind aber nicht eingebaut (Zugkurve eventuell fuer den Guide).
+   stehen in kaizoku_*_b.json.gz, sind aber nicht eingebaut (Zugkurve eventuell fuer den Guide).
    -------------------------------------------------------------------------- */
 
 function kzName(namen, code) {
