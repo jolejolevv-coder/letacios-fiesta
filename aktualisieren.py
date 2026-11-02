@@ -38,11 +38,6 @@ import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from firestore import Db  # noqa: E402
-from frische_partien import log_spieler, replays_suchen  # noqa: E402
-from replays_holen import adresse, UNSICHTBAR  # noqa: E402
-
 CDN = "https://d2spmnr3w7rm2f.cloudfront.net/stats/"
 BILDQUELLE = ("/Volumes/*/Downloads/*_Mac/OPTCGSim.app/Contents/Resources/Data/"
               "StreamingAssets/Cards")
@@ -74,29 +69,19 @@ ROH_TAGE = 7
 ROH_SAETZE = {"3000": "Last Week 3B Bounty"}
 
 # Seit dem 26.10.2026 mittags ist die normale Queue (Modus 0) das Format OP17 plus EB05
-# (specs/features/format-op17-eb05.md). Der Tag der Umstellung mischt beide Formate, der
-# Satz beginnt deshalb mit dem ersten vollen Tag. Die EB05 Queue (Modus 1) ist entfallen,
-# der Event Satz kommt seitdem aus dem Formatsatz.
-FORMAT_START = "2026-10-27"
+# (specs/features/format-op17-eb05.md). Bis v2.7.8 landeten dort aber auch Spieler mit der
+# eingebetteten Sim und ihren OP17 Decks; erst ab dem 29.10.2026 ist Modus 0 im CDN sauber.
+# Der Satz beginnt deshalb mit diesem Tag (specs/features/format-aus-cdn.md). Der Event
+# Satz kommt aus dem Formatsatz.
+FORMAT_START = "2026-10-29"
 FORMAT_MODUS = "mode_0"
 FORMAT_SCHLUESSEL = "Roh_mode_0_op17eb05"
 FORMAT_NAME = "OP17 + EB05 Standard"
-# Seit dem 26.10.2026 veroeffentlicht OPBounty keine Statistik mehr. Der Formatsatz kommt
-# deshalb aus den Replays in Firestore (specs/features/format-aus-replays.md). Das Wort
-# steht im Namen, damit die Seite es ohne Aenderung unter dem Satz zeigt.
-REPLAY_ZUSATZ = " (from replays)"
-REPLAY_MODUS = "0"
-# Wer anfaengt, steht nur im Log. Je Replay einmal gelesen und hier gemerkt, in der Datei
-# im Zwischenspeicher der Action (public/tage). Die Endung schuetzt sie vor dem Aufraeumen
-# der Tagesdateien (*.json.gz).
-START_ZWISCHEN = "replay_start.zwischen.gz"
-START_SCHLUESSEL_LAENGE = 16
-LOG_PARALLEL = 8
-# Reihenfolge und Leader stehen in den ersten Zeilen; mehr als den Anfang braucht es nicht.
-LOG_ANFANG_BYTES = 16384
-LOG_TIMEOUT = 30
-FEHLT = object()    # Log gibt es nicht (404): endgueltig, wird nicht nochmal versucht
-ZUG_ZEILE = re.compile(r"\[([^\]]+)\] Chose to go (First|Second)")
+# So lange darf der juengste Tag im CDN zurueckliegen, bevor der Lauf warnt. Am 26.10.2026
+# stand der Export zweieinhalb Tage still.
+CDN_STILL_TAGE = 2
+# Reste der frueheren Replay Quelle im Zwischenspeicher, die der Lauf wegraeumt.
+REPLAY_RESTE = ("replay_start.zwischen.gz",)
 # Unter diesem Anteil an Partien mit Karten des neuesten Sets im Deck sieht der Satz nicht
 # nach dem Format aus, und sein Name stimmt nicht mehr. Derselbe Wert entscheidet, ab wann
 # ein neues Format als eingefuehrt gilt (specs/features/selbstlauf.md, Phase 1).
@@ -421,11 +406,6 @@ def roh_satz(ziel: str, schluessel_alle: list, tage: list, modus: str,
     return satz
 
 
-def tage_ab(schluessel_alle: list, start: str) -> list:
-    """Alle Tage ab `start` (YYYY-MM-DD), fuer die es Rohdaten gibt."""
-    return sorted({k.split("/")[0] for k in schluessel_alle if k.split("/")[0] >= start})
-
-
 def eb05_anteil(satz: dict, set_name: str = "EB05") -> float:
     """Anteil der Partien, deren Deck mindestens eine Karte des Sets enthaelt.
 
@@ -454,175 +434,75 @@ def eb05_warnung(satz: dict, zustand: dict | None = None) -> str | None:
             f"mindestens {EB05_MIN_ANTEIL:.0%}. Stimmt das Format noch?")
 
 
-def wer_wahl_traf(text: str) -> tuple[str, bool] | None:
-    """(Name, geht zuerst) aus der Zeile "Chose to go First|Second", None wenn sie fehlt."""
-    treffer = ZUG_ZEILE.search(text or "")
-    if not treffer:
+def leerer_roh() -> dict:
+    return {"decks": {}, "praesenz": {}, "karten": {}, "partien": 0, "stand": ""}
+
+
+def roh_addieren(a: dict, b: dict) -> dict:
+    """Zwei Rohstrukturen wie aus `zusammenfuehren` zu einer neuen addieren."""
+    aus = json.loads(json.dumps(a))
+    for leader, eimer in b["decks"].items():
+        ziel = aus["decks"].setdefault(leader, {})
+        for schluessel, eintrag in eimer.items():
+            if schluessel in ziel:
+                _addiere(ziel[schluessel], eintrag, ZAEHLER)
+            else:
+                ziel[schluessel] = json.loads(json.dumps(eintrag))
+    for leader, eintrag in b["praesenz"].items():
+        ziel = aus["praesenz"].setdefault(leader, {"gegner": {}})
+        _addiere(ziel, eintrag, ZAEHLER)
+        for gegner, zahlen in eintrag.get("gegner", {}).items():
+            g = ziel["gegner"].setdefault(gegner, {"m": 0, "w": 0, "fw": 0, "fl": 0,
+                                                   "sw": 0, "sl": 0})
+            _addiere(g, zahlen, ("m", "w", "fw", "fl", "sw", "sl"))
+    for leader, k in b.get("karten", {}).items():
+        ziel = aus["karten"].setdefault(leader, {"hand": {}, "kopien": {}})
+        for art in ("hand", "kopien"):
+            for karte_, zahlen in k.get(art, {}).items():
+                alt = ziel[art].setdefault(karte_, [0] * len(zahlen))
+                ziel[art][karte_] = [x + y for x, y in zip(alt, zahlen)]
+    aus["partien"] = a["partien"] + b["partien"]
+    aus["stand"] = max(a["stand"], b["stand"])
+    return aus
+
+
+def summe_roh(roh_je_tag: dict, tage: list) -> dict:
+    """Die Rohstrukturen der genannten Tage zu einer addiert."""
+    summe = leerer_roh()
+    for tag in tage:
+        if tag in roh_je_tag:
+            summe = roh_addieren(summe, roh_je_tag[tag])
+    return summe
+
+
+def format_tage(schluessel_alle: list, start: str) -> list:
+    """Alle Tage ab `start`, fuer die das CDN Rohdateien in Modus 0 hat."""
+    return sorted({teile[0] for k in schluessel_alle
+                   if len(teile := k.split("/")) >= 4 and teile[1] == FORMAT_MODUS
+                   and teile[0] >= start})
+
+
+def tages_roh(schluessel_alle: list, tage: list) -> dict:
+    """Je Tag die Rohstruktur von Modus 0 ueber alle Bountybereiche."""
+    passend = roh_teile(schluessel_alle, tage, FORMAT_MODUS, BOUNTY)
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        teile = list(pool.map(lambda k: hole("raw/" + k), passend))
+    je_tag: dict = {}
+    for schluessel, teil in zip(passend, teile):
+        je_tag.setdefault(schluessel.split("/")[0], []).append(teil)
+    return {tag: zusammenfuehren(liste) for tag, liste in je_tag.items()}
+
+
+def cdn_still_warnung(schluessel_alle: list, heute: str) -> str | None:
+    """Ein Warntext, wenn der juengste CDN Tag in Modus 0 zu alt ist, sonst None."""
+    tage = format_tage(schluessel_alle, "")
+    if not tage:
+        return f"Keine Rohdaten in {FORMAT_MODUS} im CDN."
+    alter = (datetime.date.fromisoformat(heute) - datetime.date.fromisoformat(tage[-1])).days
+    if alter <= CDN_STILL_TAGE:
         return None
-    return UNSICHTBAR.sub("", treffer.group(1)), treffer.group(2) == "First"
-
-
-def sieger_zuerst(text: str, sieger_leader: str, verlierer_leader: str) -> bool | None:
-    """Ob der Sieger anfing, aus dem Log. None, wenn das Log es nicht hergibt.
-
-    Im Log waehlt ein Spieler die Reihenfolge. Welcher Seite er gehoert, sagen die
-    "Leader is" Zeilen. Im Mirror ist das nicht zu trennen, dort bleibt es None.
-    """
-    if not sieger_leader or sieger_leader == verlierer_leader:
-        return None
-    wahl = wer_wahl_traf(text)
-    seiten = dict(log_spieler(text))
-    if not wahl or wahl[0] not in seiten:
-        return None
-    waehler_leader = seiten[wahl[0]]
-    if waehler_leader == sieger_leader:
-        return wahl[1]
-    if waehler_leader == verlierer_leader:
-        return not wahl[1]
-    return None
-
-
-def log_anfang(pfad: str, eimer: str):
-    """Der Anfang eines Logs als Text; FEHLT bei 404, None bei einem anderen Fehler.
-
-    Anders als `replays_holen.laden` ohne Platte: Tausende Logs von je 60 KB gehoeren
-    nicht in den Zwischenspeicher, hier zaehlt nur der Beginn.
-    """
-    anfrage = urllib.request.Request(adresse(pfad, eimer), headers={
-        "Range": f"bytes=0-{LOG_ANFANG_BYTES - 1}"})
-    try:
-        with urllib.request.urlopen(anfrage, timeout=LOG_TIMEOUT) as antwort:
-            return antwort.read(LOG_ANFANG_BYTES).decode("utf-8", "replace")
-    except urllib.error.HTTPError as fehler:
-        return FEHLT if fehler.code == 404 else None
-    except (urllib.error.URLError, OSError):
-        return None
-
-
-def start_schluessel(pfad: str) -> str:
-    """Kurzer Schluessel je Replaypfad; der Pfad endet auf einen 64 stelligen Hash."""
-    return pfad.rsplit("_", 1)[-1].removesuffix(".log")[:START_SCHLUESSEL_LAENGE]
-
-
-def start_lesen(pfad: str) -> dict:
-    """{Schluessel: Sieger zuerst (True/False) oder None}, leer wenn die Datei fehlt."""
-    try:
-        with gzip.open(pfad, "rt", encoding="utf-8") as datei:
-            return json.load(datei)
-    except (OSError, ValueError):
-        return {}
-
-
-def starts_ermitteln(docs: list, eimer: str, zwischen: str) -> dict:
-    """{Replaypfad: Sieger zuerst} fuer alle Replays, deren Log lesbar ist.
-
-    Jedes Log wird nur einmal geladen: das Ergebnis steht in der Zwischendatei, auch
-    "nicht erkennbar" (None). Ein Log, das sich wegen eines Netzfehlers nicht laden
-    laesst, wird nicht gemerkt und beim naechsten Lauf wieder versucht. Die Datei behaelt nur Replays aus `docs`.
-    """
-    bekannt = start_lesen(zwischen)
-    neu = {}
-    offen = []
-    for doc in docs:
-        pfad = doc.get("path")
-        if not pfad:
-            continue
-        schluessel = start_schluessel(pfad)
-        if schluessel in bekannt:
-            neu[schluessel] = bekannt[schluessel]
-        elif doc["winner_leader"] == doc["loser_leader"]:
-            neu[schluessel] = None
-        else:
-            offen.append(doc)
-    with ThreadPoolExecutor(max_workers=LOG_PARALLEL) as pool:
-        texte = list(pool.map(lambda d: log_anfang(d["path"], eimer), offen))
-    for doc, text in zip(offen, texte):
-        if text is FEHLT:
-            neu[start_schluessel(doc["path"])] = None
-        elif text is not None:
-            neu[start_schluessel(doc["path"])] = sieger_zuerst(
-                text, doc["winner_leader"], doc["loser_leader"])
-    os.makedirs(os.path.dirname(zwischen), exist_ok=True)
-    with gzip.open(zwischen, "wt", encoding="utf-8") as datei:
-        json.dump(neu, datei, separators=(",", ":"))
-    print(f"    Start: {len(offen)} Logs neu gelesen, {len(neu)} gemerkt")
-    return {d["path"]: neu[start_schluessel(d["path"])] for d in docs
-            if d.get("path") and start_schluessel(d["path"]) in neu}
-
-
-def format_replays_filtern(docs: list, zustand: dict | None = None, bis: str = "") -> list:
-    """Nur die Replays der normalen Queue ab dem Formatstart, mit beiden Leadern.
-
-    `bis` (ausschliesslich, ISO Zeit oder Tag) schneidet hinten ab, fuer den alten Satz.
-    """
-    start = (zustand or standard_zustand())["start"]
-    return [d for d in docs
-            if str(d.get("game_mode")) == REPLAY_MODUS
-            and str(d.get("timestamp") or "") >= start
-            and (not bis or str(d.get("timestamp") or "") < bis)
-            and d.get("winner_leader") and d.get("loser_leader")]
-
-
-def _leader_neu() -> dict:
-    return {f: 0 for f in ZAEHLER} | {"gegner": {}}
-
-
-def _seite_zaehlen(roh: dict, leader: str, gegner: str, deck: str, gewonnen: bool,
-                   zuerst: bool | None) -> None:
-    """Eine Seite einer Partie in die Rohstruktur von `zusammenfuehren` eintragen."""
-    kennung, gegner_kennung = "1x" + leader, "1x" + gegner
-    sieg = "w" if gewonnen else "l"
-    ziel = roh["praesenz"].setdefault(kennung, _leader_neu())
-    # `eindampfen` laeuft ueber die Decks; ein Leader ohne hochgeladene Liste braucht
-    # trotzdem einen Eintrag, sonst fehlt er mitsamt seinen Siegen.
-    eimer = roh["decks"].setdefault(kennung, {})
-    g = ziel["gegner"].setdefault(gegner_kennung, {"m": 0, "w": 0, "fw": 0, "fl": 0,
-                                                    "sw": 0, "sl": 0})
-    felder = ["wins" if gewonnen else "losses"]
-    g["m"] += 1
-    g["w"] += gewonnen
-    if zuerst is not None:
-        felder.append(("first_" if zuerst else "second_") + felder[0])
-        g[("f" if zuerst else "s") + sieg] += 1
-    ziel["number_of_matches"] += 1
-    for f in felder:
-        ziel[f] += 1
-    liste = [z.strip() for z in deck.splitlines() if z.strip()]
-    if liste:
-        eintrag = eimer.setdefault("|".join(sorted(liste)), {"deck": liste, **{f: 0 for f in ZAEHLER}})
-        for f in felder + ["number_of_matches"]:
-            eintrag[f] += 1
-
-
-def roh_aus_replays(docs: list, starts: dict) -> dict:
-    """Die Replays in dieselbe Rohstruktur wie `zusammenfuehren`, damit `eindampfen` bleibt.
-
-    `starts` sagt je Replaypfad, ob der Sieger anfing (True/False), sonst gilt die Partie
-    ohne First und Second. Decks stehen im Replay nur fuer die Seite, die sie hochlud;
-    Hand, Kopien und Dauer fehlen und bleiben leer.
-    """
-    roh = {"decks": {}, "praesenz": {}, "karten": {}, "partien": 0, "stand": ""}
-    for doc in docs:
-        zuerst = starts.get(doc.get("path"))
-        sieger, verlierer = doc["winner_leader"], doc["loser_leader"]
-        _seite_zaehlen(roh, sieger, verlierer, doc.get("winner_deck") or "", True, zuerst)
-        _seite_zaehlen(roh, verlierer, sieger, doc.get("loser_deck") or "", False,
-                       None if zuerst is None else not zuerst)
-        roh["partien"] += 1
-        roh["stand"] = max(roh["stand"], str(doc.get("timestamp") or ""))
-    return roh
-
-
-def replay_satz(docs: list, starts: dict, zustand: dict | None = None, bis: str = "",
-                name: str = "") -> dict:
-    """Der Formatsatz aus Replays, im Format der Seite.
-
-    Ohne `name` heisst er wie das Format im Zustand.
-    """
-    zustand = zustand or standard_zustand()
-    roh = roh_aus_replays(format_replays_filtern(docs, zustand, bis), starts)
-    return eindampfen(roh, (name or zustand["name"]) + REPLAY_ZUSATZ, FORMAT_MODUS,
-                      ",".join(BOUNTY))
+    return (f"Juengster CDN Tag in {FORMAT_MODUS} ist {tage[-1]}, {alter} Tage alt. "
+            "Steht der Export von OPBounty still?")
 
 
 def set_nummer(name: str):
@@ -660,7 +540,14 @@ def zustand_lesen(ziel: str) -> dict:
                    and isinstance(zustand["alte"], list))
     except (OSError, ValueError, KeyError, TypeError):
         return standard_zustand()
-    return zustand if gueltig else standard_zustand()
+    if not gueltig:
+        return standard_zustand()
+    # Der Zustand vom 27.10. begann mit zwei Tagen, an denen Modus 0 beide Kartenpools
+    # mischte. Das laufende Format beginnt jetzt am FORMAT_START.
+    if zustand["schluessel"] == FORMAT_SCHLUESSEL and zustand["start"] < FORMAT_START:
+        zustand["start"] = FORMAT_START
+    zustand.pop("cdn_ab", None)
+    return zustand
 
 
 def zustand_schreiben(ziel: str, zustand: dict) -> None:
@@ -690,33 +577,36 @@ def neue_sets(sets: set, zustand: dict) -> set:
     return neu
 
 
-def tag_anteile(docs: list, zustand: dict) -> dict:
-    """Je UTC Tag: Partien im Modus 0 und wie viele davon Karten eines neuen Sets haben.
+def tag_anteile(roh_je_tag: dict, zustand: dict) -> dict:
+    """Je Tag: Partien in Modus 0 und wie viele davon Karten eines neuen Sets haben.
 
+    Gezaehlt je Seite ueber die Decklisten des CDN, jede mit Siegen und Niederlagen.
     Ergebnis: {tag: {"partien": n, "neu": n, "sets": {set: n}}}
     """
     tage = {}
-    for doc in docs:
-        if str(doc.get("game_mode")) != REPLAY_MODUS or not doc.get("timestamp"):
-            continue
-        tag = tage.setdefault(str(doc["timestamp"])[:10], {"partien": 0, "neu": 0, "sets": {}})
-        neu = neue_sets(deck_sets(doc.get("winner_deck")) | deck_sets(doc.get("loser_deck")),
-                        zustand)
-        tag["partien"] += 1
-        tag["neu"] += bool(neu)
-        for name in neu:
-            tag["sets"][name] = tag["sets"].get(name, 0) + 1
+    for tag, roh in roh_je_tag.items():
+        zaehler = {"partien": 0, "neu": 0, "sets": {}}
+        for eimer in roh["decks"].values():
+            for eintrag in eimer.values():
+                spiele = eintrag["wins"] + eintrag["losses"]
+                neu = neue_sets(deck_sets(eintrag["deck"]), zustand)
+                zaehler["partien"] += spiele
+                zaehler["neu"] += spiele if neu else 0
+                for name in neu:
+                    zaehler["sets"][name] = zaehler["sets"].get(name, 0) + spiele
+        if zaehler["partien"]:
+            tage[tag] = zaehler
     return tage
 
 
-def format_wechsel_erkennen(docs: list, zustand: dict):
+def format_wechsel_erkennen(roh_je_tag: dict, zustand: dict):
     """(Starttag des neuen Formats, seine neuen Sets) oder None.
 
     Umstellungstag ist der erste Tag mit mindestens UMSTELL_ANTEIL Partien mit neuen Sets;
     er mischt beide Formate. Das neue Format beginnt am Tag danach, sobald es diesen Tag
     in den Daten gibt und er mindestens EB05_MIN_ANTEIL erreicht.
     """
-    tage = tag_anteile(docs, zustand)
+    tage = tag_anteile(roh_je_tag, zustand)
     for tag in sorted(t for t in tage if t >= zustand["start"]):
         if tage[tag]["neu"] / tage[tag]["partien"] < UMSTELL_ANTEIL:
             continue
@@ -745,8 +635,18 @@ def format_nach_wechsel(zustand: dict, start: str, neue: set) -> dict:
             "sets": sets, "alte": list(zustand["alte"])}
 
 
-def alten_satz_ablegen(ziel: str, docs: list, starts: dict, zustand: dict,
-                       umstellungstag: str) -> dict:
+def format_satz_bauen(roh_je_tag: dict, zustand: dict, bis: str = "", name: str = "") -> dict:
+    """Der Satz eines Formats aus den CDN Tagen ab seinem Start, im Format der Seite.
+
+    `bis` (ausschliesslich) schneidet hinten ab, fuer den alten Satz. Ohne `name` heisst er
+    wie das Format.
+    """
+    tage = [t for t in sorted(roh_je_tag) if t >= zustand["start"] and (not bis or t < bis)]
+    return eindampfen(summe_roh(roh_je_tag, tage), name or zustand["name"], FORMAT_MODUS,
+                      ",".join(BOUNTY))
+
+
+def alten_satz_ablegen(ziel: str, roh_je_tag: dict, zustand: dict, umstellungstag: str) -> dict:
     """Den Satz des alten Formats bis zum Vortag der Umstellung rechnen und ablegen.
 
     Gibt den Eintrag fuer `zustand["alte"]` zurueck.
@@ -754,30 +654,30 @@ def alten_satz_ablegen(ziel: str, docs: list, starts: dict, zustand: dict,
     schluessel = zustand["schluessel"] + ALT_SUFFIX
     # "OP17 + EB05 Standard" wird "OP17 + EB05 format (old)", wie bei Stats_OP17.
     name = zustand["name"].removesuffix(" Standard") + ALT_ZUSATZ
-    satz = replay_satz(docs, starts, zustand, umstellungstag, name)
+    satz = format_satz_bauen(roh_je_tag, zustand, umstellungstag, name)
     datei = schluessel + ALT_ZWISCHEN
     schreiben(os.path.join(ziel, "tage", datei), satz)
     print(f"  Altes Format abgelegt: {name}, {satz['partien']} Partien")
     return {"schluessel": schluessel, "name": name, "datei": datei}
 
 
-def format_umstellen(ziel: str, docs: list, starts: dict, zustand: dict, start: str,
+def format_umstellen(ziel: str, roh_je_tag: dict, zustand: dict, start: str,
                      neue: set) -> dict:
     """Den alten Satz ablegen und den Zustand des neuen Formats liefern."""
     umstellungstag = str(datetime.date.fromisoformat(start) - datetime.timedelta(days=1))
-    alt = alten_satz_ablegen(ziel, docs, starts, zustand, umstellungstag)
+    alt = alten_satz_ablegen(ziel, roh_je_tag, zustand, umstellungstag)
     neu = format_nach_wechsel(zustand, start, neue)
     neu["alte"] = [a for a in zustand["alte"] if a["schluessel"] != alt["schluessel"]] + [alt]
     print(f"  Neues Format ab {start}: {neu['name']}")
     return neu
 
 
-def format_wechsel_anwenden(ziel: str, docs: list, starts: dict, zustand: dict) -> dict:
+def format_wechsel_anwenden(ziel: str, roh_je_tag: dict, zustand: dict) -> dict:
     """Alle erkannten Wechsel nacheinander anwenden; der Zustand ist danach aktuell."""
-    wechsel = format_wechsel_erkennen(docs, zustand)
+    wechsel = format_wechsel_erkennen(roh_je_tag, zustand)
     while wechsel:
-        zustand = format_umstellen(ziel, docs, starts, zustand, *wechsel)
-        wechsel = format_wechsel_erkennen(docs, zustand)
+        zustand = format_umstellen(ziel, roh_je_tag, zustand, *wechsel)
+        wechsel = format_wechsel_erkennen(roh_je_tag, zustand)
     return zustand
 
 
@@ -796,33 +696,39 @@ def alte_saetze(ziel: str, zustand: dict) -> dict:
     return saetze
 
 
+def replay_reste_raeumen(ziel: str) -> None:
+    for datei in REPLAY_RESTE:
+        pfad = os.path.join(ziel, "tage", datei)
+        if os.path.exists(pfad):
+            os.remove(pfad)
+
+
 def format_satz(ziel: str, zustand: dict) -> tuple[dict | None, dict]:
-    """Der Satz des aktuellen Formats: Modus 0, alle Tage ab dem Start, aus den Replays.
+    """Der Satz des aktuellen Formats: Modus 0 im CDN, alle Tage ab dem Start.
 
     Liefert den Satz und den Zustand, der nach einem erkannten Wechsel ein neuer ist.
-    Faellt Firestore aus, entfaellt der Satz und der Lauf geht weiter.
+    Faellt das CDN aus, entfaellt der Satz und der Lauf geht weiter.
     """
+    replay_reste_raeumen(ziel)
+    heute = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
     try:
-        db = Db()
-        jetzt = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-        tage = (jetzt - datetime.datetime.fromisoformat(zustand["start"])).days + 1
-        docs = format_replays_filtern(replays_suchen(db, jetzt, tage), zustand)
-    except (Exception, SystemExit) as fehler:
-        print(f"::warning::Replays nicht gelesen, {zustand['name']} uebersprungen: {fehler}")
-        return None, zustand
-    print(f"  {len(docs)} Replays im Modus {REPLAY_MODUS} ab {zustand['start']}", flush=True)
-    zwischen = os.path.join(ziel, "tage", START_ZWISCHEN)
-    try:
-        starts = starts_ermitteln(docs, db.c["storageBucket"], zwischen)
+        alle = index_schluessel()
+        roh_je_tag = tages_roh(alle, format_tage(alle, zustand["start"]))
     except Exception as fehler:
-        print(f"::warning::First und Second nicht gelesen: {fehler}")
-        starts = {}
-    zustand = format_wechsel_anwenden(ziel, docs, starts, zustand)
-    satz = replay_satz(docs, starts, zustand)
+        print(f"::warning::CDN nicht gelesen, {zustand['name']} uebersprungen: {fehler}")
+        return None, zustand
+    warnung = cdn_still_warnung(alle, heute)
+    if warnung:
+        print(f"::warning::{warnung}")
+    zustand = format_wechsel_anwenden(ziel, roh_je_tag, zustand)
+    tage = [t for t in sorted(roh_je_tag) if t >= zustand["start"]]
+    if not tage:
+        print(f"  {zustand['name']}: noch kein Tag im CDN, uebersprungen")
+        return None, zustand
+    satz = format_satz_bauen(roh_je_tag, zustand)
     groesse = schreiben(os.path.join(ziel, "saetze", zustand["schluessel"] + ".json.gz"), satz)
-    mit_start = sum(1 for v in starts.values() if v is not None)
-    print(f"    {groesse/1e3:.0f} KB, {satz['partien']} Partien, First/Second bei "
-          f"{mit_start}")
+    print(f"  {zustand['name']}: CDN Tage {tage[0]} bis {tage[-1]}, {groesse/1e3:.0f} KB, "
+          f"{satz['partien']} Partien")
     print(f"    {zustand['sets'][-1]} Anteil {eb05_anteil(satz, zustand['sets'][-1]):.0%}")
     warnung = eb05_warnung(satz, zustand)
     if warnung:
@@ -894,7 +800,7 @@ def format_event_satz(ziel: str, satz: dict) -> dict | None:
     if not gelesen:
         return None
     name, erlaubt = gelesen
-    event = event_satz(satz, erlaubt, name + REPLAY_ZUSATZ)
+    event = event_satz(satz, erlaubt, name)
     groesse = schreiben(os.path.join(ziel, "saetze", EVENT_SCHLUESSEL + ".json.gz"), event)
     print(f"  {EVENT_SCHLUESSEL}  {len(event['leader'])} von {len(erlaubt)} Leadern, "
           f"{event['partien']} Partien, {groesse/1e3:.0f} KB")

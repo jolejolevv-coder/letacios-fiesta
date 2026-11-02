@@ -11,7 +11,7 @@ Stand 29.10.2026. Ausführlich in `docs/uebergabe.md`.
 * EB05 Heroines Event: alle Winrates nur gegen Event Leader (PR 5). Seit 26.10. aus dem
   neuen Formatsatz.
 * Format OP17 plus EB05 (`specs/features/format-op17-eb05.md`): Satz „OP17 + EB05 Standard“
-  ab 27.10., OP17 als „format (old)“ (PR 7). Heroines Event aus dem neuen Satz (PR 8). Seit 28.10. aus Replays (PR 10).
+  ab 27.10., OP17 als „format (old)“ (PR 7). Heroines Event aus dem neuen Satz (PR 8). Vom 28.10. bis 02.11. aus Replays (PR 10), seitdem nur aus CDN mode_0 ab 29.10. (`format-aus-cdn.md`).
 * Update Notice auf dem Bazzite wird automatisch gesetzt (PR 10).
 
 ## In Arbeit und in Planung
