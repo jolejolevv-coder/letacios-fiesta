@@ -48,6 +48,21 @@ selben Reiter, aus allen anderen in Decklists. Text 3 `#7c828d` hat 5.16 auf Gru
 auf `--flaeche-2`; dort steht er kaum. Schriften laden latin 83 KB statt vorher 130 KB; das CSS
 wächst gzip um etwa 1 KB.
 
+## Feinschliff nach Bewertung 02.11.2026
+
+Redesign ist live (PR 17, fe1ff70). Bewertung ergab 7.2 von 10. Auftrag des Nutzers: Bewertung so
+lange wiederholen und nachbessern, bis jede der fünf Dimensionen mindestens 9 hat. Arbeit auf dem
+Branch `claude/website-redesign-bc8edc` (auf main vorgespult). Lokal schon geändert: Zählkreise
+neutral, Leadertitel 32 px, Kacheln ab sieben in zwei Reihen zu vier, am Handy zwei Spalten.
+Danach umgesetzt: Akzent aus Schrittnummern und Rückseitenetiketten, doppelter Leadername am
+Handy weg, Winrate Skala (30 bis 70 %, Strich bei 50) in Kopfkacheln und in den Tafeln Decklists
+und Matchups, Leaderkopf mit sechs Kacheln (Win rate breit vorn, Siege und Niederlagen unter
+Games), `--text-3` heller (#878d98, Kontrast auf Fläche 2 über 4.5), Bounty immer mit einer
+Nachkommastelle. Zweite Bewertung: alle fünf Dimensionen 9. Tests und Build grün.
+
+Annahmen: Wins und Losses als eigene Kacheln entfallen, die Zahlen stehen unter Games. Der äußere
+Rahmen bleibt (bewusste Hülle wie bei Linear).
+
 ## Entscheidung 29.10.2026
 
 `mitschnitt.timer` läuft auf Wunsch nur noch einmal am Tag, 05:30 UTC (vorher stündlich

@@ -9,6 +9,8 @@ export const CHANGELOG = [
       "New look: a calmer dark design with thin lines instead of stripes, key figures as tiles, framed tables and numbers in a monospaced font.",
       "Search any leader by name or card number with the search field at the top, or press Cmd K (Ctrl K on Windows). Enter opens the leader in the current tab.",
       "On the phone the tabs now sit in a bar at the bottom, within reach of your thumb. More holds the rest.",
+      "Win rates now carry a small scale from 30 to 70 % with a tick at 50 %, in the leader tiles and in the deck and matchup tables, so you see at a glance how far above or below even a number is.",
+      "The leader tiles put win rate first and larger. Wins and losses moved under Games.",
     ],
   },
   {
