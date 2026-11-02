@@ -1246,7 +1246,7 @@ def main() -> None:
 
     # Zuerst das Format: ein erkannter Wechsel verschiebt die Grenze der Wochensaetze.
     zustand = zustand_lesen(ziel)
-    print(f"Satz aus den Replays, {zustand['name']}:")
+    print(f"Formatsatz aus dem CDN, {zustand['name']}:")
     format_ergebnis, zustand = format_satz(ziel, zustand)
     zustand_schreiben(ziel, zustand)
     print("\nAlte Formate:")
