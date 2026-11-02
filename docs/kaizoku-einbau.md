@@ -1,6 +1,6 @@
 # Kaizoku Daten: wo sie in die vorhandenen Reiter passen
 
-Stand 02.11.2026. Gebaut sind die Abrufe (Stufen A, B, C) und ein eigener Reiter "Kaizoku" sowie ein Abschnitt auf der Spielerseite. Diese Datei sagt, wo die Daten in die **bestehenden** Reiter gehören, wenn du sie dort statt (oder zusätzlich zu) dem eigenen Reiter willst. Nichts davon ist gebaut.
+Stand 02.11.2026. Gebaut sind die Abrufe (Stufen A, B, C) und ein Abschnitt auf der Spielerseite. Der eigene Reiter ist am 02.11.2026 entfallen: Kaizoku ist ein Dataset in der Quellenauswahl (siehe `docs/uebergabe.md`). Gebaut ist der Umschalter "Source" für Decklists (mit Bilanz je Gegner), Ranking, Matchups (mit Tech) und Matrix über den Adapter `kaizokuZuSatz`; die Tabelle unten bleibt als Entwurf für die Spalten nebeneinander (Kaizoku neben unseren Zahlen), die nicht gebaut sind.
 
 Grundregel: Kaizoku und unsere Zahlen kommen aus verschiedenen Quellen und Stichproben. Sie dürfen nebeneinander stehen, aber nie in einer Zahl vermischt werden. Jede Stelle trägt den Quellenhinweis.
 
