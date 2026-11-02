@@ -182,3 +182,7 @@ Bestenliste: Action holt zuerst per Web API (`bestenliste_einbauen.py --api`), b
 ## Stand 02.11.2026 spät
 
 PR 19 gemerged, erster Lauf mit Web API grün (100 Spieler, 100 mit user_id; 88 mit Spielerdaten, vorher 73; 74 Spieler mit Replays, 235 Replays im Bestand). PR 20: Winrate aus API Summen, Zeitspalte ausgeblendet ohne Daten, Kartenbilder zuerst vom CDN static.dotgg.gg (WebP, preconnect), Rückfall auf eigene JPG. Als Nächstes: Spec Spielerseite (Bountyverlauf aus API, Niederlagen gegen Decks).
+
+## Verworfen am 02.11.2026
+
+Bilanz je Gegnerleader (Spielerseite und Decklisten): Quelle liefert je Liste nur Summen, Ausschnitt aus Spielerpartien reicht dem Nutzer nicht. PR 21 geschlossen, nichts gemerged.
