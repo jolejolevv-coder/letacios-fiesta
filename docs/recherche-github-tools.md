@@ -115,6 +115,19 @@ Quelle für seinen: `g.astro` und `ReplayPicker.astro` im Repo. Sein Stylesheet 
 
 Was sich übernehmen ließe, ohne seinen Code: die Auswahl nach Leaderpaar mit vier Gruppen und die Umschalter für Hände und Seitentausch, die Tastaturbedienung, "Copy for sim". Was er nicht hat und wir haben: die Auswertung und die Verbindung zur Spielerseite. Zum Aussehen müsste man sein Stylesheet lesen, die Adresse dazu fehlt mir (wahrscheinlich ein globales CSS im `site/` Ordner).
 
+## Woher er das Format hat
+
+Aus `run.py`, `kaizoku.py`, `opbounty.py`, `normalize.py` und `meta.json` gelesen. Nicht gelesen: `carry.py`, `opbounty_stats.py`, `cards.json`.
+
+* **Kein Formatwissen, nur Vorgaben von außen.** Es gibt keine Liste erlaubter Sets und keine Prüfung der Legalität. EB05 kommt in keiner gelesenen Datei vor, OP17 nur als Anfang des Kaizoku Datensatznamens.
+* **Kaizoku:** Der Datensatz steht fest im Code: `DATASET = "op17_lw_p"` (Umgebungsvariable `KAIZOKU_DATASET` überschreibt), daraus `SET = "op17"` und die Tagesdateien `op17_y_p`. Ein neues Set heißt: den Wert von Hand ändern. Fehlt der Schlüssel im Manifest, überspringt er still.
+* **OPBounty:** Er fragt `GET /api/stats/sets` und nimmt den Satz mit Namen `lw`, sonst den ersten. `lw` heißt im Manifest `Stats_lw.json` (Quelle `s3`). Die Bedeutung ist nicht belegt (bei Kaizoku im Kommentar "last week, private lobbies").
+* **Modi:** `mode_0` ist Standard, `mode_1` die Vorabqueue ("Special" bei OPBounty). Die Vorabqueue baut er nur aus OPBounty Zahlen, 14 Tage, Top 2.000.
+* **Formatwechsel:** Es gibt keine Erkennung. Eine Ladder Rücksetzung steht in `meta.json` als `ladderResets: ["2026-10-26"]`, abgeleitet in `carry.py` (nicht gelesen). Ein Wechseldatum speichert er nicht.
+* **Leader:** Gefiltert wird nur nach der Form der Kartennummer, nicht nach Set.
+
+Folge für uns: Unsere Formaterkennung aus CDN `mode_0` (`format-aus-cdn.md`, Satz "OP17 + EB05 Standard" ab 29.10., neue Sets ab 5 % am Starttag) ist weiter als seine. Von ihm lässt sich dafür nichts übernehmen. Lehrreich ist nur, dass beide Quellen, Kaizoku und OPBounty, ihren Datensatz selbst benennen (`op17_lw_p`, `lw`). Ein Abgleich mit unserem Formatsatz wäre eine Wache: ändert sich der Name, ist ein neues Format wahrscheinlich.
+
 ## Sein Replay Player (Study Games)
 
 Beschrieben nach der Seite und dem Quellcode auf GitHub, nichts ausgeführt.
