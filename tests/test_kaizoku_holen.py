@@ -7,8 +7,8 @@ import kaizoku_holen as k  # noqa: E402
 from bestenliste_api import ApiFehler  # noqa: E402
 
 MANIFEST = {"simStats": {"date": "20261102", "files": {
-    "stats": {"op17_lw_p": {"current": "stats/stats_op17_lw_p_20261102.json"}},
-    "decklist": {"op17_lw_p": {"current": "stats/decklist_op17_lw_p_20261102.json"}}}}}
+    "stats": {"eb05_lw_p": {"current": "stats/stats_eb05_lw_p_20261102.json"}},
+    "decklist": {"eb05_lw_p": {"current": "stats/decklist_eb05_lw_p_20261102.json"}}}}}
 
 
 def stat(lid, spiele=100):
@@ -27,7 +27,7 @@ def deck(karten, spiele="23", siege="5", gegner=None):
 
 class KaizokuTests(unittest.TestCase):
     def test_pfade_aus_dem_manifest(self):
-        self.assertEqual(k.pfade_holen(MANIFEST)[1], "stats/stats_op17_lw_p_20261102.json")
+        self.assertEqual(k.pfade_holen(MANIFEST)[1], "stats/stats_eb05_lw_p_20261102.json")
 
     def test_manifest_ohne_datensatz(self):
         with self.assertRaises(ApiFehler):
@@ -72,7 +72,7 @@ class KaizokuTests(unittest.TestCase):
 
     def test_holen_ruft_drei_dateien_mit_abstand(self):
         stats = [stat(f"L{i}") for i in range(40)]
-        antworten = {"manifest.json": MANIFEST, "stats_op17": stats, "decklist_op17": []}
+        antworten = {"manifest.json": MANIFEST, "stats_eb05": stats, "decklist_eb05": []}
         pausen, urls = [], []
 
         def anfr(url, **_):

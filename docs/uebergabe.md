@@ -187,3 +187,7 @@ Annahmen:
 * Kaizoku nur im Modus "Ready sets", nicht im Zeitraum.
 * Das Passwort Gate und die verschluesselten Dateien sind unveraendert; `kaizoku*.json.gz` wird wie bisher von der Action geschrieben.
 Geprueft im Browser mit echten Daten (Decklists, Matchups, Matrix, Ranking), Tests und Build gruen.
+
+## Kaizoku Datensatz EB05 (02.11.2026)
+
+`kaizoku_holen.py` und `kaizoku_wochen.py` holen jetzt `eb05_lw_p` (aktuelle Woche, Standardformat OP17 + EB05, 237.356 Partien, 114 Leader mit OP18 Leadern) statt `op17_lw_p` (98.296 Partien, ohne EB05). Stufe B gibt es in der Quelle fuer `eb05_lw_p`; die Zugkurve nur als `lw`. Weitere Datensaetze im Manifest: `op17_p` (ganzes Format, 5,8 Mio., ohne Stufe B), `op17`, `*_top20`/`*_top10` (nur beste Spieler), `eb05_lw`. Nicht eingebaut, auf Wunsch moeglich. Gepackt 139 KB plus 65 KB.

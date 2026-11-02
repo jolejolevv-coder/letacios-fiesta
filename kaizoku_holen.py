@@ -22,7 +22,7 @@ import time
 from bestenliste_api import ApiFehler, anfrage
 
 BASIS = "https://cdn.cardkaizoku.com/"
-DATENSATZ = "op17_lw_p"        # Vorbild und Standard: aktuelle Woche, Standardformat
+DATENSATZ = "eb05_lw_p"        # aktuelle Woche, Standardformat OP17 + EB05 (bis 02.11.2026 op17_lw_p)
 ABSTAND_S = 0.4                # Pause zwischen zwei Abrufen, wie im Vorbild
 MINDEST_LEADER = 30            # weniger gilt als kaputte Antwort
 LISTEN_JE_LEADER = 20          # Kaizoku führt je Leader bis zu 20 beste und 20 meistgespielte
