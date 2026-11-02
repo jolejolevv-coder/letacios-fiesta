@@ -192,6 +192,13 @@ jobs:
         run: python3 frische_partien.py
         continue-on-error: true
 
+      # Statistik und Decklisten von Card Kaizoku (specs/features/kaizoku-daten.md, Stufe A).
+      # Gesamtzahlen ohne Spielerbezug, drei Abrufe. Faellt es aus, fehlt der Reiter Kaizoku,
+      # der Rest der Seite bleibt.
+      - name: Kaizoku Statistik holen
+        run: python3 kaizoku_holen.py
+        continue-on-error: true
+
       - name: Replays holen
         run: python3 replays_holen.py
         continue-on-error: true

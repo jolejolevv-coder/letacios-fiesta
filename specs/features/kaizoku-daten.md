@@ -1,6 +1,6 @@
 # Kaizoku Daten wie optcg-data
 
-Entwurf vom 02.11.2026, wartet auf Freigabe. Grundlage: `docs/recherche-github-tools.md`. Der Nutzer hat am 02.11.2026 die Regel "Kaizoku nicht über `card_data.json` hinaus" gelockert und will die Abrufe auf dieselbe Art wie `alexfrey317/optcg-data`.
+Stufe A gebaut am 02.11.2026 auf Wunsch des Nutzers ("mach die Daten"): `kaizoku_holen.py` (9 Tests), Schritt "Kaizoku Statistik holen" in der Action, Reiter "Kaizoku" (eigener Reiter, Annahme: Datensatz `op17_lw_p` wie im Vorbild). Befund: die Decklisten tragen `matchup_stats` je Gegnerleader, damit gibt es die vollständige Bilanz je Liste (Klick auf das Record), die in unseren Daten fehlt. Stufe B und C weiter offen. Grundlage: `docs/recherche-github-tools.md`. Der Nutzer hat am 02.11.2026 die Regel "Kaizoku nicht über `card_data.json` hinaus" gelockert und will die Abrufe auf dieselbe Art wie `alexfrey317/optcg-data`.
 
 ## Goal
 

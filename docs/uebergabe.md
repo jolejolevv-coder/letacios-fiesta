@@ -186,3 +186,7 @@ PR 19 gemerged, erster Lauf mit Web API grün (100 Spieler, 100 mit user_id; 88 
 ## Verworfen am 02.11.2026
 
 Bilanz je Gegnerleader (Spielerseite und Decklisten): Quelle liefert je Liste nur Summen, Ausschnitt aus Spielerpartien reicht dem Nutzer nicht. PR 21 geschlossen, nichts gemerged.
+
+## Kaizoku Stufe A (02.11.2026)
+
+`kaizoku_holen.py` holt manifest, stats und decklist von cdn.cardkaizoku.com (Datensatz op17_lw_p, 3 Abrufe, 0,4 s Abstand) nach `public/kaizoku.json.gz` (nicht im Repo, 97 KB gepackt). Reiter Kaizoku in der App. Decklisten tragen die Bilanz je Gegnerleader. Offen: Stufe B (Hände, Kurve, Matchuptech), Stufe C nur nach Ok; Anzeige im Browser mit echten Daten noch nicht angesehen.
