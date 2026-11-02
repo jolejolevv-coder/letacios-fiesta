@@ -16,7 +16,7 @@
   --linie-hover: rgba(255, 255, 255, 0.2);
   --text: #f2f2f0;
   --text-2: #9ca3af;
-  --text-3: #7c828d;
+  --text-3: #878d98;
   --akzent: #2c66d6;
   --akzent-band: #3170e0;
   --akzent-tief: #1d4aa6;
@@ -238,8 +238,8 @@ kbd {
 }
 .vorspann h1 {
   margin: 0 0 6px;
-  font: 600 25px/1.15 var(--kopf-font);
-  letter-spacing: 0.005em;
+  font: 600 32px/1.1 var(--kopf-font);
+  letter-spacing: -0.02em;
 }
 .vorspann .lead {
   margin: 0;
@@ -1244,10 +1244,10 @@ input[type="date"].feld {
   height: 40px;
   margin-top: 1px;
   border-radius: var(--r);
-  background: var(--akzent-flaeche);
-  border: 1px solid var(--akzent-rand);
-  font: 700 22px/1 var(--zahl-font);
-  color: var(--akzent-hell);
+  background: var(--karton-hoch);
+  border: 1px solid var(--linie-stark);
+  font: 500 20px/1 var(--zahl-font);
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 .schritt::before {
@@ -1431,10 +1431,10 @@ input[type="date"].feld {
   width: 32px;
   height: 32px;
   border-radius: var(--r);
-  background: var(--akzent-flaeche);
-  border: 1px solid var(--akzent-rand);
-  font: 700 17px/1 var(--zahl-font);
-  color: var(--akzent-hell);
+  background: var(--karton-hoch);
+  border: 1px solid var(--linie-stark);
+  font: 500 16px/1 var(--zahl-font);
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 .play {
@@ -1857,7 +1857,7 @@ input[type="date"].feld {
     padding: 16px 14px 20px;
   }
   .vorspann h1 {
-    font-size: 21px;
+    font-size: 25px;
   }
   .vorspann .lead {
     font-size: 15px;
@@ -2145,10 +2145,10 @@ input[type="date"].feld {
   gap: 5px;
   padding: 4px 8px 3px;
   border-radius: var(--r);
-  background: var(--akzent);
-  color: var(--auf-akzent);
-  font: 600 11px/1 var(--kopf-font);
-  letter-spacing: 0.1em;
+  background: var(--flaeche-2);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--linie-stark);
+  font: 500 11.5px/1 var(--kopf-font);
 }
 
 .raster4 {
@@ -2356,7 +2356,8 @@ input[type="date"].feld {
 /* --------------------------------------------------------- Leader im Kopf */
 /* Kennzahlen als ruhige Kacheln. */
 .kennzeile {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px;
+  /* Alle Kacheln in einer Reihe, gleich breit: keine verwaiste Kachel in einer zweiten Zeile. */
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px;
   margin: 16px 0 0; padding: 0;
 }
 .kennzeile div {
@@ -2366,9 +2367,35 @@ input[type="date"].feld {
 }
 .kennzeile dt {
   font: 500 12px/1.2 var(--kopf-font); color: var(--text-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* Die erste Kachel ist die Hauptzahl (Win rate am Leader, Rank beim Spieler). */
+.kennzeile div:first-child dd { font-size: 22px; }
+/* Ab sieben Kacheln zwei gleich volle Reihen zu vier, sonst würden die Kacheln zu schmal. */
+.kennzeile:has(> :nth-child(7)) { grid-auto-flow: row; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .kennzeile dd { margin: 0; font: 500 18px/1.1 var(--zahl-font); letter-spacing: -0.02em; font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
+/* Winrate Skala: dieselbe Sprache wie die Punkte im Mulligan, Haarlinie von 30 bis 70 %. */
+.wr-skala {
+  position: relative; display: block; height: 7px; margin-top: 4px;
+  background: linear-gradient(var(--linie-stark), var(--linie-stark)) center / 100% 1px no-repeat;
+}
+.wr-skala::after {
+  content: ""; position: absolute; left: 50%; top: 0; width: 1px; height: 7px; background: var(--linie-hover);
+}
+.wr-skala i {
+  position: absolute; top: 50%; width: 7px; height: 7px; border-radius: 50%;
+  transform: translate(-50%, -50%); background: var(--text-2); z-index: 1;
+}
+.wr-skala.gut i { background: var(--gewinnt); }
+.wr-skala.schwach i { background: var(--verliert); }
 .kennzeile dd small { margin-left: 5px; font: 500 12px/1 var(--kopf-font); color: var(--text-3); }
+.kennzeile dd small.zeile { display: block; margin: 6px 0 0; font: 500 11.5px/1 var(--zahl-font); letter-spacing: 0; white-space: pre; }
+/* Leaderkopf: Win rate ist die Hauptkachel, breiter und groesser; Games etwas breiter fuer die Zeile mit Siegen und Niederlagen. */
+.kennzeile.leader-zeile { grid-auto-flow: row; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.3fr) repeat(4, minmax(0, 1fr)); }
+.kennzeile.leader-zeile div:first-child dd { font-size: 26px; }
+@media (max-width: 1240px) {
+  .kennzeile.leader-zeile { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 
 /* ---------------------------------------------------------- Decklisten */
 .tafel-spalten.listen,
@@ -2381,7 +2408,8 @@ input[type="date"].feld {
 .streifen .karte-klein b {
   position: absolute; right: -3px; bottom: -3px; min-width: 13px; height: 13px; padding: 0 2px;
   display: grid; place-items: center; border-radius: var(--r);
-  background: var(--akzent); color: var(--auf-akzent); font: 600 9.5px/1 var(--zahl-font); font-variant-numeric: tabular-nums;
+  background: var(--flaeche-2); color: var(--text); box-shadow: 0 0 0 1px var(--linie-stark);
+  font: 600 9.5px/1 var(--zahl-font); font-variant-numeric: tabular-nums;
 }
 .listen .zahlzelle { text-align: right; font-size: 13.5px; }
 .listen .rueck-blatt { margin: 4px 10px 12px 50px; }
@@ -2485,7 +2513,7 @@ input[type="date"].feld {
 .entsch .vorn { cursor: default; padding-top: 7px; padding-bottom: 7px; align-items: baseline; }
 .entsch .vorn > svg { position: relative; top: 3px; color: var(--text-2); }
 .entsch .stufe { width: 30px; height: 30px; font-size: 15px; align-self: center; }
-.entsch .stufe { display: grid; place-items: center; border-radius: var(--r); background: var(--akzent-flaeche); border: 1px solid var(--akzent-rand); font-weight: 700; font-family: var(--kopf-font); color: var(--akzent-hell); }
+.entsch .stufe { display: grid; place-items: center; border-radius: var(--r); background: var(--karton-hoch); border: 1px solid var(--linie-stark); font-weight: 500; font-family: var(--zahl-font); color: var(--text); }
 .entsch .stufe.leise { background: transparent; border-color: var(--linie-stark); color: var(--text-3); }
 .entsch .wahltext { font-size: 15px; }
 .entsch .wahltext b { font-weight: 600; }
@@ -2559,9 +2587,12 @@ input[type="date"].feld {
   .mehr-blatt a svg { color: var(--text-3); }
   .mehr-blatt a[aria-current="page"] { background: var(--flaeche-2); }
 
-  .kennzeile { gap: 10px 20px; }
+  .kennzeile, .kennzeile:has(> :nth-child(7)), .kennzeile.leader-zeile { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .kennzeile.leader-zeile div:first-child dd { font-size: 22px; }
   .kennzeile dd { font-size: 17px; }
   .kennzeile .nur-gross { display: none; }
+  /* Der Leaderknopf darüber nennt den Leader schon; der Titel wiederholte ihn nur. */
+  .mit-leiste .titelzeile { display: none; }
 
   .tafel-spalten.listen { display: none; }
   .listen .vorn {
@@ -2571,6 +2602,8 @@ input[type="date"].feld {
       "nr wr partien first second dreh";
     gap: 6px 8px; padding: 8px 4px 8px 6px;
   }
+  /* Karten am Handy: Zahlen oben buendig, auch wenn eine Zelle die Skala traegt. */
+  .tafel .vorn > .zahlzelle { align-self: start; }
   .listen .vorn > .nr { grid-area: nr; align-self: start; padding-top: 4px; }
   .listen .vorn > .streifen { grid-area: streifen; }
   .listen .vorn > .z-wr { grid-area: wr; text-align: left; }
@@ -2836,6 +2869,15 @@ button { color: inherit; }
 .spalten .rechts button { width: 100%; text-align: right; }
 .tafel .vorn.still { cursor: default; }
 .zahlzelle { text-align: right; }
+/* Kleine Winrate Skala unter der Zahl: dieselbe Haarlinie mit Mittelstrich und Punkt wie im Kopf,
+   der Punkt in der Farbe der Zahl. --skala ist die Lage von 0 (30 %) bis 1 (70 %). */
+.zahlzelle.mit-skala {
+  padding-bottom: 7px;
+  background:
+    radial-gradient(circle closest-side, currentColor 92%, transparent) calc(var(--skala) * 100%) 100% / 5px 5px no-repeat,
+    linear-gradient(var(--linie-hover), var(--linie-hover)) 50% 100% / 1px 5px no-repeat,
+    linear-gradient(var(--linie-stark), var(--linie-stark)) 0 calc(100% - 2px) / 100% 1px no-repeat;
+}
 
 /* ------------------------------------------------------------- Matchups */
 .tafel-spalten.mu,
