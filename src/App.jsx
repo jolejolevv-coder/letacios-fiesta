@@ -14,8 +14,8 @@ import {
   holen,
   kartenLaden,
   KARTE,
-  KAIZOKU_B_DATEI,
-  KAIZOKU_SCHLUESSEL,
+  KAIZOKU_QUELLEN,
+  istKaizokuQuelle,
   kaizokuLaden,
   kennung,
   metacoachHolen,
@@ -563,7 +563,9 @@ function Quelle({ verzeichnis, wahl, setWahl, laedt }) {
                   {s.name} ({fmtZahl(s.partien)} games)
                 </option>
               ))}
-              <option value={KAIZOKU_SCHLUESSEL}>Card Kaizoku, last week (other source)</option>
+              {Object.entries(KAIZOKU_QUELLEN).map(([k, q]) => (
+                <option key={k} value={k}>{q.name} (other source)</option>
+              ))}
             </select>
           </label>
         </div>
@@ -3288,86 +3290,26 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen, kzSpieler }) {
 /* --------------------------------------------------------------------------
    Kaizoku als Quelle (docs/kaizoku-einbau.md). Die Zahlen laufen ueber den Adapter in
    daten.js durch Decklists, Ranking, Matchups und Matrix. Hier stehen nur die Teile, die
-   unsere Daten nicht kennen: Kartenwerte, Starthand, Zugkurve und Techkarten (Stufe B).
+   unsere Daten nicht kennen: die Techkarten (Stufe B). Kartenwerte, Starthand und Zugkurve
+   stehen in kaizoku_b.json.gz, sind aber nicht eingebaut (Zugkurve eventuell fuer den Guide).
    -------------------------------------------------------------------------- */
-
-const KZ_ZUEGE = 8;
 
 function kzName(namen, code) {
   const id = kennung(code);
   return (namen[id] || {}).n || id;
 }
 
-function kzKombi(namen, kombi) {
-  if (kombi === "NO_PLAY") return "No play";
-  return kombi.split("+").map((c) => kzName(namen, c)).join(" + ");
-}
-
 /* Kopf der Kaizoku Teile: sagt, dass die Zahlen nicht unsere sind. */
 function KaizokuHinweis({ satz }) {
   const stand = satz.stand
-    ? `${satz.stand.slice(6, 8)}.${satz.stand.slice(4, 6)}.${satz.stand.slice(0, 4)}` : "";
+    ? `${satz.stand.slice(8, 10)}.${satz.stand.slice(5, 7)}.${satz.stand.slice(0, 4)}` : "";
   return (
     <p className="lesart kz-hinweis">
-      Source: Card Kaizoku{stand ? <>, as of <strong>{stand}</strong></> : null}, last week's games
-      ({fmtZahl(satz.partien)} in total). Not our numbers: another source and another sample. First and second
+      Source: Card Kaizoku{stand ? <>, as of <strong>{stand}</strong></> : null}, {satz.name.replace("Card Kaizoku, ", "")}
+      ({fmtZahl(satz.partien)} games in total). Not our numbers: another source and another sample. First and second
       games per leader are estimated as half each, there is no split by seat per opponent or per list, and no
       game duration.
     </p>
-  );
-}
-
-function KaizokuKarten({ b, leaderId, namen }) {
-  const e = b && b.leader ? b.leader[leaderId] : null;
-  if (b === null) return <p className="laedt">Loading card stats ...</p>;
-  if (!e) return <p className="leer-satz">No card stats for this leader.</p>;
-  const teil = (seite) => (e.kurve && e.kurve[seite]) || [];
-  return (
-    <>
-      <Abschnitt titel="Cards in the deck">
-        {e.karten.length ? (
-          <table className="tab kz-tab">
-            <thead><tr><th>Card</th><th>In decks</th><th>Win rate with</th><th>Avg copies</th></tr></thead>
-            <tbody>
-              {e.karten.slice(0, 20).map(([c, nutzung, wr, kopien]) => (
-                <tr key={c}>
-                  <td><Kartenbild id={c} breite={22} /> {kzName(namen, c)}</td>
-                  <td className="z">{(100 * nutzung).toFixed(0)} %</td>
-                  <td className={"z " + wrKlasse(100 * wr)}>{(100 * wr).toFixed(1)} %</td>
-                  <td className="z">{kopien.toFixed(1)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : <p className="leer-satz">No card stats.</p>}
-      </Abschnitt>
-      <Abschnitt titel="Opening hand">
-        {e.hand.length ? (
-          <ul className="bilanz-liste">
-            {e.hand.slice(0, 10).map(([c, anteil]) => (
-              <li key={c}><Kartenbild id={c} breite={22} /><span>{kzName(namen, c)}</span>
-                <span className="z">{(100 * anteil).toFixed(0)} % of hands</span></li>
-            ))}
-          </ul>
-        ) : <p className="leer-satz">No hand stats.</p>}
-      </Abschnitt>
-      <Abschnitt titel="Turn plays">
-        {teil("first").length || teil("second").length ? (
-          <table className="tab kz-tab">
-            <thead><tr><th>Turn</th><th>Going first</th><th>Going second</th></tr></thead>
-            <tbody>
-              {Array.from({ length: KZ_ZUEGE }, (_, i) => i + 1).map((t) => {
-                const a = teil("first").find((z) => z[0] === t);
-                const c = teil("second").find((z) => z[0] === t);
-                if (!a && !c) return null;
-                const zelle = (z) => (z ? z[1].slice(0, 2).map(([k, r]) => `${kzKombi(namen, k)} (${(100 * r).toFixed(0)} %)`).join(", ") : "–");
-                return <tr key={t}><td className="z">{t}</td><td style={{ textAlign: "left" }}>{zelle(a)}</td><td style={{ textAlign: "left" }}>{zelle(c)}</td></tr>;
-              })}
-            </tbody>
-          </table>
-        ) : <p className="leer-satz">No turn data.</p>}
-      </Abschnitt>
-    </>
   );
 }
 
@@ -3659,8 +3601,8 @@ export default function App() {
   const [namen, setNamen] = useState({});
   // null heisst "noch nicht geholt", false heisst "nicht da". Beides ist erlaubt.
   const [beste, setBeste] = useState(null);
-  // Stufe B von Kaizoku (Karten, Hand, Kurve, Tech); null heisst "noch nicht geholt".
-  const [kzB, setKzB] = useState(null);
+  // Stufe B von Kaizoku (Karten, Hand, Kurve, Tech), je Quelle; fehlt der Schluessel, ist sie noch nicht geholt.
+  const [kzBAlle, setKzBAlle] = useState({});
   const [kzSpieler, setKzSpieler] = useState(null);
   const [spielerAlle, setSpielerAlle] = useState(null);
   const [spielerId, setSpielerId] = useState(
@@ -3782,17 +3724,18 @@ export default function App() {
   }, [entsperrt, reiter, beste]);
 
   /* Kaizoku Stufe B, nur wenn Kaizoku die Quelle ist. Eigene Datei, darf fehlen. */
-  const istKaizoku = !!satz && satz.quelle === KAIZOKU_SCHLUESSEL;
+  const kzQuelle = satz ? satz.quelle : "";
+  const istKaizoku = istKaizokuQuelle(kzQuelle);
+  const kzB = istKaizoku ? kzBAlle[kzQuelle] ?? null : null;
   useEffect(() => {
-    if (entsperrt !== true || kzB !== null || !istKaizoku) return undefined;
+    if (entsperrt !== true || !istKaizoku || kzBAlle[kzQuelle] !== undefined) return undefined;
     let abgebrochen = false;
-    holen(KAIZOKU_B_DATEI)
-      .then((d) => !abgebrochen && setKzB(d))
-      .catch(() => !abgebrochen && setKzB({ leader: {} }));
+    const setzen = (d) => !abgebrochen && setKzBAlle((alle) => ({ ...alle, [kzQuelle]: d }));
+    holen(KAIZOKU_QUELLEN[kzQuelle].bDatei).then(setzen).catch(() => setzen({ leader: {} }));
     return () => {
       abgebrochen = true;
     };
-  }, [entsperrt, kzB, istKaizoku]);
+  }, [entsperrt, kzQuelle, istKaizoku, kzBAlle]);
 
   /* Kaizoku Zahlen der Top 100 (Stufe C). Eigene Datei, darf fehlen. */
   useEffect(() => {
@@ -3869,8 +3812,8 @@ export default function App() {
     setFehlerText("");
     const auftrag =
       wahl.art === "satz"
-        ? wahl.satz === KAIZOKU_SCHLUESSEL
-          ? kaizokuLaden()
+        ? istKaizokuQuelle(wahl.satz)
+          ? kaizokuLaden(wahl.satz)
           : (() => {
             const s = (verzeichnis.saetze || []).find((x) => x.schluessel === wahl.satz)
               || (verzeichnis.saetze || [])[0];
@@ -4225,10 +4168,7 @@ export default function App() {
           </p>
         </Abschnitt>
         {istKaizoku ? (
-          <>
-            <KaizokuKarten b={kzB} leaderId={leader.id} namen={namen} />
-            <KaizokuHinweis satz={satz} />
-          </>
+          <KaizokuHinweis satz={satz} />
         ) : null}
       </>
     );

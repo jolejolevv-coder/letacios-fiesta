@@ -187,3 +187,11 @@ Annahmen:
 * Kaizoku nur im Modus "Ready sets", nicht im Zeitraum.
 * Das Passwort Gate und die verschluesselten Dateien sind unveraendert; `kaizoku*.json.gz` wird wie bisher von der Action geschrieben.
 Geprueft im Browser mit echten Daten (Decklists, Matchups, Matrix, Ranking), Tests und Build gruen.
+
+## Kaizoku Datensatz EB05 (02.11.2026)
+
+`kaizoku_holen.py` und `kaizoku_wochen.py` holen jetzt `eb05_lw_p` (aktuelle Woche, Standardformat OP17 + EB05, 237.356 Partien, 114 Leader mit OP18 Leadern) statt `op17_lw_p` (98.296 Partien, ohne EB05). Stufe B gibt es in der Quelle fuer `eb05_lw_p`; die Zugkurve nur als `lw`. Weitere Datensaetze im Manifest: `op17_p` (ganzes Format, 5,8 Mio., ohne Stufe B), `op17`, `*_top20`/`*_top10` (nur beste Spieler), `eb05_lw`. Nicht eingebaut, auf Wunsch moeglich. Gepackt 139 KB plus 65 KB.
+
+Zweite Kaizoku Quelle (02.11.2026): `eb05_lw_p_top20`, dieselbe Woche nur mit den besten Spielern (Kaizoku nennt es "top20"; die genaue Auswahl ist nicht dokumentiert, die Seite nennt sie "top players"). Dateien `kaizoku_top.json.gz` und `kaizoku_top_b.json.gz`, in `.gitignore`. Beide Skripte holen beide Datensaetze einzeln, ein Ausfall nimmt den anderen nicht mit. In der Quellenauswahl heissen sie "Card Kaizoku, OP17 + EB05 Standard, last week" und "..., top players" (`KAIZOKU_QUELLEN` in `src/daten.js`). Neue Kaizoku Quelle = ein Eintrag dort plus ein Eintrag in `DATENSAETZE` (`kaizoku_holen.py`) und `ZIELE` (`kaizoku_wochen.py`).
+
+Decklists zeigen bei Quelle Kaizoku keine Kartenwerte, Starthand und Zugkurve mehr (Wunsch des Nutzers). Die Zugkurve (`kurve` in `kaizoku_b*.json.gz`) ist fuer den Guide vorgesehen, noch nicht gebaut. Techkarten bleiben in Matchups.

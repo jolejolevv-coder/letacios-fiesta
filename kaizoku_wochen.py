@@ -18,7 +18,7 @@ import sys
 import time
 
 from bestenliste_api import ApiFehler, anfrage
-from kaizoku_holen import ABSTAND_S, BASIS, DATENSATZ
+from kaizoku_holen import ABSTAND_S, BASIS, DATENSATZ, PUBLIC
 
 KURVE_SATZ = "lw"              # die Zugkurve führt nur die letzte Woche
 KURVE_MODUS = 0                # 0 ist Ranked
@@ -28,7 +28,9 @@ TECH_JE_GEGNER = 3
 TECH_GEGNER_JE_LEADER = 12     # Gegner mit den meisten Techkarten Treffern
 KURVE_ZUEGE = 8                # Zug 1 bis 8, spätere Züge sind selten und streuen
 MINDEST_LEADER = 30
-ZIEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "public", "kaizoku_b.json.gz")
+ZIEL = os.path.join(PUBLIC, "kaizoku_b.json.gz")
+# Zu jedem Datensatz aus kaizoku_holen die Datei mit den Kartenteilen.
+ZIELE = {DATENSATZ: ZIEL, DATENSATZ + "_top20": os.path.join(PUBLIC, "kaizoku_top_b.json.gz")}
 
 
 def pfad_holen(manifest, art, satz):
@@ -96,7 +98,7 @@ def kurve_bauen(eintrag):
     return aus
 
 
-def paket_bauen(cardstats, hands, matchuptech, kurve, stand):
+def paket_bauen(cardstats, hands, matchuptech, kurve, stand, datensatz=DATENSATZ):
     if not isinstance(cardstats, list) or len(cardstats) < MINDEST_LEADER:
         raise ApiFehler("Kartenwerte in unbekannter Form")
     leader = {}
@@ -113,7 +115,7 @@ def paket_bauen(cardstats, hands, matchuptech, kurve, stand):
     for e in kurve if isinstance(kurve, list) else []:
         if e.get("gameMode") == KURVE_MODUS and e.get("leader") in leader:
             leader[e["leader"]]["kurve"] = kurve_bauen(e)
-    return {"stand": stand, "datensatz": DATENSATZ, "leader": leader}
+    return {"stand": stand, "datensatz": datensatz, "leader": leader}
 
 
 def holen(datensatz=DATENSATZ, schlafen=time.sleep, **hilfen):
@@ -124,22 +126,29 @@ def holen(datensatz=DATENSATZ, schlafen=time.sleep, **hilfen):
     for pfad in pfade:
         schlafen(ABSTAND_S)
         teile.append(anfrage(BASIS + pfad, schlafen=schlafen, **hilfen))
-    return paket_bauen(*teile, manifest["simStats"]["date"])
+    return paket_bauen(*teile, manifest["simStats"]["date"], datensatz)
+
+
+def schreiben(datensatz, ziel):
+    paket = holen(datensatz)
+    os.makedirs(os.path.dirname(ziel), exist_ok=True)
+    roh = json.dumps(paket, ensure_ascii=False, separators=(",", ":")).encode()
+    with gzip.open(ziel, "wb", compresslevel=9) as datei:
+        datei.write(roh)
+    print(f"  Kaizoku Wochendateien {datensatz} vom {paket['stand']}: {len(paket['leader'])} Leader, "
+          f"{len(roh) // 1024} KB roh, {os.path.getsize(ziel) // 1024} KB gepackt")
 
 
 def main():
-    try:
-        paket = holen()
-    except ApiFehler as fehler:
-        print(f"  Kaizoku Wochendateien nicht geholt: {fehler}", file=sys.stderr)
-        return 1
-    os.makedirs(os.path.dirname(ZIEL), exist_ok=True)
-    roh = json.dumps(paket, ensure_ascii=False, separators=(",", ":")).encode()
-    with gzip.open(ZIEL, "wb", compresslevel=9) as datei:
-        datei.write(roh)
-    print(f"  Kaizoku Wochendateien vom {paket['stand']}: {len(paket['leader'])} Leader, "
-          f"{len(roh) // 1024} KB roh, {os.path.getsize(ZIEL) // 1024} KB gepackt")
-    return 0
+    """Jeder Datensatz einzeln: fehlt einer, bleibt der andere."""
+    fehlgeschlagen = 0
+    for datensatz, ziel in ZIELE.items():
+        try:
+            schreiben(datensatz, ziel)
+        except ApiFehler as fehler:
+            print(f"  Kaizoku Wochendateien {datensatz} nicht geholt: {fehler}", file=sys.stderr)
+            fehlgeschlagen += 1
+    return 1 if fehlgeschlagen == len(ZIELE) else 0
 
 
 if __name__ == "__main__":

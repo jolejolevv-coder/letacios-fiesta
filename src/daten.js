@@ -426,10 +426,20 @@ export function verschmelzen(saetze, name) {
    Matchups und Matrix ohne Sonderweg rechnen.
    -------------------------------------------------------------------------- */
 
-export const KAIZOKU_SCHLUESSEL = "kaizoku";
-export const KAIZOKU_DATEI = "kaizoku.json.gz";
-export const KAIZOKU_B_DATEI = "kaizoku_b.json.gz";
-const KAIZOKU_NAME = "Card Kaizoku, last week";
+/* Die Kaizoku Quellen: Schluessel in der Quellenwahl, Dateien, Name wie in der Auswahl.
+   Beide sind das Standardformat OP17 + EB05 der letzten Woche; die zweite zaehlt nur die
+   besten Spieler (Kaizoku "top20"). */
+export const KAIZOKU_QUELLEN = {
+  kaizoku: {
+    datei: "kaizoku.json.gz", bDatei: "kaizoku_b.json.gz",
+    name: "Card Kaizoku, OP17 + EB05 Standard, last week",
+  },
+  kaizoku_top: {
+    datei: "kaizoku_top.json.gz", bDatei: "kaizoku_top_b.json.gz",
+    name: "Card Kaizoku, OP17 + EB05 Standard, last week, top players",
+  },
+};
+export const istKaizokuQuelle = (schluessel) => Object.hasOwn(KAIZOKU_QUELLEN, schluessel);
 
 /**
  * Kaizoku nennt je Leader und Liste nur Gesamtzahlen und, fuer den Leader, die Siegquote als
@@ -438,7 +448,10 @@ const KAIZOKU_NAME = "Card Kaizoku, last week";
  * Partien als Erster oder Zweiter ist damit keine Messung. Je Gegner und je Liste gibt es
  * keine Aufteilung, dort bleibt sie leer.
  */
-export function kaizokuZuSatz(roh) {
+/** Kaizoku schreibt den Stand als 20261102, die Seite rechnet mit 2026-11-02. */
+export const kaizokuStand = (s) => (/^\d{8}$/.test(s || "") ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : s || "");
+
+export function kaizokuZuSatz(roh, schluessel = "kaizoku") {
   const leader = (roh.leader || []).map((l) => {
     const m = l.m || 0;
     const erste = Math.round(m / 2);
@@ -459,13 +472,14 @@ export function kaizokuZuSatz(roh) {
       })),
     };
   });
-  return { name: KAIZOKU_NAME, stand: roh.stand || "", partien: roh.partien || 0,
-           quelle: KAIZOKU_SCHLUESSEL, leader };
+  return { name: KAIZOKU_QUELLEN[schluessel].name, stand: kaizokuStand(roh.stand), partien: roh.partien || 0,
+           quelle: schluessel, leader };
 }
 
-export async function kaizokuLaden() {
-  const roh = await holen(KAIZOKU_DATEI);
-  return verschmelzen([kaizokuZuSatz(roh)], KAIZOKU_NAME);
+export async function kaizokuLaden(schluessel) {
+  const roh = await holen(KAIZOKU_QUELLEN[schluessel].datei);
+  const satz = kaizokuZuSatz(roh, schluessel);
+  return verschmelzen([satz], satz.name);
 }
 
 /** Ein fertiger Satz aus saetze/ hat schon die richtige Form, wird aber gleich behandelt. */
