@@ -81,6 +81,40 @@ Alles aus dem Quellcode (`ingest/sources/kaizoku.py`, `kaizoku_players.py`, `run
 * **Was daraus entsteht:** Winrates und Decklisten je Leader, Kartenstatistik, Matchupdaten, je Spieler die genauen Decks, Münzwurf, Matchups und Leader. Beim Spielerzweig steht im Code "used with permission".
 * **Bewertung nach unseren Regeln:** Erlaubt ist bei uns nur `card_data.json`. Alles andere in der Tabelle geht darüber hinaus und bleibt für uns tabu: Manifest, Wochenstände, Tagesdateien und beide Spielerabrufe. Der Spielerzweig ist zudem eine Abfrage von Daten einzelner Spieler. Nichts davon übernehmen.
 
+### Wie er die Aufrufe technisch macht
+
+Aus `ingest/http.py`, `normalize.py` und `kaizoku_curves.py`:
+
+* **Kennung:** `User-Agent: optcg-data ingest (+https://github.com/alexfrey317/optcg-data; daily snapshot)`, dazu `Accept: application/json` und `Accept-Encoding: gzip`. Er gibt sich also offen als Bot mit Link aus, keine Browser oder App Tarnung, keine Cookies.
+* **Verhalten:** Timeout 120 Sekunden, bis zu 5 Wiederholungen bei 429, 500, 502, 503, 504 und bei Netzfehlern, Wartezeit ab 2 Sekunden verdoppelt bis 60, `Retry-After` wird beachtet. Gespeicherte Stände werden nur neu geholt, wenn sich das Datum im Manifest ändert.
+* **Was er aus den Antworten behält:**
+  * Tagesstatistik: je Leader Partien, Siege, Matchups mit Partien, Siegen, Erst und Zweitplatzierung.
+  * Decklisten: die besten und meistgespielten Listen mit Partien, Siegen und Anzahl der Piloten.
+  * Wochendaten: Kartenstatistik, gängige Starthand, Techkarten je Matchup.
+  * Kurve: Zug für Zug je Leader, `curve_lw_<Datum>.json`, nur Modus 0, bis Zug 12.
+  * Spielerzweig: Partien, Siege, Siegquote, Münzwurf, Decks und Matchups je Spieler.
+* **Gewichtung:** Er rechnet die gewichtete Siegquote von Kaizoku mit einem Anteil von 0,35 nach.
+* **Wichtig für uns:** Alles davon außer `card_data.json` ist durch unsere Regel gesperrt. Sie lässt sich nur durch den Nutzer lockern, und dann am besten gestuft: erst die statischen Dateien des CDN (kein Konto, kein Spielerbezug), den Spielerzweig `search` und `player-stats` nicht, weil er einzelne Personen abfragt und beim Vorbild "mit Erlaubnis" steht, die wir nicht haben.
+
+## Replay Viewer: seiner gegen unseren
+
+Quelle für seinen: `g.astro` und `ReplayPicker.astro` im Repo. Sein Stylesheet (Farben, Schrift, Rastermaße, Handylayout) steht in keiner dieser Dateien und wurde nicht gelesen. Zum Aussehen kann ich deshalb nichts Belegtes sagen, nur zur Funktion.
+
+| Punkt | Seiner | Unserer (`src/replay.js`, `Replay` in `src/App.jsx`) |
+|---|---|---|
+| Einstieg | Zwei Leader wählen, Tausch Knopf, vier Gruppen nach Sieger und Zugreihenfolge, fünf Beispielpartien je Gruppe | Über die Spielerseite: Partie antippen, "Watch replay". Dazu der Reiter "Analyze my replay" für eigene Logs |
+| Datenbasis | Bündel je Leaderpaar mit vorgerechneten Zügen, 9.013 Partien im Oktober, nur hohe Bounty | Replays aus Firestore mit Log aus dem Storage, im Browser gelesen |
+| Brett | Feste Maße (Matte 710 × 500, Karte 100 × 138), Karten absolut gesetzt: Charakter, Leader, Stage, Deck, Trash, Leben, DON!! Deck und Kostenbereich, gedrehte Karten | Brett mit Zonen, Hand, Board, Trash, Leben, Stand je Zugende |
+| Karteninfo | Anzeigen für DON!! Anzahl, Powerwechsel mit Vorzeichen, Gegenwehr (Counter) als "+N", Kampfpower, Statusmarken | Angriffspfeile (`replay-angriffspfeile.md`), Power im Kampf |
+| Ereignisprotokoll | Zehn Ereignisse bis zum aktuellen, Arten farblich getrennt, Sitzabzeichen P1 und P2, Kartenvorschaubilder im Text | Ereignisliste ("Events") auf und zuklappbar |
+| Bedienung | Schieberegler, Pfeiltasten, Leertaste, j und k, Umschalt für ganze Züge, Pos1 und Ende, Wischen auf dem Handy | Knöpfe für Anfang, zurück, Abspielen, vor, Ende, Tempo ½ bis mehr, Zoomstufen, auf dem Handy je ein Umschalter, 44 Pixel große Knöpfe |
+| Handkarten | Umschalter "Hands" mit Merkung im Browser, Flip der Seiten, Vorschau (Peek) | Eigene Seite unten, Hand sichtbar |
+| Auswertung | Keine | Genauigkeit, Zug für Zug Rat, nächstbeste Karte (`ReplayAnalyse`, `zuglager.js`) |
+| Extras | "Copy for sim" für die Deckliste | Link auf das Rohlog |
+| Namen | Spielernamen werden nicht gezeigt | Spielernamen sichtbar |
+
+Was sich übernehmen ließe, ohne seinen Code: die Auswahl nach Leaderpaar mit vier Gruppen und die Umschalter für Hände und Seitentausch, die Tastaturbedienung, "Copy for sim". Was er nicht hat und wir haben: die Auswertung und die Verbindung zur Spielerseite. Zum Aussehen müsste man sein Stylesheet lesen, die Adresse dazu fehlt mir (wahrscheinlich ein globales CSS im `site/` Ordner).
+
 ## Sein Replay Player (Study Games)
 
 Beschrieben nach der Seite und dem Quellcode auf GitHub, nichts ausgeführt.
