@@ -1,6 +1,6 @@
 # Spielerseite: Bountyverlauf und Niederlagen nach Gegnerdeck
 
-Status: Entwurf, wartet auf Freigabe. Nichts gebaut.
+Status: Freigegeben am 02.11.2026, aber nur "Verloren gegen" mit dem Leader des Gegners. Der Bountyverlauf entfällt (die API liefert ihn nicht, eine eigene Sammlung ist nicht gewünscht). Phase 1 gebaut: `src/niederlagen.js`, Abschnitt "Lost to" auf der Spielerseite, 4 Tests. Ohne eigenen Replaylink in der Zeile; Replays stehen weiter unter "Recent games". Die Teile zum Bountyverlauf unten bleiben als Entwurf stehen, falls die API später einen Verlauf liefert.
 
 ## Goal
 

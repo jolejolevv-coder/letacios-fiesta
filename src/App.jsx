@@ -30,6 +30,7 @@ import { netzBauen } from "./wertnetz.js";
 import { NOTENFOLGE, partieAnalysieren } from "./spielbewertung.js";
 import { CHANGELOG } from "./changelog.js";
 import { leaderSuchen } from "./leadersuche.js";
+import { NIEDERLAGEN_ZEILEN_MAX, niederlagenNachLeader } from "./niederlagen.js";
 import { animieren, DAUER, NACHLAUF_MS, zahlText } from "./zaehler.js";
 import { fokusOrdnen, GUT, matrixOrdnen, SCHWACH, seite as wrSeite, sortAusText, ton as wrTon, wrKlasse } from "./winrate.js";
 import { ankerBauen, fehlerSuchen, FEHLERNOTEN, kurveBauen, markenBauen, spielerZuordnen } from "./analyse.js";
@@ -3115,6 +3116,8 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen }) {
   const partien = (daten && daten.partien) || [];
   const leader = (eintrag.leader || []).filter((l) => l.leader);
   const nurWr = leader.every((l) => l.partien == null);
+  const verloren = useMemo(() => niederlagenNachLeader(partien), [partien]);
+  const verlorenGesamt = verloren.reduce((a, z) => a + z.niederlagen, 0);
   return (
     <>
       <button type="button" onClick={zurueck} className="knopf leise zurueck-knopf">
@@ -3174,6 +3177,42 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen }) {
             );
           })}
         </ol>
+      </Abschnitt>
+
+      <Abschnitt titel="Lost to">
+        {verloren.length ? (
+          <>
+            <div className="tafel-spalten spalten gespielt">
+              <span>Nr</span><span /><span>Opponent leader</span>
+              <span className="rechts">Lost</span><span className="rechts">Share</span><span className="rechts">Record</span>
+            </div>
+            <ol className="tafel gespielt">
+              {verloren.slice(0, NIEDERLAGEN_ZEILEN_MAX).map((z, i) => {
+                const id = kennung(z.leader);
+                return (
+                  <li key={z.leader} className="zeile">
+                    <div className="vorn">
+                      <span className="nr">{nr2(i + 1)}</span>
+                      <Kartenbild id={z.leader} breite={30} />
+                      <span className="name gegner">
+                        <b>{(namen[id] || {}).n || id}</b><span className="kartennr">{id}</span>
+                      </span>
+                      <Zelle k="z-a" label="Lost" wert={String(z.niederlagen)} />
+                      <Zelle k="z-b" label="Share" wert={z.anteil.toFixed(0) + " %"} />
+                      <Zelle k="z-c" label="Record" wert={`${z.siege} – ${z.niederlagen}`} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+            <p className="lesart">
+              Based on the {partien.length} recorded games ({verlorenGesamt} lost). Only recent games are
+              recorded, so this is a sample, not the whole season. Record is wins – losses against that leader.
+            </p>
+          </>
+        ) : (
+          <p className="leer-satz">{partien.length ? "No lost games among the recorded ones." : "No recent games recorded for this player."}</p>
+        )}
       </Abschnitt>
 
       <Abschnitt titel="Recent games">
