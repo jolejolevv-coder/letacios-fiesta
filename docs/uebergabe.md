@@ -58,6 +58,17 @@ Phase 1 gebaut auf Branch `claude/update-log` (150 Tests grün). Offen: Bot und 
 PR 13 gemergt, Lauf grün. Filter auf gespiegelte Nachrichten auf Branch
 `claude/update-log-filter`. Prüfen mit der nächsten echten Meldung von OPBounty.
 
+## Stand 02.11.2026
+
+Seit v2.7.8 (29.10.) ist CDN mode_0 sauber (EB05 60 bis 70 %), eingebettete Sim spielt in
+mode_1. Entscheidung des Nutzers am 02.11.: Formatsatz und Formaterkennung nur noch aus CDN
+mode_0 ab 29.10., Replay Code dafür gelöscht (Spec `specs/features/format-aus-cdn.md`).
+Spielerseiten, Reiter Replays und Metacoach bleiben bei den Replays. Steht das CDN länger als
+zwei Tage, warnt die Action, der Satz bleibt stehen. Gebaut auf Branch `claude/format-aus-cdn`,
+Tests grün, Probelauf: 29.10. bis 01.11., 9.295 Partien, EB05 64 %. Offen: Push und Merge nach
+OK des Nutzers, danach den Lauf der Action prüfen. Annahme: der gespeicherte Start 27.10. wird
+beim Lesen auf 29.10. gezogen. Update Log: seit 29.10. keine neue Meldung von OPBounty.
+
 ## Entscheidung 29.10.2026
 
 `mitschnitt.timer` läuft auf Wunsch nur noch einmal am Tag, 05:30 UTC (vorher stündlich

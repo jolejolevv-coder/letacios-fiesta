@@ -59,11 +59,12 @@ def satz_mit(listen):
 
 
 class Format(unittest.TestCase):
-    def test_tage_ab_start(self):
-        self.assertEqual(A.tage_ab(INDEX, A.FORMAT_START), ["2026-10-27", "2026-10-28"])
+    def test_tage_ab_start_nur_modus_0(self):
+        self.assertEqual(A.format_tage(INDEX, "2026-10-27"), ["2026-10-27", "2026-10-28"])
+        self.assertEqual(A.format_tage(INDEX, A.FORMAT_START), [])
 
     def test_teile_aller_bereiche_nur_modus_0_ohne_umstellungstag(self):
-        tage = A.tage_ab(INDEX, A.FORMAT_START)
+        tage = A.format_tage(INDEX, "2026-10-27")
         self.assertEqual(A.roh_teile(INDEX, tage, A.FORMAT_MODUS, list(A.BOUNTY)), [
             "2026-10-27/mode_0/25_1000/stats0002.json",
             "2026-10-27/mode_0/3000/stats0002.json",
@@ -109,11 +110,11 @@ class Format(unittest.TestCase):
         self.assertTrue(A.ausgeblendet("Stats_Special_Queue", "2026-11-03", "2026-11-03"))
 
     def test_wochenfenster_ohne_altes_format(self):
-        tage = ["2026-10-24", "2026-10-25", "2026-10-26", "2026-10-27", "2026-10-28"]
-        self.assertEqual(A.wochentage(tage), ["2026-10-27", "2026-10-28"])
+        tage = ["2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30"]
+        self.assertEqual(A.wochentage(tage), ["2026-10-29", "2026-10-30"])
 
     def test_wochenfenster_vor_dem_ersten_neuen_tag(self):
-        tage = ["2026-10-24", "2026-10-25", "2026-10-26"]
+        tage = ["2026-10-26", "2026-10-27", "2026-10-28"]
         self.assertEqual(A.wochentage(tage), [])
 
 
@@ -180,122 +181,6 @@ class Event(unittest.TestCase):
             "Roh_mode_0_3000"])
 
 
-def replay(sieger, verlierer, zeit="2026-10-27T10:00:00", pfad=None, sieger_deck="", verlierer_deck="",
-           modus="0"):
-    return {"timestamp": zeit, "game_mode": modus, "winner_leader": sieger,
-            "loser_leader": verlierer, "winner_deck": sieger_deck, "loser_deck": verlierer_deck,
-            "path": pfad or f"Replays/W/0/{sieger}/{verlierer}_{sieger}{zeit}.log"}
-
-
-def log(waehler, wahl, a=("Anna#1", "OP17-039"), b=("Ben#2", "OP13-004")):
-    zeile = '[{}] Leader is X [<mark><link="{}">{}</link></mark>]'
-    return "\n".join([zeile.format(a[0], a[1], a[1]), zeile.format(b[0], b[1], b[1]),
-                      f"[{waehler}] Will select turn order", f"[{waehler}] Chose to go {wahl}"])
-
-
-class Replays(unittest.TestCase):
-    def setUp(self):
-        deck = "1xOP17-039\r\n4xEB05-001\r\n"
-        self.docs = [
-            replay("OP17-039", "OP13-004", sieger_deck=deck, pfad="a_h1.log"),
-            replay("OP17-039", "OP13-004", sieger_deck=deck, pfad="a_h2.log"),
-            replay("OP13-004", "OP17-039", verlierer_deck=deck, pfad="a_h3.log"),
-            replay("OP17-039", "OP17-039", pfad="a_h4.log"),
-            replay("OP17-039", "OP13-004", zeit="2026-10-26T23:59:59"),
-            replay("OP17-039", "OP13-004", modus="1"),
-        ]
-        self.starts = {"a_h1.log": True, "a_h2.log": False, "a_h3.log": None}
-
-    def satz(self):
-        return A.replay_satz(self.docs, self.starts)
-
-    def leader(self, satz, kennung):
-        return next(e for e in satz["leader"] if e["id"] == kennung)
-
-    def test_nur_modus_0_ab_formatstart(self):
-        self.assertEqual(self.satz()["partien"], 4)
-        self.assertEqual(self.satz()["name"], "OP17 + EB05 Standard (from replays)")
-
-    def test_siege_niederlagen_und_gegner(self):
-        e = self.leader(self.satz(), "1xOP17-039")
-        # 2 Siege, 1 Niederlage gegen OP13-004, dazu der Mirror als Sieg und Niederlage
-        self.assertEqual((e["w"], e["l"]), (3, 2))
-        i = e["geg"].index("1xOP13-004")
-        self.assertEqual((e["gm"][i], e["gw"][i]), (3, 2))
-        self.assertEqual(len({len(e[f]) for f in A.GEGNER_FELDER}), 1)
-
-    def test_first_und_second_nur_wo_bekannt(self):
-        e = self.leader(self.satz(), "1xOP17-039")
-        i = e["geg"].index("1xOP13-004")
-        # h1: Sieger zuerst; h2: Sieger zweiter; h3: unbekannt
-        self.assertEqual((e["fw"], e["fl"], e["sw"], e["sl"]), (1, 0, 1, 0))
-        self.assertEqual((e["gfw"][i], e["gsw"][i]), (1, 1))
-        gegner = self.leader(self.satz(), "1xOP13-004")
-        self.assertEqual((gegner["fl"], gegner["sl"]), (1, 1))
-
-    def test_decklisten_je_seite_die_eine_hat(self):
-        e = self.leader(self.satz(), "1xOP17-039")
-        self.assertEqual(len(e["listen"]), 1)
-        liste = e["listen"][0]
-        self.assertEqual(liste["d"], ["1xOP17-039", "4xEB05-001"])
-        self.assertEqual((liste["w"], liste["l"], liste["fw"], liste["sw"]), (2, 1, 1, 1))
-        self.assertEqual(A.eb05_anteil(self.satz()), 1.0)
-
-    def test_ohne_hand_und_dauer(self):
-        e = self.leader(self.satz(), "1xOP17-039")
-        self.assertEqual((e["hand"], e["kopien"], e["dur"]), ({}, {}, 0))
-
-    def test_heroines_filter_auf_dem_ergebnis(self):
-        event = A.event_satz(self.satz(), {"OP17-039"}, "Event")
-        self.assertEqual([e["id"] for e in event["leader"]], ["1xOP17-039"])
-        self.assertEqual(event["leader"][0]["geg"], ["1xOP17-039"])
-        self.assertEqual(event["partien"], 2)
-
-
-class Reihenfolge(unittest.TestCase):
-    def test_waehler_ist_sieger(self):
-        self.assertTrue(A.sieger_zuerst(log("Anna#1", "First"), "OP17-039", "OP13-004"))
-        self.assertFalse(A.sieger_zuerst(log("Anna#1", "Second"), "OP17-039", "OP13-004"))
-
-    def test_waehler_ist_verlierer(self):
-        self.assertFalse(A.sieger_zuerst(log("Ben#2", "First"), "OP17-039", "OP13-004"))
-        self.assertTrue(A.sieger_zuerst(log("Ben#2", "Second"), "OP17-039", "OP13-004"))
-
-    def test_unsichtbares_zeichen_im_namen(self):
-        text = log("Anna#1", "First").replace("Anna#1", "Anna\u200b#1", 2)
-        self.assertTrue(A.sieger_zuerst(text, "OP17-039", "OP13-004"))
-
-    def test_mirror_ohne_wahl_und_kaputtes_log_geben_none(self):
-        self.assertIsNone(A.sieger_zuerst(log("Anna#1", "First"), "OP17-039", "OP17-039"))
-        self.assertIsNone(A.sieger_zuerst("", "OP17-039", "OP13-004"))
-        self.assertIsNone(A.sieger_zuerst(None, "OP17-039", "OP13-004"))
-        self.assertIsNone(A.sieger_zuerst(log("Zoe#9", "First"), "OP17-039", "OP13-004"))
-
-    def test_zwischenspeicher_laedt_jedes_log_einmal(self):
-        import tempfile
-        docs = [replay("OP17-039", "OP13-004", pfad="Replays/x_" + "a" * 64 + ".log"),
-                replay("OP17-039", "OP17-039", pfad="Replays/y_" + "b" * 64 + ".log")]
-        geladen = []
-
-        def fake(pfad, eimer):
-            geladen.append(pfad)
-            return log("Anna#1", "First")
-
-        alt = A.log_anfang
-        A.log_anfang = fake
-        try:
-            with tempfile.TemporaryDirectory() as ordner:
-                datei = os.path.join(ordner, "tage", A.START_ZWISCHEN)
-                erste = A.starts_ermitteln(docs, "eimer", datei)
-                zweite = A.starts_ermitteln(docs, "eimer", datei)
-        finally:
-            A.log_anfang = alt
-        self.assertEqual(geladen, [docs[0]["path"]])        # Mirror gar nicht, Rest einmal
-        self.assertEqual(erste, zweite)
-        self.assertEqual(erste[docs[0]["path"]], True)
-        self.assertIsNone(erste[docs[1]["path"]])
-
-
 def produkt(pid, name, nummer):
     return {"productId": pid, "name": name,
             "imageUrl": f"https://tcgplayer-cdn.tcgplayer.com/product/{pid}_200w.jpg",
@@ -314,6 +199,70 @@ class Tcgcsv(unittest.TestCase):
         self.assertEqual(adressen, {
             "EB05-010": "https://tcgplayer-cdn.tcgplayer.com/product/8_in_1000x1000.jpg",
             "OP18-031": "https://tcgplayer-cdn.tcgplayer.com/product/7_in_1000x1000.jpg"})
+
+
+def cdn_index(tage, modus="mode_0"):
+    return [f"{tag}/{modus}/25_1000/stats{i:04d}.json" for i, tag in enumerate(tage)]
+
+
+def tag_roh(partien, mit_neu, karte_neu="OP18-001", deck_alt="4xOP17-039",
+            leader="1xOP17-039"):
+    """Rohstruktur eines CDN Tages: `partien` Siege, davon `mit_neu` mit `karte_neu`."""
+    listen = [{"deck": ["4x" + karte_neu], "wins": mit_neu},
+              {"deck": [deck_alt], "wins": partien - mit_neu}]
+    return A.zusammenfuehren([{
+        "number_of_matches": partien, "timestamp": "t",
+        "decklists": [{"leader": leader, "lists": [l for l in listen if l["wins"]]}],
+        "leaders_presence": [{"leader": leader, "number_of_matches": partien,
+                              "wins": partien}]}])
+
+
+class Cdn(unittest.TestCase):
+    TAGE = ["2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30", "2026-11-01"]
+
+    def test_format_tage_ab_start_samt_juengstem(self):
+        index = cdn_index(self.TAGE) + cdn_index(["2026-11-02"], "mode_1")
+        self.assertEqual(A.format_tage(index, A.FORMAT_START),
+                         ["2026-10-29", "2026-10-30", "2026-11-01"])
+
+    def test_keine_still_warnung_bis_zwei_tage(self):
+        self.assertIsNone(A.cdn_still_warnung(cdn_index(self.TAGE), "2026-11-03"))
+
+    def test_still_warnung_ab_drei_tagen(self):
+        index = cdn_index(self.TAGE) + cdn_index(["2026-11-03"], "mode_1")
+        warnung = A.cdn_still_warnung(index, "2026-11-04")
+        self.assertIn("2026-11-01", warnung)
+        self.assertIn("3 Tage", warnung)
+
+    def test_still_warnung_ohne_daten(self):
+        self.assertIsNotNone(A.cdn_still_warnung([], "2026-11-04"))
+
+    def test_summe_nur_der_genannten_tage(self):
+        je_tag = {"2026-10-28": tag_roh(50, 0), "2026-10-29": tag_roh(10, 6),
+                  "2026-10-30": tag_roh(20, 14)}
+        summe = A.summe_roh(je_tag, ["2026-10-29", "2026-10-30", "2026-10-31"])
+        self.assertEqual(summe["partien"], 30)
+        satz = A.eindampfen(summe, A.FORMAT_NAME)
+        self.assertEqual(satz["leader"][0]["w"], 30)
+        self.assertAlmostEqual(A.eb05_anteil(satz, "OP18"), 20 / 30)
+
+    def test_roh_addieren_summiert_karten_und_gegner(self):
+        a = A.zusammenfuehren([teil(3, 1)])
+        b = A.zusammenfuehren([teil(2, 2)])
+        summe = A.roh_addieren(a, b)
+        self.assertEqual(summe["karten"]["1xOP17-039"]["kopien"]["2xOP17-041"], [8, 3])
+        self.assertEqual(summe["partien"], 2)
+        self.assertEqual(a["partien"], 1)
+
+    def test_satz_ab_start_mit_hand_und_ohne_namenszusatz(self):
+        liste = {"decklists": [{"leader": "1xOP17-039",
+                                "lists": [{"deck": ["4xOP17-039"], "wins": 1, "losses": 1}]}]}
+        je_tag = {"2026-10-28": A.zusammenfuehren([{**teil(9, 9), **liste}]),
+                  "2026-10-29": A.zusammenfuehren([{**teil(3, 1), **liste}])}
+        satz = A.format_satz_bauen(je_tag, A.standard_zustand())
+        self.assertEqual(satz["name"], A.FORMAT_NAME)
+        self.assertEqual(satz["partien"], 1)          # der 28.10. zaehlt nicht mehr
+        self.assertEqual(satz["leader"][0]["hand"]["OP17-054"][0], 3)
 
 
 class Bilder(unittest.TestCase):
@@ -385,57 +334,44 @@ class Bilder(unittest.TestCase):
             self.assertEqual(datei.read(), b"alt")
 
 
-def tag_docs(tag, partien, mit_neu, karte_neu="OP18-001", deck_alt="4xOP17-039"):
-    """`partien` Replays an einem Tag, davon `mit_neu` mit einer Karte aus `karte_neu`."""
-    return [replay("OP17-039", "OP13-004", zeit=f"{tag}T10:{n % 60:02d}:00",
-                   sieger_deck=("4x" + karte_neu if n < mit_neu else deck_alt),
-                   pfad=f"{tag}_{n}.log")
-            for n in range(partien)]
-
-
 class Formaterkennung(unittest.TestCase):
     def setUp(self):
         self.zustand = A.standard_zustand()
-        self.alt = tag_docs("2026-10-28", 100, 0)
 
     def erkennen(self, *tage):
-        return A.format_wechsel_erkennen(self.alt + [d for t in tage for d in t], self.zustand)
+        """Je Tag ab dem 30.10. eine Rohstruktur, dazu ein alter Tag am 29.10."""
+        je_tag = {"2026-10-29": tag_roh(100, 0)}
+        for n, roh in enumerate(tage):
+            je_tag[f"2026-10-{30 + n}"] = roh
+        return A.format_wechsel_erkennen(je_tag, self.zustand)
 
     def test_vier_prozent_loesen_nichts_aus(self):
-        self.assertIsNone(self.erkennen(tag_docs("2026-10-29", 100, 4),
-                                        tag_docs("2026-10-30", 100, 60)))
+        self.assertIsNone(self.erkennen(tag_roh(100, 4),
+                                        tag_roh(100, 60)))
 
     def test_mischtag_dann_dreissig_prozent_folgetag(self):
-        self.assertEqual(self.erkennen(tag_docs("2026-10-29", 100, 10),
-                                       tag_docs("2026-10-30", 100, 30)),
-                         ("2026-10-30", {"OP18"}))
+        self.assertEqual(self.erkennen(tag_roh(100, 10),
+                                       tag_roh(100, 30)),
+                         ("2026-10-31", {"OP18"}))
 
     def test_folgetag_unter_dreissig_prozent_noch_kein_wechsel(self):
-        self.assertIsNone(self.erkennen(tag_docs("2026-10-29", 100, 10),
-                                        tag_docs("2026-10-30", 100, 29)))
+        self.assertIsNone(self.erkennen(tag_roh(100, 10),
+                                        tag_roh(100, 29)))
 
     def test_umstellungstag_ohne_folgetag_noch_kein_wechsel(self):
-        self.assertIsNone(self.erkennen(tag_docs("2026-10-29", 100, 40)))
+        self.assertIsNone(self.erkennen(tag_roh(100, 40)))
 
     def test_starter_und_promos_zaehlen_nicht(self):
-        docs = [tag_docs("2026-10-29", 100, 100, "ST30-001"),
-                tag_docs("2026-10-30", 100, 100, "P-045")]
-        self.assertIsNone(self.erkennen(*docs))
+        self.assertIsNone(self.erkennen(tag_roh(100, 100, "ST30-001"),
+                                        tag_roh(100, 100, "P-045")))
 
     def test_nicht_hoehere_sets_zaehlen_nicht(self):
-        self.assertIsNone(self.erkennen(tag_docs("2026-10-29", 100, 100, "EB05-002"),
-                                        tag_docs("2026-10-30", 100, 100, "OP16-001")))
+        self.assertIsNone(self.erkennen(tag_roh(100, 100, "EB05-002"),
+                                        tag_roh(100, 100, "OP16-001")))
 
-    def test_andere_modi_zaehlen_nicht(self):
-        docs = [dict(d, game_mode="1") for d in tag_docs("2026-10-29", 100, 100)]
-        self.assertIsNone(self.erkennen(docs, tag_docs("2026-10-30", 100, 100)))
-
-    def test_decks_als_liste_und_verlierer_seite(self):
-        docs = [dict(d, winner_deck=["4xOP17-039"], loser_deck=["1xOP18-001"])
-                for d in tag_docs("2026-10-29", 100, 0)]
-        self.assertEqual(self.erkennen(docs, docs and [dict(d, timestamp="2026-10-30T10:00:00")
-                                                       for d in docs]),
-                         ("2026-10-30", {"OP18"}))
+    def test_tage_vor_dem_start_zaehlen_nicht(self):
+        je_tag = {"2026-10-27": tag_roh(100, 100), "2026-10-28": tag_roh(100, 100)}
+        self.assertIsNone(A.format_wechsel_erkennen(je_tag, self.zustand))
 
     def test_eb06_kommt_dazu_op18_ersetzt(self):
         eb = A.format_nach_wechsel(self.zustand, "2026-11-10", {"EB06"})
@@ -476,6 +412,18 @@ class Zustand(unittest.TestCase):
             datei.write('{"start": "2026-11-10"}')
         self.assertEqual(A.zustand_lesen(self.ziel), A.standard_zustand())
 
+    def test_alter_start_wird_auf_formatstart_gezogen(self):
+        zustand = dict(A.standard_zustand(), start="2026-10-27", cdn_ab="2026-10-29")
+        A.zustand_schreiben(self.ziel, zustand)
+        self.assertEqual(A.zustand_lesen(self.ziel), A.standard_zustand())
+
+    def test_replay_reste_werden_geraeumt(self):
+        pfad = os.path.join(self.ziel, "tage", A.REPLAY_RESTE[0])
+        os.makedirs(os.path.dirname(pfad))
+        open(pfad, "w").close()
+        A.replay_reste_raeumen(self.ziel)
+        self.assertFalse(os.path.exists(pfad))
+
     def test_hin_und_zurueck(self):
         zustand = A.format_nach_wechsel(A.standard_zustand(), "2026-11-10", {"OP18"})
         zustand["alte"] = [{"schluessel": "k_alt", "name": "n", "datei": "k_alt.zwischen.gz"}]
@@ -489,11 +437,11 @@ class Wechsel(unittest.TestCase):
     def setUp(self):
         self.ziel = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.ziel)
-        self.docs = (tag_docs("2026-10-28", 50, 0) + tag_docs("2026-11-09", 50, 0)
-                     + tag_docs("2026-11-10", 50, 10) + tag_docs("2026-11-11", 50, 40)
-                     + tag_docs("2026-11-12", 50, 45))
+        self.je_tag = {"2026-10-28": tag_roh(80, 0), "2026-10-30": tag_roh(50, 0),
+                       "2026-11-09": tag_roh(50, 0), "2026-11-10": tag_roh(50, 10),
+                       "2026-11-11": tag_roh(50, 40), "2026-11-12": tag_roh(50, 45)}
         self.alt = A.standard_zustand()
-        self.neu = A.format_wechsel_anwenden(self.ziel, self.docs, {}, self.alt)
+        self.neu = A.format_wechsel_anwenden(self.ziel, self.je_tag, self.alt)
 
     def test_neues_format(self):
         self.assertEqual((self.neu["start"], self.neu["sets"], self.neu["name"],
@@ -501,9 +449,9 @@ class Wechsel(unittest.TestCase):
                          ("2026-11-11", ["OP18"], "OP18 Standard", "Roh_mode_0_op18"))
 
     def test_neuer_satz_ab_dem_start(self):
-        satz = A.replay_satz(self.docs, {}, self.neu)
+        satz = A.format_satz_bauen(self.je_tag, self.neu)
         self.assertEqual(satz["partien"], 100)
-        self.assertEqual(satz["name"], "OP18 Standard (from replays)")
+        self.assertEqual(satz["name"], "OP18 Standard")
         self.assertAlmostEqual(A.eb05_anteil(satz, "OP18"), 85 / 100)
         self.assertIsNone(A.eb05_warnung(satz, self.neu))
 
@@ -511,8 +459,8 @@ class Wechsel(unittest.TestCase):
         alte = A.alte_saetze(self.ziel, self.neu)
         self.assertEqual(list(alte), ["Roh_mode_0_op17eb05_alt"])
         satz = alte["Roh_mode_0_op17eb05_alt"]
-        self.assertEqual(satz["partien"], 100)      # 28.10. und 09.11., ohne den Mischtag
-        self.assertEqual(satz["name"], "OP17 + EB05 format (old) (from replays)")
+        self.assertEqual(satz["partien"], 100)      # 30.10. und 09.11., ohne 28.10. und Mischtag
+        self.assertEqual(satz["name"], "OP17 + EB05 format (old)")
         self.assertTrue(os.path.exists(os.path.join(
             self.ziel, "tage", "Roh_mode_0_op17eb05_alt" + A.ALT_ZWISCHEN)))
         self.assertTrue(os.path.exists(os.path.join(
@@ -527,7 +475,7 @@ class Wechsel(unittest.TestCase):
         self.assertFalse(fnmatch.fnmatch("Roh_mode_0_op17eb05_alt" + A.ALT_ZWISCHEN, "*.json.gz"))
 
     def test_kein_zweiter_wechsel(self):
-        self.assertIsNone(A.format_wechsel_erkennen(self.docs, self.neu))
+        self.assertIsNone(A.format_wechsel_erkennen(self.je_tag, self.neu))
 
     def test_wochengrenze_und_reihenfolge_folgen_dem_zustand(self):
         self.assertEqual(A.wochentage(["2026-11-10", "2026-11-11", "2026-11-12"], self.neu),
