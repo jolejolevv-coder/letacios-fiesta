@@ -199,6 +199,18 @@ jobs:
         run: python3 kaizoku_holen.py
         continue-on-error: true
 
+      # Stufe B: Kartenwerte, Starthaende, Zugkurve, Techkarten (vier Abrufe).
+      - name: Kaizoku Wochendateien holen
+        run: python3 kaizoku_wochen.py
+        continue-on-error: true
+
+      # Stufe C: Decklisten der Top 100 bei Kaizoku. Es gehen nur deren Namen an api.cardkaizoku.com
+      # (Freigabe des Nutzers vom 02.11.2026). Im Log stehen nur Zahlen. Etwa jeder vierte Spieler
+      # spielt im Simulator und ist dort zu finden, die uebrigen bleiben ohne Eintrag.
+      - name: Kaizoku Spieler holen
+        run: python3 kaizoku_spieler.py
+        continue-on-error: true
+
       - name: Replays holen
         run: python3 replays_holen.py
         continue-on-error: true

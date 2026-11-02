@@ -190,3 +190,7 @@ Bilanz je Gegnerleader (Spielerseite und Decklisten): Quelle liefert je Liste nu
 ## Kaizoku Stufe A (02.11.2026)
 
 `kaizoku_holen.py` holt manifest, stats und decklist von cdn.cardkaizoku.com (Datensatz op17_lw_p, 3 Abrufe, 0,4 s Abstand) nach `public/kaizoku.json.gz` (nicht im Repo, 97 KB gepackt). Reiter Kaizoku in der App. Decklisten tragen die Bilanz je Gegnerleader. Offen: Stufe B (Hände, Kurve, Matchuptech), Stufe C nur nach Ok; Anzeige im Browser mit echten Daten noch nicht angesehen.
+
+## Stand 02.11.2026 spät, Auftrag "alle drei Stufen Kaizoku"
+
+Nutzer: "Bau alle drei Stufen" (A, B, C) und "erkläre, wo man die Daten in unsere vorhandenen Reiter einbaut". Stufe A ist PR 22 (offen, nicht gemerged). B und C kommen auf denselben Branch. Stufe C (Spielerabfragen `POST api.cardkaizoku.com/search`, `GET /player-stats`) ist damit ausdrücklich freigegeben; es gehen nur Namen der Top 100 hinaus, Ergebnis nur verschlüsselt ins Paket. Dateien in Scratchpad (manifest, cardstats 607 KB, leaderboard 9 KB, matchuptech 458 KB, hands 24 KB, curve 1,1 MB): Formate noch zu lesen. Vorbild für die Formate: github.com/alexfrey317/optcg-data `ingest/sources/kaizoku_curves.py` und `kaizoku_players.py`, nur Idee, kein Code kopieren.
