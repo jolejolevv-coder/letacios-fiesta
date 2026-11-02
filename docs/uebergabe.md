@@ -180,3 +180,7 @@ Schritt "Bestenliste Web API gegen OCR" in `veroeffentlichen.yml`, Skript
 Nach dem Merge eine Woche die Zusammenfassungen der täglichen Läufe lesen, dann Phase 3
 (Umschalten). Der Schritt braucht `SEITEN_PASSWORT`, das es schon gibt. Nicht geprüft: ob
 GitHub Runner von der API geblockt werden (erster Lauf zeigt es).
+
+## Stand 02.11.2026 abends, Phase 3 gebaut
+
+Bestenliste: Action holt zuerst per Web API (`bestenliste_einbauen.py --api`), bei Fehlern bleibt die OCR Liste. Offen: Merge von PR 19 (nur dort läuft die Action), erster Lauf zeigt, ob GitHub Runner zugelassen sind, sonst Abruf auf dem Bazzite. Als Nächstes laut Nutzer: Spielerseite mit Bountyverlauf aus der API und den Decks, gegen die der Spieler verloren hat (Spec nötig). Analyse: docs/analyse-optcg-data-seite.md.

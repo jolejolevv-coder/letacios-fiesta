@@ -41,10 +41,12 @@ Die Top 100 der Bestenliste kommen aus der Web API von `stats.tcgmatchmaking.com
 Phase 0 (erledigt): Probeaufruf, Felder festgehalten.
 Phase 1 (erledigt): `bestenliste_api.py` und Schalter `--api` in `bestenliste_einbauen.py`, Tests grün. Der Schalter ersetzt die Liste wie `--fotos`, ohne `--api` bleibt alles wie vorher.
 Phase 2 (gebaut): Probebetrieb in der GitHub Action, Schritt "Bestenliste Web API gegen OCR" (`werkzeuge/bestenliste_vergleich.py`, `continue-on-error`). Er ändert keine Daten und schreibt nur Zahlen in die Zusammenfassung des Laufs (Namen gleich, ähnlich, anders, user_id Abdeckung, Median Rangabstand und Bountyabstand, Ausreißer), weil die Logs eines öffentlichen Repos öffentlich sind. Läuft nach dem Merge mit dem täglichen Lauf 06:20 UTC. Eine Woche beobachten.
-Phase 3: Umschalten auf die API als erste Quelle. Entscheidung des Nutzers am 02.11.2026: die OCR bleibt als Rückfall und springt ein, wenn die API ausfällt oder die Prüfung (`ApiFehler`) scheitert. Eintrag in Changelog und Übergabe.
+Phase 3 (gebaut am 02.11.2026, ohne die Woche Probebetrieb abzuwarten, auf Wunsch des Nutzers): Umschalten auf die API als erste Quelle. Entscheidung des Nutzers am 02.11.2026: die OCR bleibt als Rückfall und springt ein, wenn die API ausfällt oder die Prüfung (`ApiFehler`) scheitert. Eintrag in Changelog und Übergabe.
 
 ## Open questions
 
 * Wo läuft der Abruf: entschieden am 02.11.2026 für die GitHub Action. Risiko: gemeinsame IP Bereiche und ein enges Rate Limit. Der Probebetrieb zeigt, ob das hält (ein Lauf am Tag, zwei Aufrufe). Scheitert er, bleibt der Bazzite als Weg.
 * Wie oft: einmal täglich nach der OCR Zeit (05:30 UTC) oder öfter? Sein Vorbild holt einmal am Tag.
 * Enthält die Antwort Spielerkennungen, die `user_id` ersetzen könnten?
+
+Phase 3 Umsetzung: In `veroeffentlichen.yml` läuft vor den Spielerdaten erst der Vergleich, dann `bestenliste_einbauen.py --api`. Gelingt der Abruf, ersetzt er die Liste dieses Laufs (nur im Lauf, nicht im Repo). Scheitert er, bleibt die OCR Liste vom Bazzite. Die Wache prüft weiter die Frische der OCR Datei und überwacht damit den Rückfall. Der erste Lauf nach dem Merge zeigt, ob die Runner IPs angenommen werden; wenn nicht, holt der Bazzite die API Liste als Sicherung.

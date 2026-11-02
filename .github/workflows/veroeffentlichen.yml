@@ -139,6 +139,29 @@ jobs:
           echo "  nachgezogen und gepusht, der naechste Schritt nutzt die neuen Nummern"
         continue-on-error: true
 
+      # Bestenliste aus der Web API (specs/features/bestenliste-web-api.md, Phase 3).
+      # Zuerst der Vergleich: er haelt die Top 100 der API gegen die OCR Liste im Repo und
+      # schreibt nur Zahlen in die Zusammenfassung, weil die Logs eines oeffentlichen Repos
+      # oeffentlich sind. Danach ersetzt die API die Liste dieses Laufs. Scheitert der Abruf
+      # (Sperre, 429, geaenderte Form, weniger als 90 Zeilen), schreibt der Schritt nichts
+      # und die OCR Liste vom Bazzite bleibt stehen. Beides muss VOR den Spielerdaten laufen,
+      # die ihre user_ids aus dieser Liste lesen.
+      - name: Bestenliste Web API gegen OCR
+        env:
+          SEITEN_PASSWORT: ${{ secrets.SEITEN_PASSWORT }}
+        run: python3 werkzeuge/bestenliste_vergleich.py
+        continue-on-error: true
+
+      - name: Bestenliste aus der Web API
+        env:
+          SEITEN_PASSWORT: ${{ secrets.SEITEN_PASSWORT }}
+        run: |
+          if python3 bestenliste_einbauen.py --api; then
+            echo "## Bestenliste: Web API" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## Bestenliste: Web API ausgefallen, OCR Liste bleibt" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       # Die Spielerdaten lesen die user_ids aus der Bestenliste, die der Bazzite ins
       # Repo gelegt hat. Die liegt nur verschluesselt vor, deshalb braucht auch dieser Schritt das
       # Seitenpasswort.
@@ -167,16 +190,6 @@ jobs:
           OPBOUNTY_PASSWORT: ${{ secrets.OPBOUNTY_PASSWORT }}
           SEITEN_PASSWORT: ${{ secrets.SEITEN_PASSWORT }}
         run: python3 frische_partien.py
-        continue-on-error: true
-
-      # Probebetrieb der Bestenliste aus der Web API (specs/features/bestenliste-web-api.md,
-      # Phase 2). Er aendert nichts an den Daten der Seite. Er haelt die Top 100 der API
-      # gegen die OCR Liste im Repo und schreibt nur Zahlen in die Zusammenfassung, weil die
-      # Logs eines oeffentlichen Repos oeffentlich sind.
-      - name: Bestenliste Web API gegen OCR
-        env:
-          SEITEN_PASSWORT: ${{ secrets.SEITEN_PASSWORT }}
-        run: python3 werkzeuge/bestenliste_vergleich.py
         continue-on-error: true
 
       - name: Replays holen
