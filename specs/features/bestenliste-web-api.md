@@ -41,7 +41,7 @@ Die Top 100 der Bestenliste kommen aus der Web API von `stats.tcgmatchmaking.com
 Phase 0 (erledigt): Probeaufruf, Felder festgehalten.
 Phase 1 (erledigt): `bestenliste_api.py` und Schalter `--api` in `bestenliste_einbauen.py`, Tests grün. Der Schalter ersetzt die Liste wie `--fotos`, ohne `--api` bleibt alles wie vorher.
 Phase 2 (gebaut): Probebetrieb in der GitHub Action, Schritt "Bestenliste Web API gegen OCR" (`werkzeuge/bestenliste_vergleich.py`, `continue-on-error`). Er ändert keine Daten und schreibt nur Zahlen in die Zusammenfassung des Laufs (Namen gleich, ähnlich, anders, user_id Abdeckung, Median Rangabstand und Bountyabstand, Ausreißer), weil die Logs eines öffentlichen Repos öffentlich sind. Läuft nach dem Merge mit dem täglichen Lauf 06:20 UTC. Eine Woche beobachten.
-Phase 3: Umschalten auf die API, OCR als Rückfall, Eintrag in Changelog und Übergabe.
+Phase 3: Umschalten auf die API als erste Quelle. Entscheidung des Nutzers am 02.11.2026: die OCR bleibt als Rückfall und springt ein, wenn die API ausfällt oder die Prüfung (`ApiFehler`) scheitert. Eintrag in Changelog und Übergabe.
 
 ## Open questions
 
