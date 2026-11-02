@@ -158,3 +158,23 @@ und nie ausgegeben.
 * Nie `standalone` setzen.
 * Keine Gedankenstriche in Texten.
 * Mihawk OP14-020 ignorieren.
+
+## Stand 02.11.2026, Bestenliste per Web API
+
+Spec `specs/features/bestenliste-web-api.md` (freigegeben). Phase 0 und 1 gebaut auf Branch
+`claude/recherche-github-tools-69b80a`: `bestenliste_api.py`, Schalter `--api` in
+`bestenliste_einbauen.py`, 12 Tests. `playerId` der API ist die `user_id`. Offen: Phase 2
+(Parallelbetrieb, Vergleich gegen die OCR Liste), Entscheidung wo der Abruf läuft
+(Empfehlung Bazzite), dann Phase 3 Umschalten. Replay Gefühl und Kaizoku Daten haben
+Entwürfe in `specs/features/`. Recherche: `docs/recherche-github-tools.md`.
+
+Entscheidung 02.11.2026: Der Abruf der Bestenliste läuft in der GitHub Action. Phase 2 gebaut:
+Schritt "Bestenliste Web API gegen OCR" in `veroeffentlichen.yml`, Skript
+`werkzeuge/bestenliste_vergleich.py` (nur Zahlen im Log, weil das Repo öffentlich ist).
+Nach dem Merge eine Woche die Zusammenfassungen der täglichen Läufe lesen, dann Phase 3
+(Umschalten). Der Schritt braucht `SEITEN_PASSWORT`, das es schon gibt. Nicht geprüft: ob
+GitHub Runner von der API geblockt werden (erster Lauf zeigt es).
+
+## Stand 02.11.2026 abends, Phase 3 gebaut
+
+Bestenliste: Action holt zuerst per Web API (`bestenliste_einbauen.py --api`), bei Fehlern bleibt die OCR Liste. Offen: Merge von PR 19 (nur dort läuft die Action), erster Lauf zeigt, ob GitHub Runner zugelassen sind, sonst Abruf auf dem Bazzite. Als Nächstes laut Nutzer: Spielerseite mit Bountyverlauf aus der API und den Decks, gegen die der Spieler verloren hat (Spec nötig). Analyse: docs/analyse-optcg-data-seite.md.
