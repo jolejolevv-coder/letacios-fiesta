@@ -48,6 +48,14 @@ selben Reiter, aus allen anderen in Decklists. Text 3 `#7c828d` hat 5.16 auf Gru
 auf `--flaeche-2`; dort steht er kaum. Schriften laden latin 83 KB statt vorher 130 KB; das CSS
 wächst gzip um etwa 1 KB.
 
+## Signatur 02.11.2026 (offen, wartet auf Freigabe)
+
+Feinschliff ist live (PR 18, c529b18). Nutzer findet die Seite generisch. Vier Richtungen gezeigt
+(`.impeccable/vorschau/signatur.html`): 1 Leaderfarbe und 3 Fiesta Marke ja, 2 Bounty Plakat
+(„tacky“) und 4 nein. Kombination als `.impeccable/vorschau/signatur-2.html`, Spec Entwurf
+`specs/features/signatur.md`. Nächster Schritt: Freigabe der Spec abwarten, dann Phase 1 auf
+neuem Branch von origin/main (der Worktree Branch ist gemergt und liegt hinter main, PR 19 und 20).
+
 ## Feinschliff nach Bewertung 02.11.2026
 
 Redesign ist live (PR 17, fe1ff70). Bewertung ergab 7.2 von 10. Auftrag des Nutzers: Bewertung so
