@@ -18,7 +18,7 @@ import sys
 import time
 
 from bestenliste_api import ApiFehler, anfrage
-from kaizoku_holen import ABSTAND_S, BASIS, DATENSATZ, PUBLIC
+from kaizoku_holen import ABSTAND_S, BASIS, DATENSAETZE, DATENSATZ
 
 KURVE_SATZ = "lw"              # die Zugkurve führt nur die letzte Woche
 KURVE_MODUS = 0                # 0 ist Ranked
@@ -28,9 +28,8 @@ TECH_JE_GEGNER = 3
 TECH_GEGNER_JE_LEADER = 12     # Gegner mit den meisten Techkarten Treffern
 KURVE_ZUEGE = 8                # Zug 1 bis 8, spätere Züge sind selten und streuen
 MINDEST_LEADER = 30
-ZIEL = os.path.join(PUBLIC, "kaizoku_b.json.gz")
 # Zu jedem Datensatz aus kaizoku_holen die Datei mit den Kartenteilen.
-ZIELE = {DATENSATZ: ZIEL, DATENSATZ + "_top20": os.path.join(PUBLIC, "kaizoku_top_b.json.gz")}
+ZIELE = {datensatz: ziel[:-len(".json.gz")] + "_b.json.gz" for datensatz, ziel in DATENSAETZE.items()}
 
 
 def pfad_holen(manifest, art, satz):
