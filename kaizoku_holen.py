@@ -26,7 +26,10 @@ DATENSATZ = "eb05_lw_p"        # aktuelle Woche, Standardformat OP17 + EB05 (bis
 ABSTAND_S = 0.4                # Pause zwischen zwei Abrufen, wie im Vorbild
 MINDEST_LEADER = 30            # weniger gilt als kaputte Antwort
 LISTEN_JE_LEADER = 20          # Kaizoku führt je Leader bis zu 20 beste und 20 meistgespielte
-ZIEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "public", "kaizoku.json.gz")
+PUBLIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "public")
+ZIEL = os.path.join(PUBLIC, "kaizoku.json.gz")
+# Datensatz -> Zieldatei. Der zweite ist dieselbe Woche, nur die besten Spieler (Kaizoku "top20").
+DATENSAETZE = {DATENSATZ: ZIEL, DATENSATZ + "_top20": os.path.join(PUBLIC, "kaizoku_top.json.gz")}
 
 
 def pfade_holen(manifest, datensatz=DATENSATZ):
@@ -127,20 +130,27 @@ def holen(datensatz=DATENSATZ, schlafen=time.sleep, **hilfen):
     return paket_bauen(stats, decklisten, stand, datensatz)
 
 
-def main():
-    try:
-        paket = holen()
-    except ApiFehler as fehler:
-        print(f"  Kaizoku nicht geholt: {fehler}", file=sys.stderr)
-        return 1
-    os.makedirs(os.path.dirname(ZIEL), exist_ok=True)
+def schreiben(datensatz, ziel):
+    paket = holen(datensatz)
+    os.makedirs(os.path.dirname(ziel), exist_ok=True)
     roh = json.dumps(paket, ensure_ascii=False, separators=(",", ":")).encode()
-    with gzip.open(ZIEL, "wb", compresslevel=9) as datei:
+    with gzip.open(ziel, "wb", compresslevel=9) as datei:
         datei.write(roh)
     listen = sum(len(e["listen"]) for e in paket["leader"])
     print(f"  Kaizoku {paket['datensatz']} vom {paket['stand']}: {len(paket['leader'])} Leader, "
-          f"{listen} Listen, {len(roh) // 1024} KB roh, {os.path.getsize(ZIEL) // 1024} KB gepackt")
-    return 0
+          f"{listen} Listen, {len(roh) // 1024} KB roh, {os.path.getsize(ziel) // 1024} KB gepackt")
+
+
+def main():
+    """Jeder Datensatz einzeln: fehlt einer, bleibt der andere."""
+    fehlgeschlagen = 0
+    for datensatz, ziel in DATENSAETZE.items():
+        try:
+            schreiben(datensatz, ziel)
+        except ApiFehler as fehler:
+            print(f"  Kaizoku {datensatz} nicht geholt: {fehler}", file=sys.stderr)
+            fehlgeschlagen += 1
+    return 1 if fehlgeschlagen == len(DATENSAETZE) else 0
 
 
 if __name__ == "__main__":

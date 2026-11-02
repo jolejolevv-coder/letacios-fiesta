@@ -1,7 +1,7 @@
 // Tests fuer den Kaizoku Adapter in src/daten.js: Form wie bei aktualisieren.py eindampfen.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { kaizokuZuSatz, verschmelzen } from "../src/daten.js";
+import { istKaizokuQuelle, kaizokuZuSatz, verschmelzen } from "../src/daten.js";
 
 const roh = {
   stand: "20261102",
@@ -25,6 +25,7 @@ test("Adapter bildet Leader auf die eigene Form ab", () => {
   assert.equal(e.fw, 60);
   assert.equal(e.sw, 50);
   assert.equal(s.quelle, "kaizoku");
+  assert.equal(s.stand, "2026-11-02");
 });
 
 test("verschmelzen liefert Gegner, Listen und Bilanz je Gegner", () => {
@@ -48,4 +49,13 @@ test("Leader ohne Siegquote nach Sitz bekommt Nullen", () => {
   const e = kaizokuZuSatz({ leader: [{ id: "OP01-001", m: 10, w: 5, first: null, second: null }] }).leader[0];
   assert.equal(e.fw + e.fl + e.sw + e.sl, 0);
   assert.deepEqual(e.listen, []);
+});
+
+test("zweite Quelle traegt Schluessel und Namen der besten Spieler", () => {
+  const s = kaizokuZuSatz(roh, "kaizoku_top");
+  assert.equal(s.quelle, "kaizoku_top");
+  assert.match(s.name, /top players/);
+  assert.equal(verschmelzen([s], s.name).quelle, "kaizoku_top");
+  assert.equal(istKaizokuQuelle("kaizoku_top"), true);
+  assert.equal(istKaizokuQuelle("Roh_mode_0_3000"), false);
 });

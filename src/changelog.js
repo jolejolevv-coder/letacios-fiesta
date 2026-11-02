@@ -6,7 +6,7 @@ export const CHANGELOG = [
   {
     tag: "2026-11-02",
     punkte: [
-      "Card Kaizoku is now a data set you pick under Source instead of a tab of its own. Decklists, matchups, the matrix and the rankings then show Kaizoku's numbers, with card stats, opening hands, turn plays and tech cards for each leader.",
+      "Card Kaizoku is now a data set you pick under Source instead of a tab of its own, for the current OP17 + EB05 Standard format, for all players or only the top players. Decklists, matchups, the matrix and the rankings then show Kaizoku's numbers, with card stats, opening hands, turn plays and tech cards for each leader.",
       "New look: a calmer dark design with thin lines instead of stripes, key figures as tiles, framed tables and numbers in a monospaced font.",
       "Search any leader by name or card number with the search field at the top, or press Cmd K (Ctrl K on Windows). Enter opens the leader in the current tab.",
       "On the phone the tabs now sit in a bar at the bottom, within reach of your thumb. More holds the rest.",

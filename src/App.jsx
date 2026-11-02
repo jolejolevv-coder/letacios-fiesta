@@ -14,8 +14,8 @@ import {
   holen,
   kartenLaden,
   KARTE,
-  KAIZOKU_B_DATEI,
-  KAIZOKU_SCHLUESSEL,
+  KAIZOKU_QUELLEN,
+  istKaizokuQuelle,
   kaizokuLaden,
   kennung,
   metacoachHolen,
@@ -563,7 +563,9 @@ function Quelle({ verzeichnis, wahl, setWahl, laedt }) {
                   {s.name} ({fmtZahl(s.partien)} games)
                 </option>
               ))}
-              <option value={KAIZOKU_SCHLUESSEL}>Card Kaizoku, last week (other source)</option>
+              {Object.entries(KAIZOKU_QUELLEN).map(([k, q]) => (
+                <option key={k} value={k}>{q.name} (other source)</option>
+              ))}
             </select>
           </label>
         </div>
@@ -3306,11 +3308,11 @@ function kzKombi(namen, kombi) {
 /* Kopf der Kaizoku Teile: sagt, dass die Zahlen nicht unsere sind. */
 function KaizokuHinweis({ satz }) {
   const stand = satz.stand
-    ? `${satz.stand.slice(6, 8)}.${satz.stand.slice(4, 6)}.${satz.stand.slice(0, 4)}` : "";
+    ? `${satz.stand.slice(8, 10)}.${satz.stand.slice(5, 7)}.${satz.stand.slice(0, 4)}` : "";
   return (
     <p className="lesart kz-hinweis">
-      Source: Card Kaizoku{stand ? <>, as of <strong>{stand}</strong></> : null}, last week's games
-      ({fmtZahl(satz.partien)} in total). Not our numbers: another source and another sample. First and second
+      Source: Card Kaizoku{stand ? <>, as of <strong>{stand}</strong></> : null}, {satz.name.replace("Card Kaizoku, ", "")}
+      ({fmtZahl(satz.partien)} games in total). Not our numbers: another source and another sample. First and second
       games per leader are estimated as half each, there is no split by seat per opponent or per list, and no
       game duration.
     </p>
@@ -3659,8 +3661,8 @@ export default function App() {
   const [namen, setNamen] = useState({});
   // null heisst "noch nicht geholt", false heisst "nicht da". Beides ist erlaubt.
   const [beste, setBeste] = useState(null);
-  // Stufe B von Kaizoku (Karten, Hand, Kurve, Tech); null heisst "noch nicht geholt".
-  const [kzB, setKzB] = useState(null);
+  // Stufe B von Kaizoku (Karten, Hand, Kurve, Tech), je Quelle; fehlt der Schluessel, ist sie noch nicht geholt.
+  const [kzBAlle, setKzBAlle] = useState({});
   const [kzSpieler, setKzSpieler] = useState(null);
   const [spielerAlle, setSpielerAlle] = useState(null);
   const [spielerId, setSpielerId] = useState(
@@ -3782,17 +3784,18 @@ export default function App() {
   }, [entsperrt, reiter, beste]);
 
   /* Kaizoku Stufe B, nur wenn Kaizoku die Quelle ist. Eigene Datei, darf fehlen. */
-  const istKaizoku = !!satz && satz.quelle === KAIZOKU_SCHLUESSEL;
+  const kzQuelle = satz ? satz.quelle : "";
+  const istKaizoku = istKaizokuQuelle(kzQuelle);
+  const kzB = istKaizoku ? kzBAlle[kzQuelle] ?? null : null;
   useEffect(() => {
-    if (entsperrt !== true || kzB !== null || !istKaizoku) return undefined;
+    if (entsperrt !== true || !istKaizoku || kzBAlle[kzQuelle] !== undefined) return undefined;
     let abgebrochen = false;
-    holen(KAIZOKU_B_DATEI)
-      .then((d) => !abgebrochen && setKzB(d))
-      .catch(() => !abgebrochen && setKzB({ leader: {} }));
+    const setzen = (d) => !abgebrochen && setKzBAlle((alle) => ({ ...alle, [kzQuelle]: d }));
+    holen(KAIZOKU_QUELLEN[kzQuelle].bDatei).then(setzen).catch(() => setzen({ leader: {} }));
     return () => {
       abgebrochen = true;
     };
-  }, [entsperrt, kzB, istKaizoku]);
+  }, [entsperrt, kzQuelle, istKaizoku, kzBAlle]);
 
   /* Kaizoku Zahlen der Top 100 (Stufe C). Eigene Datei, darf fehlen. */
   useEffect(() => {
@@ -3869,8 +3872,8 @@ export default function App() {
     setFehlerText("");
     const auftrag =
       wahl.art === "satz"
-        ? wahl.satz === KAIZOKU_SCHLUESSEL
-          ? kaizokuLaden()
+        ? istKaizokuQuelle(wahl.satz)
+          ? kaizokuLaden(wahl.satz)
           : (() => {
             const s = (verzeichnis.saetze || []).find((x) => x.schluessel === wahl.satz)
               || (verzeichnis.saetze || [])[0];
