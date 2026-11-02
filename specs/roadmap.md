@@ -13,6 +13,8 @@ Stand 29.10.2026. Ausführlich in `docs/uebergabe.md`.
 * Format OP17 plus EB05 (`specs/features/format-op17-eb05.md`): Satz „OP17 + EB05 Standard“
   ab 27.10., OP17 als „format (old)“ (PR 7). Heroines Event aus dem neuen Satz (PR 8). Vom 28.10. bis 02.11. aus Replays (PR 10), seitdem nur aus CDN mode_0 ab 29.10. (`format-aus-cdn.md`).
 * Update Notice auf dem Bazzite wird automatisch gesetzt (PR 10).
+* Redesign „Werkzeug“ (`specs/features/redesign.md`): Linear / Raycast, Geist, ⌘K Leadersuche,
+  untere Leiste am Handy. Auf Branch `claude/website-redesign-bc8edc`, wartet auf Push und Merge.
 
 ## In Arbeit und in Planung
 
@@ -34,3 +36,12 @@ Stand 29.10.2026. Ausführlich in `docs/uebergabe.md`.
 2. Falsche Annahmen: der Merge von PR 1 baut nicht (paths ignore), und rAF im verborgenen
    Pane steht still, obwohl `document.hidden` false meldet.
 3. Besser spezifizieren: bei jeder neuen Spielversion vorher klären, wer die Notice wegklickt.
+
+## Rückblick Redesign 02.11.2026
+
+1. Gut: Vergleichsseite mit vier Richtungen vor der Spec, dann v0 am echten Code. Die Wahl war
+   danach schnell, und Tokens mit alten Namen hielten alle Ansichten zusammen.
+2. Falsche Annahmen: Geist Mono ist breiter als Saira, feste Spaltenbreiten brachen um
+   (Leaderleiste, Anteil in Rankings). Der Browser Pane zeigt zudem alte Stände, wenn der
+   Nutzer im selben Tab klickt.
+3. Besser spezifizieren: bei einem Schriftwechsel vorher alle festen Breiten für Zahlen auflisten.
