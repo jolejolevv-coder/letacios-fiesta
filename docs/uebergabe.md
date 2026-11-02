@@ -178,3 +178,7 @@ GitHub Runner von der API geblockt werden (erster Lauf zeigt es).
 ## Stand 02.11.2026 abends, Phase 3 gebaut
 
 Bestenliste: Action holt zuerst per Web API (`bestenliste_einbauen.py --api`), bei Fehlern bleibt die OCR Liste. Offen: Merge von PR 19 (nur dort läuft die Action), erster Lauf zeigt, ob GitHub Runner zugelassen sind, sonst Abruf auf dem Bazzite. Als Nächstes laut Nutzer: Spielerseite mit Bountyverlauf aus der API und den Decks, gegen die der Spieler verloren hat (Spec nötig). Analyse: docs/analyse-optcg-data-seite.md.
+
+## Stand 02.11.2026 spät
+
+PR 19 gemerged, erster Lauf mit Web API grün (100 Spieler, 100 mit user_id; 88 mit Spielerdaten, vorher 73; 74 Spieler mit Replays, 235 Replays im Bestand). PR 20: Winrate aus API Summen, Zeitspalte ausgeblendet ohne Daten, Kartenbilder zuerst vom CDN static.dotgg.gg (WebP, preconnect), Rückfall auf eigene JPG. Als Nächstes: Spec Spielerseite (Bountyverlauf aus API, Niederlagen gegen Decks).

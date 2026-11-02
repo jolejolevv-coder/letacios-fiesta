@@ -26,6 +26,13 @@ export function bildpfad(id) {
   return basis() + "img/" + (ohneX ? ohneX[1] : id) + ".jpg";
 }
 
+/* Schnelle Quelle fuer Kartenbilder: ein CDN mit WebP, wie die Seite optcg-data sie nutzt.
+ * Fehlt dort ein Bild, faellt die Anzeige auf die eigene Datei (bildpfad) zurueck. */
+export const BILD_CDN = "https://static.dotgg.gg/onepiece/card/";
+export function bildpfadCdn(id) {
+  return BILD_CDN + bildpfad(id).replace(/^.*\/img\//, "").replace(/\.jpg$/, "") + ".webp";
+}
+
 export const KARTE = /([A-Z]{2,4}\d{2}-\d{3}|P-\d{3})/;
 
 export function kennung(text) {

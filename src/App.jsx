@@ -6,6 +6,7 @@ import {
   anmelden,
   anzahl,
   bildpfad,
+  bildpfadCdn,
   deckSchluessel,
   grossesBild,
   holen,
@@ -118,6 +119,8 @@ function Zeichen({ name, groesse = 18 }) {
 
 function Bild({ id, className = "", alt = "", breite, hoehe }) {
   const [kaputt, setKaputt] = useState(false);
+  // Erst das CDN, bei einem Fehler die eigene Datei, danach der Platzhalter.
+  const [eigene, setEigene] = useState(false);
   // Ohne Kennung (etwa ein unbekannter Leader in einer Partie) steht ein leerer Platzhalter.
   if (!id) return <span className={className + " kb-kaputt"} aria-hidden="true" />;
   if (kaputt) {
@@ -131,14 +134,14 @@ function Bild({ id, className = "", alt = "", breite, hoehe }) {
   }
   return (
     <img
-      src={bildpfad(id)}
+      src={eigene ? bildpfad(id) : bildpfadCdn(id)}
       alt={alt}
       width={breite}
       height={hoehe}
       loading="lazy"
       decoding="async"
       className={className}
-      onError={() => setKaputt(true)}
+      onError={() => (eigene ? setKaputt(true) : setEigene(true))}
     />
   );
 }
@@ -1096,13 +1099,17 @@ function Bestenliste({ daten, namen, oeffnen }) {
       daten.spieler.map((e) => {
         const leader = (e.leader || []).filter((l) => l.leader);
         if (e.quelle === "ocr") return { ...e, leader, siege: null, partien: null, wr: null };
-        const siege = leader.reduce((a, l) => a + (l.siege || 0), 0);
-        const partien = leader.reduce((a, l) => a + (l.partien || 0), 0);
+        /* Die Web API liefert Siege und Partien je Spieler selbst; aeltere Mitschnitte nur je Leader. */
+        const eigene = e.quelle === "api";
+        const siege = eigene ? e.siege : leader.reduce((a, l) => a + (l.siege || 0), 0);
+        const partien = eigene ? e.partien : leader.reduce((a, l) => a + (l.partien || 0), 0);
         return { ...e, leader, siege, partien, wr: proz(siege, partien) };
       }),
     [daten]
   );
   const mitZahlen = angereichert.some((e) => e.partien);
+  /* Spielzeit steht nur in Mitschnitten, die Web API und die OCR kennen sie nicht. */
+  const mitZeit = angereichert.some((e) => e.spielzeit);
 
   const spieler = useMemo(() => {
     const s = suche.trim().toLowerCase();
@@ -1122,7 +1129,7 @@ function Bestenliste({ daten, namen, oeffnen }) {
   const leaderWr = (l) => (l.winrate != null ? l.winrate : l.partien ? proz(l.siege, l.partien) : null);
   const kopf = (t, k) => <SortKopf text={t} schluessel={k} sortiert={sortiert} setSortiert={setSortiert} />;
   const ocr = angereichert.some((e) => e.quelle === "ocr");
-  const klasse = "tafel ladder" + (mitZahlen ? " mit-zahlen" : "");
+  const klasse = "tafel ladder" + (mitZahlen ? " mit-zahlen" : "") + (mitZeit ? "" : " ohne-zeit");
 
   return (
     <>
@@ -1141,11 +1148,11 @@ function Bestenliste({ daten, namen, oeffnen }) {
         </label>
       </div>
       <Abschnitt titel="Players by rank">
-        <div className={"tafel-spalten spalten ladder" + (mitZahlen ? " mit-zahlen" : "")}>
+        <div className={"tafel-spalten spalten ladder" + (mitZahlen ? " mit-zahlen" : "") + (mitZeit ? "" : " ohne-zeit")}>
           <SortKopf text="Nr" schluessel="rang" sortiert={sortiert} setSortiert={setSortiert} rechts={false} absteigendZuerst={false} />
           <span>Player</span>
           {kopf("Bounty", "bounty")}
-          {mitZahlen ? <>{kopf("Games", "partien")}{kopf("Win rate", "wr")}{kopf("Time", "spielzeit")}</> : null}
+          {mitZahlen ? <>{kopf("Games", "partien")}{kopf("Win rate", "wr")}{mitZeit ? kopf("Time", "spielzeit") : null}</> : null}
           <span>Most played</span><span />
         </div>
         <ol className={klasse}>
@@ -1174,7 +1181,7 @@ function Bestenliste({ daten, namen, oeffnen }) {
                       <Zelle k="z-partien" label="Games" wert={e.partien == null ? "–" : fmtZahl(e.partien)} />
                       <Zelle k="z-wr" label="Win rate" wert={e.partien ? e.wr.toFixed(1) + " %" : "–"}
                              klasse={e.partien ? wrKlasse(e.wr) : "wr leer"} />
-                      <Zelle k="z-zeit" label="Time" wert={e.partien == null ? "–" : stunden(e.spielzeit || 0)} />
+                      {mitZeit ? <Zelle k="z-zeit" label="Time" wert={e.partien == null ? "–" : stunden(e.spielzeit || 0)} /> : null}
                     </>
                   ) : null}
                   <span className={"aufstellung" + (ls.length > 1 ? " mehrere" : "")}>
