@@ -360,3 +360,24 @@ die Zuordnung zu bekannten Namen korrigiert, wenn der Spieler bekannt ist. Laufz
 dem Bazzite rund vier Minuten. Werkzeuge: Tesseract aus Homebrew
 (`/home/linuxbrew/.linuxbrew/bin/tesseract`), Pillow; Leaderbilder im Zwischenspeicher
 `~/mitschnitt/leaderbilder`, geholt von der eigenen Seite.
+
+### Nachtrag 04.11.2026: Desktop Meldungen über der Bestenliste
+
+Der Lauf um 06:30 Ortszeit brach mit „Bestenliste nach 300 Sekunden nicht offen“ ab, obwohl
+die Liste offen war. Rechts unten standen vier Meldungen „Some System Updates Failed“ von uupd
+(04:15 bis 04:20) über dem Knopf „nächste Seite“, an dem das Skript die offene Liste erkennt.
+Plasma lässt Meldungen stehen, solange niemand am Rechner ist. Sie verdecken außerdem die
+rechte Spalte, die die OCR liest. Die Wache der Action schlug um 14:47 UTC an (Bestenliste 33
+Stunden alt).
+
+Abhilfe: `werkzeuge/meldungen_still.py` läuft vor dem Spielstart im Hintergrund an. Es bittet
+per `Inhibit` um Ruhe, schließt alle stehenden Meldungen per `CloseNotification` und schließt
+danach alle zehn Sekunden die neuen, weil Plasma Meldungen der Dringlichkeit „critical“ trotz
+`Inhibit` zeigt. `aufraeumen` beendet es. Auf dem Bazzite von Hand geprüft. Geschlossene
+Meldungen fehlen danach auch im Verlauf von Plasma.
+
+Ursache der Meldungen: Das Bazzite Image ab dem 27.10. bringt Plasma 6.8, das die X11 Sitzung
+ersetzt. Die nachinstallierten Pakete `kwin-x11`, `plasma-workspace-x11` und
+`xorg-x11-server-Xorg` lassen sich damit nicht mehr auflösen, das Systemupdate scheitert jede
+Nacht. Der Bazzite bleibt auf 44.20261026 stehen. Ob X11 bleibt oder der Mitschnitt auf Wayland
+umzieht, entscheidet der Nutzer.
