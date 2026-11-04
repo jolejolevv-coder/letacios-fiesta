@@ -56,6 +56,8 @@ jobs:
     # Damit die Wache am Ende sagen kann, WARUM die Liste fehlt.
     outputs:
       spielversion: ${{ steps.spielversion.outcome }}
+      # "api" oder "ocr": woher die veroeffentlichte Bestenliste dieses Laufs stammt.
+      bestenliste_quelle: ${{ steps.bestenliste_api.outputs.quelle }}
     steps:
       - uses: actions/checkout@v4
 
@@ -153,13 +155,16 @@ jobs:
         continue-on-error: true
 
       - name: Bestenliste aus der Web API
+        id: bestenliste_api
         env:
           SEITEN_PASSWORT: ${{ secrets.SEITEN_PASSWORT }}
         run: |
           if python3 bestenliste_einbauen.py --api; then
             echo "## Bestenliste: Web API" >> "$GITHUB_STEP_SUMMARY"
+            echo "quelle=api" >> "$GITHUB_OUTPUT"
           else
             echo "## Bestenliste: Web API ausgefallen, OCR Liste bleibt" >> "$GITHUB_STEP_SUMMARY"
+            echo "quelle=ocr" >> "$GITHUB_OUTPUT"
           fi
 
       # Die Spielerdaten lesen die user_ids aus der Bestenliste, die der Bazzite ins
@@ -262,12 +267,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.bauen.outputs.spielversion }}
+          QUELLE: ${{ needs.bauen.outputs.bestenliste_quelle }}
         run: |
           set -euo pipefail
+          # Seit dem 02.11.2026 kommt die Bestenliste der Seite aus der Web API; die OCR
+          # Datei vom Bazzite ist nur der Rueckfall. Gemessen wird hier ihr Alter. Hat die
+          # API in diesem Lauf geliefert, ist die Seite frisch, und ein alter Rueckfall ist
+          # nur eine Warnung (so am 04.11.2026). Rot wird es erst, wenn die Seite selbst
+          # die alte OCR Liste zeigt.
           DATEI="public/bestenliste.json.gz.enc"
-          # Der Bazzite pusht taeglich um 05:30 UTC, das Nachfassen um 06:30. 30 Stunden
-          # heisst: ein ausgefallener Tag faellt am selben Tag auf, sobald der geplante
-          # Lauf ihn sieht, aber ein Lauf zwischen den beiden Terminen meldet noch nichts.
+          # Der Bazzite pusht taeglich um 05:30 UTC. 30 Stunden heisst: ein ausgefallener
+          # Tag faellt am selben Tag auf, sobald der geplante Lauf ihn sieht.
           MAX_STUNDEN=30
 
           # Gefragt ist nicht, ob etwas lief, sondern ob die Datei frisch ist.
@@ -286,7 +296,8 @@ jobs:
             echo "| | |"
             echo "|---|---|"
             echo "| Letzter Stand | ${STAND} |"
-            echo "| Alter | ${STUNDEN} Stunden |"
+            echo "| Alter der OCR Liste | ${STUNDEN} Stunden |"
+            echo "| Quelle der Seite | ${QUELLE:-unbekannt} |"
             echo "| Spielversion | ${VERSION} |"
           } >> "${GITHUB_STEP_SUMMARY}"
 
@@ -302,7 +313,13 @@ jobs:
             } >> "${GITHUB_STEP_SUMMARY}"
           fi
 
-          if [ "${STUNDEN}" -gt "${MAX_STUNDEN}" ]; then
+          if [ "${STUNDEN}" -gt "${MAX_STUNDEN}" ] && [ "${QUELLE}" = "api" ]; then
+            echo "::warning::Die OCR Liste vom Bazzite ist ${STUNDEN} Stunden alt. Die Seite zeigt die frische Liste der Web API, nur der Rueckfall ist veraltet."
+            {
+              echo ""
+              echo "**Rueckfall veraltet.** Die Seite ist frisch (Web API), die OCR Liste vom Bazzite ist ${STUNDEN} Stunden alt."
+            } >> "${GITHUB_STEP_SUMMARY}"
+          elif [ "${STUNDEN}" -gt "${MAX_STUNDEN}" ]; then
             echo ""
             echo "Die Bestenliste ist ${STUNDEN} Stunden alt, erlaubt sind ${MAX_STUNDEN}."
             echo "Die Seite ist trotzdem veroeffentlicht, sie zeigt nur alte Zahlen."

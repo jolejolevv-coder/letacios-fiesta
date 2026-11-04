@@ -199,3 +199,14 @@ Decklists zeigen bei Quelle Kaizoku keine Kartenwerte, Starthand und Zugkurve me
 Kaizoku Auswahl (02.11.2026, spaeter): fuenf Quellen statt zwei: EB05 (OP17 + EB05 Standard) alle und top 20, OP17 Standard alle, top 20 und top 10 (`eb05_lw_p_top10` gibt es bei Kaizoku nicht). Dateien jetzt `kaizoku_<datensatz>.json.gz` und `..._b.json.gz`, Schluessel in der Quellenwahl `kaizoku_<datensatz>`. Die Dateien `kaizoku.json.gz`, `kaizoku_b.json.gz`, `kaizoku_top*.gz` entfallen. Decklists zeigen bei Kaizoku nur den Quellenhinweis, keine Kartenwerte, Starthand, Zugkurve. Unsere eigenen Saetze (alte Formate) sind unveraendert; Kaizoku hat auch op15, op16 und weitere Formate im Manifest, nicht eingebaut.
 
 Guide ohne Kaizoku (02.11.2026, Entscheidung des Nutzers): Kaizoku kommt nicht in den Guide. Zugkurve, Starthand und Kartenwerte aus `kaizoku_*_b.json.gz` bleiben ungenutzt; nur `tech` wird in Matchups gebraucht. Die frueheren Notizen "Zugkurve fuer den Guide" sind damit erledigt.
+
+## Stand 04.11.2026, Wache und Meldungen
+
+Lauf 41849437102 war rot, die Seite aber aktuell (Web API). Die Wache maß nur das Alter der OCR
+Datei vom Bazzite. Jetzt kennt sie die Quelle (`bestenliste_quelle`): API geliefert heißt grün
+mit Warnung. Der Bazzite Lauf scheiterte an vier uupd Meldungen über „nächste Seite“; neu ist
+`werkzeuge/meldungen_still.py`, im Mitschnitt eingebunden. Ursache der Meldungen: Bazzite Image
+mit Plasma 6.8 verträgt die nachinstallierten X11 Pakete nicht, das Systemupdate steht seit dem
+27.10. (Bazzite auf 44.20261026). Entscheidung des Nutzers offen: X11 behalten oder Mitschnitt
+auf Wayland. Guide lernt auf Wunsch weiter ab 24.09., keine neue Meta (Entscheidung 02.11.).
+Alles auf Branch `claude/meldungen-still`, samt Logzeile „Formatsatz aus dem CDN“.

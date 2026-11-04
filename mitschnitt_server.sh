@@ -65,6 +65,7 @@ NUR_FOTOS=0               # nur die Seiten fotografieren, ohne Pull, Auswertung 
 [ "${1:-}" = "--nur-fotos" ] && NUR_FOTOS=1 && NUR_PRUEFEN=1
 
 EINGESCHALTET=""          # Ausgang, den das Skript selbst eingeschaltet hat
+STILLE_PID=""             # Prozess von meldungen_still.py, solange er Meldungen fernhaelt
 
 X_FRIST=15                # Sekunden fuer jeden einzelnen X-Aufruf, siehe x_aufruf
 
@@ -100,9 +101,16 @@ bildschirm_zuruecksetzen() {
   EINGESCHALTET=""
 }
 
+meldungen_freigeben() {
+  [ -z "$STILLE_PID" ] && return 0
+  kill "$STILLE_PID" 2>/dev/null
+  STILLE_PID=""
+}
+
 aufraeumen() {
   spiel_beenden
   bildschirm_zuruecksetzen
+  meldungen_freigeben
 }
 trap aufraeumen EXIT
 
@@ -214,6 +222,12 @@ python3 "$WERKZEUGE/spieldatei.py" || sagen "Spieldatei nicht nachgezogen, nehme
 python3 "$WERKZEUGE/notice_setzen.py" --paket "$SPIELPAKET" || sagen "Notice nicht gesetzt"
 
 bildschirm_sicherstellen
+
+# Stehende Desktop Meldungen verdecken sonst den Knopf "naechste Seite" und die rechte
+# Spalte der Liste; so am 04.11.2026 nach dem gescheiterten Systemupdate. Siehe
+# werkzeuge/meldungen_still.py. Ein Fehler dort kostet hoechstens freie Sicht.
+python3 "$WERKZEUGE/meldungen_still.py" &
+STILLE_PID=$!
 
 sagen "Spiel starten"
 # Direkt mit dem Spielpaket starten. Bis 2.6.9 startete das Programm erst sein eigenes
