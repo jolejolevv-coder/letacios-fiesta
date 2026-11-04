@@ -368,7 +368,8 @@ die Liste offen war. Rechts unten standen vier Meldungen „Some System Updates 
 (04:15 bis 04:20) über dem Knopf „nächste Seite“, an dem das Skript die offene Liste erkennt.
 Plasma lässt Meldungen stehen, solange niemand am Rechner ist. Sie verdecken außerdem die
 rechte Spalte, die die OCR liest. Die Wache der Action schlug um 14:47 UTC an (Bestenliste 33
-Stunden alt).
+Stunden alt). Die Seite selbst war aktuell, sie zeigt seit dem 02.11. die Liste der
+Web API; die Wache unterscheidet seitdem nach Quelle, siehe `bestenliste-web-api.md`.
 
 Abhilfe: `werkzeuge/meldungen_still.py` läuft vor dem Spielstart im Hintergrund an. Es bittet
 per `Inhibit` um Ruhe, schließt alle stehenden Meldungen per `CloseNotification` und schließt
