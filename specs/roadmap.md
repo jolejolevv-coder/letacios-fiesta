@@ -15,6 +15,9 @@ Stand 29.10.2026. Ausführlich in `docs/uebergabe.md`.
 * Update Notice auf dem Bazzite wird automatisch gesetzt (PR 10).
 * Redesign „Werkzeug“ (`specs/features/redesign.md`): Linear / Raycast, Geist, ⌘K Leadersuche,
   untere Leiste am Handy. Auf Branch `claude/website-redesign-bc8edc`, wartet auf Push und Merge.
+* Härten nach Audit (`specs/features/haerten.md`): Error Boundaries, Ladefehler mit Hülle,
+  Adressen für Spieler und Replay, Entsperren mit Fehlerpfad, 44 px Touchziele. Gebaut auf
+  `claude/haerten-5ddc19`, wartet auf Push und PR.
 
 ## In Arbeit und in Planung
 
@@ -45,3 +48,10 @@ Stand 29.10.2026. Ausführlich in `docs/uebergabe.md`.
    (Leaderleiste, Anteil in Rankings). Der Browser Pane zeigt zudem alte Stände, wenn der
    Nutzer im selben Tab klickt.
 3. Besser spezifizieren: bei einem Schriftwechsel vorher alle festen Breiten für Zahlen auflisten.
+
+## Rückblick Härten 06.11.2026
+
+1. Gut: Fehler per Cookie in einer eigenen Vorschau simulieren, ohne `src/` anzufassen.
+2. Falsche Annahme: der Vite Server liefert für eine fehlende `schluessel.json` index.html mit
+   200; die strengere Prüfung hätte `npm run dev` gebrochen. Fiel erst im Browser auf.
+3. Besser spezifizieren: welche Antwort des Servers „keine Verschlüsselung“ heißt.

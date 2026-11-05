@@ -20,15 +20,15 @@ Out of scope:
 - Neues Design und neue Texte über die Fehlermeldungen hinaus.
 
 ## Acceptance criteria
-- [ ] Ein absichtlich geworfener Renderfehler in einem Reiter zeigt eine Meldung mit Link zurück. Kopf und Reiter bleiben bedienbar, der Wechsel in einen anderen Reiter funktioniert.
-- [ ] Fehlt der Standarddatensatz (lokal per 404 simuliert), sind Leaderboard, Player und Changelog trotzdem erreichbar, und die Quellenwahl ist sichtbar.
-- [ ] Nach dem Klick auf einen Spieler steht `?id=` in der Adresse. Neu laden zeigt denselben Spieler, Zurück führt zur Bestenliste. Dasselbe gilt für `?p=` bei Replays.
-- [ ] Ohne `crypto.subtle` (lokal simuliert) erscheint eine verständliche Meldung statt einer leeren Seite.
-- [ ] Ein einmal gescheiterter Abruf wird beim nächsten Versuch neu geholt (Test in `tests/daten.test.js`).
-- [ ] Ein leerer Zeitraum zeigt „No games in this range“.
-- [ ] Bestenliste ohne `spieler`, Mulligan ohne `gegner` und ein Kaizoku Spieler ohne `decks` stürzen nicht ab (Tests oder lokale Fixtures).
-- [ ] Auf 375 px Breite sind alle genannten Bedienelemente mindestens 44 px hoch (per `getBoundingClientRect` geprüft), ohne waagerechtes Scrollen.
-- [ ] `npm test` und `npx vite build` laufen grün.
+- [x] Ein absichtlich geworfener Renderfehler in einem Reiter zeigt eine Meldung mit Link zurück. Kopf und Reiter bleiben bedienbar, der Wechsel in einen anderen Reiter funktioniert.
+- [x] Fehlt der Standarddatensatz (lokal per 404 simuliert), sind Leaderboard, Player und Changelog trotzdem erreichbar, und die Quellenwahl ist sichtbar.
+- [x] Nach dem Klick auf einen Spieler steht `?id=` in der Adresse. Neu laden zeigt denselben Spieler, Zurück führt zur Bestenliste. Dasselbe gilt für `?p=` bei Replays.
+- [x] Ohne `crypto.subtle` (lokal simuliert) erscheint eine verständliche Meldung statt einer leeren Seite.
+- [x] Ein einmal gescheiterter Abruf wird beim nächsten Versuch neu geholt (Test in `tests/daten.test.js`).
+- [x] Ein leerer Zeitraum zeigt „No games in this range“.
+- [x] Bestenliste ohne `spieler`, Mulligan ohne `gegner` und ein Kaizoku Spieler ohne `decks` stürzen nicht ab (Tests oder lokale Fixtures).
+- [x] Auf 375 px Breite sind alle genannten Bedienelemente mindestens 44 px hoch (per `getBoundingClientRect` geprüft), ohne waagerechtes Scrollen.
+- [x] `npm test` und `npx vite build` laufen grün.
 
 ## Implementation plan
 Phase 1 (harden): Error Boundaries, Hülle bei Ladefehler, Adresse für Spieler und Replay, Entsperren mit Fehlerpfad, Zwischenspeicher, leere Zustände und Feldschutz, alert und title. Tests in `tests/daten.test.js`.

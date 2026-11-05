@@ -8,6 +8,7 @@
  */
 
 const zwischenspeicher = new Map();
+const HTTP_NICHT_GEFUNDEN = 404;
 
 /** Basis der Datendateien. Feste Wurzel, weil Adressen wie /matrix sonst danebengreifen. */
 function basis() {
@@ -125,15 +126,53 @@ function ausBase64(text) {
   return feld;
 }
 
-/** Liegt eine Verschluesselung vor? Gibt die Angaben zurueck oder false. */
+/** Fehler beim Entsperren mit Grund, damit die Anmeldung die passende Meldung zeigt. */
+export class EntsperrFehler extends Error {
+  constructor(grund, text) {
+    super(text);
+    this.grund = grund;           // "netz", "kaputt", "krypto"
+  }
+}
+
+/** Kann dieser Browser WebCrypto? Ohne https oder in manchen Webviews fehlt crypto.subtle. */
+export function kryptoDa() {
+  return typeof crypto !== "undefined" && crypto !== null && typeof crypto.subtle === "object" && crypto.subtle !== null;
+}
+
+/**
+ * Liegt eine Verschluesselung vor? Gibt die Angaben zurueck oder false.
+ *
+ * Gemerkt wird nur eine klare Antwort: die Datei ist da, oder der Server sagt 404. Ein
+ * Netzfehler oder eine andere Statusmeldung wirft EntsperrFehler und wird nicht gemerkt,
+ * sonst wuerde ein kurzer Aussetzer die Seite bis zum Neuladen auf unverschluesselte
+ * Adressen schicken, die es im Betrieb nicht gibt.
+ */
 export async function verschluesselung() {
   if (schluesselInfo !== undefined) return schluesselInfo;
+  let antwort;
   try {
-    const antwort = await fetch(basis() + "schluessel.json", { cache: "no-cache" });
-    schluesselInfo = antwort.ok ? await antwort.json() : false;
-  } catch {
-    schluesselInfo = false;
+    antwort = await fetch(basis() + "schluessel.json", { cache: "no-cache" });
+  } catch (fehler) {
+    throw new EntsperrFehler("netz", "schluessel.json nicht erreichbar: " + fehler.message);
   }
+  // Der Entwicklungsserver von Vite antwortet auf eine fehlende Datei mit index.html und 200.
+  // Das heisst hier dasselbe wie 404: keine Verschluesselung.
+  const art = (antwort.headers && antwort.headers.get && antwort.headers.get("content-type")) || "";
+  if (antwort.status === HTTP_NICHT_GEFUNDEN || (antwort.ok && art.includes("text/html"))) {
+    schluesselInfo = false;
+    return schluesselInfo;
+  }
+  if (!antwort.ok) throw new EntsperrFehler("netz", "schluessel.json: HTTP " + antwort.status);
+  let info;
+  try {
+    info = await antwort.json();
+  } catch {
+    throw new EntsperrFehler("kaputt", "schluessel.json ist kein JSON");
+  }
+  if (!info || typeof info.salz !== "string" || typeof info.probe !== "string" || !Number.isFinite(info.runden)) {
+    throw new EntsperrFehler("kaputt", "schluessel.json ohne salz, probe oder runden");
+  }
+  schluesselInfo = info;
   return schluesselInfo;
 }
 
@@ -149,16 +188,13 @@ async function entschluesseln(schluessel, feld) {
 export async function anmelden(passwort) {
   const info = await verschluesselung();
   if (!info) return true;
-  const roh = await crypto.subtle.importKey(
-    "raw", new TextEncoder().encode(passwort), "PBKDF2", false, ["deriveKey"]
-  );
-  const schluessel = await crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: ausBase64(info.salz), iterations: info.runden, hash: "SHA-256" },
-    roh,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["decrypt"]
-  );
+  if (!kryptoDa()) throw new EntsperrFehler("krypto", "crypto.subtle fehlt");
+  let schluessel;
+  try {
+    schluessel = await schluesselAbleiten(passwort, info);
+  } catch (fehler) {
+    throw new EntsperrFehler("kaputt", "Schluessel nicht ableitbar: " + fehler.message);
+  }
   try {
     const probe = await entschluesseln(schluessel, ausBase64(info.probe));
     if (new TextDecoder().decode(probe) !== "letacios-fiesta") return false;
@@ -167,6 +203,20 @@ export async function anmelden(passwort) {
   }
   sitzungsSchluessel = schluessel;
   return true;
+}
+
+/** PBKDF2 ueber das Passwort mit Salz und Runden aus schluessel.json. */
+async function schluesselAbleiten(passwort, info) {
+  const roh = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(passwort), "PBKDF2", false, ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: ausBase64(info.salz), iterations: info.runden, hash: "SHA-256" },
+    roh,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["decrypt"]
+  );
 }
 
 // Dateien, deren Inhalt sich unter demselben Namen nie mehr aendert: ein Replay,
@@ -209,7 +259,18 @@ export async function holen(datei) {
     return auspacken(puffer);
   })();
   zwischenspeicher.set(datei, versprechen);
+  // Ein Fehlschlag wird vergessen, damit der naechste Aufruf wirklich neu laedt.
+  versprechen.catch(() => {
+    if (zwischenspeicher.get(datei) === versprechen) zwischenspeicher.delete(datei);
+  });
   return versprechen;
+}
+
+/** Nur fuer Tests: vergisst Zwischenspeicher und Verschluesselungsangaben. */
+export function _speicherLeeren() {
+  zwischenspeicher.clear();
+  schluesselInfo = undefined;
+  sitzungsSchluessel = null;
 }
 
 /* ---------------------------------------------------------------------------
