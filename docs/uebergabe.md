@@ -239,3 +239,9 @@ Annahmen: Ein leerer Zeitraum ohne Tagesdateien ist ein leerer Satz statt Fehler
 Leaderwahl nach dem Laden ersetzt den Verlaufseintrag statt einen zweiten anzulegen. Der
 Drehknopf bleibt am Handy optisch 26 px, die Trefferfläche ist 44 px (negativer Rand).
 Offen: Push und PR nur mit OK des Nutzers.
+
+## Stand 06.11.2026 abends, Härten gemergt, Optimieren als Spec
+
+PR 30 (Härten) am 06.11. gemergt, Merge Commit 044040a. Nächster Schritt auf Wunsch des Nutzers:
+`/impeccable optimize` für P2-7 und P2-8. Spec `specs/features/optimieren.md` auf Branch
+`claude/optimieren` geschrieben, wartet auf Freigabe; danach Phase 1 bis 3 wie dort beschrieben.
