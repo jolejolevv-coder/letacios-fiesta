@@ -3299,6 +3299,46 @@ function kzName(namen, code) {
   return (namen[id] || {}).n || id;
 }
 
+/* Eine Kaizoku Liste auf der Spielerseite: Bilanz, Liste und Bilanz je Gegnerleader.
+   Beim Umbau zum Dataset (82a930e) mit dem Reiter geloescht, die Spielerseite braucht sie
+   weiter; ohne sie wurde die Seite bei jedem Spieler mit Kaizoku Partien schwarz. */
+function KaizokuListe({ liste, nr, namen }) {
+  const [bilanz, setBilanz] = useState(false);
+  const [karten, setKarten] = useState(false);
+  const rate = proz(liste.w, liste.m);
+  return (
+    <li className="kz-liste">
+      <div className="kz-kopf">
+        <span className="nr">{nr2(nr)}</span>
+        <button type="button" className="knopf leise" aria-expanded={bilanz}
+                title="Wins and losses by opponent leader" onClick={() => setBilanz((o) => !o)}>
+          {liste.w} – {liste.m - liste.w}
+        </button>
+        <span className={"z " + wrKlasse(rate)}>{fmtProz(liste.w, liste.m)}</span>
+        <span className="z">{fmtZahl(liste.m)} games</span>
+        <span className="z">{liste.pilot} {liste.pilot === 1 ? "pilot" : "pilots"}</span>
+        <button type="button" className="knopf leise" aria-expanded={karten}
+                onClick={() => setKarten((o) => !o)}>{karten ? "Hide list" : "Show list"}</button>
+      </div>
+      {karten ? <Decktabellen eintraege={liste.d} namen={namen} /> : null}
+      {bilanz ? (
+        <ul className="bilanz-liste">
+          {liste.gegner.length ? liste.gegner.map(([gid, m, w]) => {
+            const id = kennung(gid);
+            return (
+              <li key={gid}>
+                <Kartenbild id={gid} breite={22} />
+                <span>{(namen[id] || {}).n || id}</span>
+                <span className="z">{w} – {m - w}</span>
+              </li>
+            );
+          }) : <li><span /><span>No opponent split for this list.</span><span /></li>}
+        </ul>
+      ) : null}
+    </li>
+  );
+}
+
 /* Kopf der Kaizoku Teile: sagt, dass die Zahlen nicht unsere sind. */
 function KaizokuHinweis({ satz }) {
   const stand = satz.stand
