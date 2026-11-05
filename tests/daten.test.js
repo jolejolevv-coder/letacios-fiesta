@@ -2,7 +2,7 @@
 // fuer den Reiter Analysis (specs/features/mulligan-guide.md).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { _speicherLeeren, anmelden, EntsperrFehler, holen, verschluesselung, verschmelzen } from "../src/daten.js";
+import { _imSpeicher, _speicherLeeren, anmelden, EntsperrFehler, holen, verschluesselung, verschmelzen, zeitraumLaden } from "../src/daten.js";
 
 const tag = (keep, kopien) => ({
   partien: 10,
@@ -109,4 +109,83 @@ test("Ohne Tage ergibt verschmelzen einen leeren Satz statt eines Fehlers (P2-3)
   const s = verschmelzen([], "2026-11-01 to 2026-11-02");
   assert.deepEqual(s.leader, []);
   assert.equal(s.partien, 0);
+});
+
+/* Optimieren (specs/features/optimieren.md): Zeitraum in Gruppen, gleiches Ergebnis. */
+
+const LEADER = ["OP17-039", "OP16-001", "EB05-001", "ST30-001"];
+function tagesdatei(n) {
+  return {
+    partien: 40 + n,
+    stand: "2026-11-0" + n,
+    leader: LEADER.map((id, k) => ({
+      id: (k + 1) + "x" + id, w: 5 + n + k, l: 4 + k, fw: 3, fl: 2, sw: 2 + n, sl: 2, dur: 600 + n * 10 + k,
+      geg: LEADER.filter((g) => g !== id).map((g) => "1x" + g), gm: [3, 2 + n, 1], gw: [2, 1, n % 2],
+      gfw: [1, 1, 0], gfl: [1, 0, 1], gsw: [1, 0, 0], gsl: [0, 1, 0],
+      hand: { "OP17-054": [n, 1, 2, 3, 4, 5, 6, 7] }, kopien: { ["2xOP17-04" + (n % 3)]: [n + 1, 1] },
+      listen: [{ d: ["4xOP17-041", "4xOP17-04" + (n % 4)], w: 2 + k, l: 1, fw: 1, fl: 0, sw: 1, sl: 1, dur: 500 + n }],
+    })).concat([{ id: "Mobile", w: 9, l: 9 }]),
+  };
+}
+const DATEIEN = [1, 2, 3, 4, 5, 6, 7].map((n) => "tage/2026-11-0" + n + "__mode_0__25_1000.json.gz");
+const INHALT = Object.fromEntries(DATEIEN.map((d, i) => [d, tagesdatei(i + 1)]));
+
+async function mitTagen(lauf, { fehlt = null } = {}) {
+  const vorher = globalThis.fetch;
+  const zustand = { laufend: 0, hoechstens: 0 };
+  globalThis.fetch = async (adresse) => {
+    const datei = adresse.replace(/^\//, "");
+    zustand.laufend += 1;
+    zustand.hoechstens = Math.max(zustand.hoechstens, zustand.laufend);
+    await new Promise((fertig) => setTimeout(fertig, 2));
+    zustand.laufend -= 1;
+    return datei === fehlt || !INHALT[datei] ? fehlt_() : json(INHALT[datei]);
+  };
+  const fehlt_ = () => ({ ok: false, status: 404 });
+  _speicherLeeren();
+  try {
+    await lauf(zustand);
+  } finally {
+    globalThis.fetch = vorher;
+    _speicherLeeren();
+  }
+}
+
+test("Zeitraum in Gruppen ergibt denselben Satz wie verschmelzen ueber alle Tage", async () => {
+  await mitTagen(async () => {
+    const neu = await zeitraumLaden(DATEIEN, "probe");
+    const alt = verschmelzen(DATEIEN.map((d) => INHALT[d]), "probe");
+    assert.deepEqual(neu, alt);
+    assert.equal(neu.leader.length, LEADER.length);
+  });
+});
+
+test("Nach dem Zeitraum liegen keine Tagesdateien mehr im Zwischenspeicher", async () => {
+  await mitTagen(async () => {
+    await zeitraumLaden(DATEIEN, "probe");
+    assert.deepEqual(_imSpeicher().filter((d) => d.startsWith("tage/")), []);
+  });
+});
+
+test("Hoechstens drei Tagesdateien werden gleichzeitig geholt", async () => {
+  await mitTagen(async (zustand) => {
+    await zeitraumLaden(DATEIEN, "probe");
+    assert.ok(zustand.hoechstens <= 3, "gleichzeitig: " + zustand.hoechstens);
+    assert.ok(zustand.hoechstens >= 2, "Gruppen laufen parallel");
+  });
+});
+
+test("Ein fehlender Tag laesst den Zeitraum scheitern statt einen halben Satz zu liefern", async () => {
+  await mitTagen(async () => {
+    await assert.rejects(zeitraumLaden(DATEIEN, "probe"), /HTTP 404/);
+    assert.deepEqual(_imSpeicher().filter((d) => d.startsWith("tage/")), []);
+  }, { fehlt: DATEIEN[4] });
+});
+
+test("Derselbe Zeitraum ein zweites Mal wird nicht neu geholt", async () => {
+  await mitTagen(async () => {
+    const a = await zeitraumLaden(DATEIEN, "probe");
+    const b = await zeitraumLaden(DATEIEN, "probe");
+    assert.equal(a, b);
+  });
 });

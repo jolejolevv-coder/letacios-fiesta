@@ -244,4 +244,10 @@ Offen: Push und PR nur mit OK des Nutzers.
 
 PR 30 (Härten) am 06.11. gemergt, Merge Commit 044040a. Nächster Schritt auf Wunsch des Nutzers:
 `/impeccable optimize` für P2-7 und P2-8. Spec `specs/features/optimieren.md` auf Branch
-`claude/optimieren` geschrieben, wartet auf Freigabe; danach Phase 1 bis 3 wie dort beschrieben.
+`claude/optimieren` geschrieben, am 06.11. freigegeben und gebaut: Replay Log nur bei offenem
+Protokoll, `zeitraumLaden` holt in Gruppen zu drei und rechnet über `neuerSammler()` (daten.js)
+laufend ein, Tage danach aus dem Zwischenspeicher. Tests grün (81), Build grün, in der Vorschau
+geprüft. Die Vorschau `.impeccable/review/vite.haerten.mjs` liefert jetzt auch `/tage/` aus
+`public/tage` des Hauptcheckouts und ein künstliches Replay mit 200 Ereignissen unter `/replays/`.
+Annahme: Wechsel zurück auf einen früheren Zeitraum parst die Tage neu (aus dem Browser Cache).
+Offen: Push und PR nur mit OK des Nutzers.

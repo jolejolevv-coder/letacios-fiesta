@@ -55,3 +55,9 @@ Stand 29.10.2026. Ausführlich in `docs/uebergabe.md`.
 2. Falsche Annahme: der Vite Server liefert für eine fehlende `schluessel.json` index.html mit
    200; die strengere Prüfung hätte `npm run dev` gebrochen. Fiel erst im Browser auf.
 3. Besser spezifizieren: welche Antwort des Servers „keine Verschlüsselung“ heißt.
+
+## Rückblick Optimieren 06.11.2026
+
+1. Gut: `verschmelzen` als Sammler umgebaut statt eine zweite Rechnung zu schreiben; das Ergebnis ist dadurch beweisbar gleich.
+2. Falsche Annahme: die Vorschau hatte keine Tagesdateien und keine Replays; beides musste erst durchgereicht werden.
+3. Besser spezifizieren: welche lokalen Daten für eine Leistungsprüfung reichen.

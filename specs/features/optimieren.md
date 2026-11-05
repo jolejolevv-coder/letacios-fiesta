@@ -14,14 +14,14 @@ Out of scope:
 - Neues Design und neue Texte.
 
 ## Acceptance criteria
-- [ ] Bei geschlossenem Ereignisprotokoll enthält `.r-log` keine Ereignisknöpfe. Öffnen zeigt die Liste mit dem aktuellen Schritt markiert und sichtbar, wie bisher.
-- [ ] Beim Abspielen mit 4x bleibt die Zahl der DOM Knoten im Replay konstant (geprüft per `document.querySelectorAll("*").length` vor und nach 20 Schritten).
-- [ ] Ein Zeitraum über alle vorhandenen Tage ergibt denselben Satz wie vorher: gleiche Partienzahl, gleiche Leader mit gleichen Werten (Test mit Fixtures).
-- [ ] Nach dem Laden eines Zeitraums liegen keine geparsten `tage/` Dateien mehr im Zwischenspeicher von `holen` (Test).
-- [ ] Höchstens drei Tagesdateien werden gleichzeitig geholt (Test mit vorgetäuschtem fetch).
-- [ ] Ein fehlender Tag im Zeitraum führt wie bisher zur Fehlermeldung aus der Härten Spec, nicht zu einem halben Satz.
-- [ ] Ein schneller Wechsel des Zeitraums während des Ladens zeigt am Ende den zuletzt gewählten Zeitraum.
-- [ ] `npm test` und `npx vite build` laufen grün; Decklists, Matrix und Rankings zeigen bei 7 Tagen in der Vorschau dieselben Zahlen wie vor dem Umbau.
+- [x] Bei geschlossenem Ereignisprotokoll enthält `.r-log` keine Ereignisknöpfe. Öffnen zeigt die Liste mit dem aktuellen Schritt markiert und sichtbar, wie bisher.
+- [x] Beim Abspielen mit 4x bleibt die Zahl der DOM Knoten im Replay konstant (geprüft per `document.querySelectorAll("*").length` vor und nach 20 Schritten).
+- [x] Ein Zeitraum über alle vorhandenen Tage ergibt denselben Satz wie vorher: gleiche Partienzahl, gleiche Leader mit gleichen Werten (Test mit Fixtures).
+- [x] Nach dem Laden eines Zeitraums liegen keine geparsten `tage/` Dateien mehr im Zwischenspeicher von `holen` (Test).
+- [x] Höchstens drei Tagesdateien werden gleichzeitig geholt (Test mit vorgetäuschtem fetch).
+- [x] Ein fehlender Tag im Zeitraum führt wie bisher zur Fehlermeldung aus der Härten Spec, nicht zu einem halben Satz.
+- [x] Ein schneller Wechsel des Zeitraums während des Ladens zeigt am Ende den zuletzt gewählten Zeitraum.
+- [x] `npm test` und `npx vite build` laufen grün; Decklists, Matrix und Rankings zeigen bei 7 Tagen in der Vorschau dieselben Zahlen wie vor dem Umbau.
 
 ## Implementation plan
 Phase 1 (Replay Log): Liste nur bei `logOffen` rendern, Scrolleffekt prüfen, Messung im Browser.
@@ -32,3 +32,6 @@ Tradeoffs: Gruppen zu drei laden etwas langsamer als alle 30 auf einmal, dafür 
 
 ## Open questions
 - Lokal liegen nur alte, kleine Tagesdateien (12 Stück, 668 KB). Den Speichergewinn bei echten 30 Tagen kann ich daher nur rechnerisch belegen, nicht messen. Reicht dir das?
+
+## Ergebnis 06.11.2026
+Offene Frage beantwortet mit „Freigeben, loslegen“: Der Speichergewinn bei 30 Tagen ist rechnerisch belegt (höchstens drei geparste Tage plus Zwischenstand statt aller). Geprüft auf den 12 echten lokalen Tagesdateien: Ergebnis identisch mit `verschmelzen` (39.291 Partien, 97 Leader, 14.312 Listen), danach kein Tag mehr im Zwischenspeicher. Replay mit 200 Ereignissen bei 4x: 22 Schritte, DOM konstant bei 533 Knoten.

@@ -266,9 +266,15 @@ export async function holen(datei) {
   return versprechen;
 }
 
+/** Nur fuer Tests: Dateinamen, die gerade im Zwischenspeicher liegen. */
+export function _imSpeicher() {
+  return [...zwischenspeicher.keys()];
+}
+
 /** Nur fuer Tests: vergisst Zwischenspeicher und Verschluesselungsangaben. */
 export function _speicherLeeren() {
   zwischenspeicher.clear();
+  letzterZeitraum = { schluessel: null, versprechen: null };
   schluesselInfo = undefined;
   sitzungsSchluessel = null;
 }
@@ -404,16 +410,33 @@ const ZAEHLER = ["w", "l", "fw", "fl", "sw", "sl"];
  * dieselbe macht der OPBounty Client in `merge_statlists`.
  */
 export function verschmelzen(saetze, name) {
+  const sammler = neuerSammler();
+  for (const satz of saetze) sammler.hinzu(satz);
+  return sammler.fertig(name);
+}
+
+/**
+ * Sammelt Saetze nacheinander ein und rechnet am Ende denselben Satz wie verschmelzen.
+ * So muss ein Zeitraum nicht alle Tagesdateien gleichzeitig im Speicher halten (Audit
+ * P2-8, specs/features/optimieren.md): jeder Tag wird eingerechnet und kann danach weg.
+ */
+export function neuerSammler() {
   const leader = new Map();
   let partien = 0;
   let stand = "";
+  let listenAlleGegner = false;
+  let quelle = "";
   // Die Quelle fuehrt Eintraege, die keine Karte sind, allen voran "Mobile". Das ist ein
   // Platzhalter fuer Partien vom Handy, kein Leader. Er taucht sonst in der Leiste, in der
   // Matrix und in der Rangliste auf und verzerrt jede davon.
   const istLeader = (id) => KARTE.test(String(id));
 
-  for (const satz of saetze) {
-    if (!satz) continue;
+  function hinzu(satz) {
+    if (!satz) return;
+    // Der Heroines Event Satz zaehlt Winrates nur gegen Event Leader, Decklisten aber gegen
+    // alle Gegner (aktualisieren.py, event_satz). Die Seite sagt das an den Listen.
+    if (satz.listen_alle_gegner) listenAlleGegner = true;
+    if (!quelle && satz.quelle) quelle = satz.quelle;
     partien += satz.partien || 0;
     if ((satz.stand || "") > stand) stand = satz.stand || "";
     for (const e of satz.leader || []) {
@@ -471,23 +494,23 @@ export function verschmelzen(saetze, name) {
     }
   }
 
-  const fertig = [...leader.values()].map((e) => ({
-    id: e.id,
-    w: e.w, l: e.l, fw: e.fw, fl: e.fl, sw: e.sw, sl: e.sl,
-    dur: e.dauerPartien ? Math.round(e.dauerSumme / e.dauerPartien) : 0,
-    gegner: [...e.gegner.values()].sort((a, b) => b.m - a.m),
-    hand: e.hand,
-    kopien: e.kopien,
-    listen: [...e.listen.values()]
-      .map((l) => ({ ...l, dur: l.dauerPartien ? Math.round(l.dauerSumme / l.dauerPartien) : 0 }))
-      .sort((a, b) => b.w + b.l - (a.w + a.l)),
-  }));
-  fertig.sort((a, b) => b.w + b.l - (a.w + a.l));
-  // Der Heroines Event Satz zaehlt Winrates nur gegen Event Leader, Decklisten aber gegen
-  // alle Gegner (aktualisieren.py, event_satz). Die Seite sagt das an den Listen.
-  const listenAlleGegner = saetze.some((s) => s && s.listen_alle_gegner);
-  const quelle = (saetze.find((s) => s && s.quelle) || {}).quelle || "";
-  return { name, stand, partien, leader: fertig, listenAlleGegner, quelle };
+  function fertig(name) {
+    const ergebnis = [...leader.values()].map((e) => ({
+      id: e.id,
+      w: e.w, l: e.l, fw: e.fw, fl: e.fl, sw: e.sw, sl: e.sl,
+      dur: e.dauerPartien ? Math.round(e.dauerSumme / e.dauerPartien) : 0,
+      gegner: [...e.gegner.values()].sort((a, b) => b.m - a.m),
+      hand: e.hand,
+      kopien: e.kopien,
+      listen: [...e.listen.values()]
+        .map((l) => ({ ...l, dur: l.dauerPartien ? Math.round(l.dauerSumme / l.dauerPartien) : 0 }))
+        .sort((a, b) => b.w + b.l - (a.w + a.l)),
+    }));
+    ergebnis.sort((a, b) => b.w + b.l - (a.w + a.l));
+    return { name, stand, partien, leader: ergebnis, listenAlleGegner, quelle };
+  }
+
+  return { hinzu, fertig };
 }
 
 /* --------------------------------------------------------------------------
@@ -560,7 +583,40 @@ export async function satzLaden(datei, name) {
   return verschmelzen([roh], name || roh.name || "");
 }
 
+/* Ein Zeitraum holt hoechstens so viele Tagesdateien gleichzeitig. Ein Tag sind bis zu
+   4,8 MB JSON; 30 auf einmal hielten rund 150 MB im Speicher (Audit P2-8). */
+const TAGE_GLEICHZEITIG = 3;
+// Der zuletzt fertige Zeitraum, damit ein erneutes Rendern ihn nicht neu rechnet.
+let letzterZeitraum = { schluessel: null, versprechen: null };
+
+/**
+ * Holt die Tage eines Zeitraums in Gruppen, rechnet jede Gruppe in der Reihenfolge der
+ * Dateien ein und nimmt die geparsten Tage danach aus dem Zwischenspeicher. Die gepackten
+ * Dateien haelt weiter der Browser Cache (cache "default" fuer tage/).
+ */
 export async function zeitraumLaden(dateien, name) {
-  const teile = await Promise.all(dateien.map((d) => holen(d)));
-  return verschmelzen(teile, name);
+  const schluessel = name + "\n" + dateien.join("\n");
+  if (letzterZeitraum.schluessel === schluessel) return letzterZeitraum.versprechen;
+  const versprechen = zeitraumRechnen(dateien, name);
+  letzterZeitraum = { schluessel, versprechen };
+  versprechen.catch(() => {
+    if (letzterZeitraum.versprechen === versprechen) letzterZeitraum = { schluessel: null, versprechen: null };
+  });
+  return versprechen;
+}
+
+async function zeitraumRechnen(dateien, name) {
+  const sammler = neuerSammler();
+  try {
+    for (let ab = 0; ab < dateien.length; ab += TAGE_GLEICHZEITIG) {
+      const gruppe = dateien.slice(ab, ab + TAGE_GLEICHZEITIG);
+      const teile = await Promise.all(gruppe.map((d) => holen(d)));
+      teile.forEach((teil) => sammler.hinzu(teil));
+      gruppe.forEach((d) => zwischenspeicher.delete(d));
+    }
+  } catch (fehler) {
+    dateien.forEach((d) => zwischenspeicher.delete(d));
+    throw fehler;
+  }
+  return sammler.fertig(name);
 }
