@@ -17,6 +17,7 @@ import {
   KAIZOKU_QUELLEN,
   istKaizokuQuelle,
   kaizokuLaden,
+  kartenzeilen,
   kennung,
   metacoachHolen,
   satzLaden,
@@ -3188,7 +3189,10 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen, kzSpieler }) {
   }
   const partien = (daten && daten.partien) || [];
   const leader = (eintrag.leader || []).filter((l) => l.leader);
-  const nurWr = leader.every((l) => l.partien == null);
+  // Sitzaufteilung gibt es nur aus Replays. Die Web API liefert je Leader Winrate und
+  // Partien, die OCR nur die Winrate; beide zeigen die Winrate.
+  const mitSitz = (l) => l.siege != null && l.erst_siege != null && l.zweit_siege != null;
+  const nurWr = !leader.some(mitSitz);
   return (
     <>
       <button type="button" onClick={zurueck} className="knopf leise zurueck-knopf">
@@ -3216,7 +3220,7 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen, kzSpieler }) {
       <Abschnitt titel="Leaders played">
         <div className="tafel-spalten spalten gespielt">
           <span>Nr</span><span /><span>Leader</span>
-          {nurWr ? <><span className="rechts">Win rate</span><span /><span /></>
+          {nurWr ? <><span className="rechts">Win rate</span><span className="rechts">Games</span><span /></>
             : <><span className="rechts">Record</span><span className="rechts">First</span><span className="rechts">Second</span></>}
         </div>
         <ol className="tafel gespielt">
@@ -3230,11 +3234,13 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen, kzSpieler }) {
                   <span className="nr">{nr2(i + 1)}</span>
                   <Kartenbild id={l.leader} breite={30} />
                   <span className="name gegner"><b>{(namen[id] || {}).n || id}</b><span className="kartennr">{id}</span></span>
-                  {l.partien == null ? (
+                  {!mitSitz(l) ? (
                     <>
                       <Zelle k="z-a" label="Win rate" wert={l.winrate == null ? "unreadable" : l.winrate.toFixed(1) + " %"}
                              klasse={wrKlasse(l.winrate)} />
-                      <span className="z-b" /><span className="z-c" />
+                      {l.partien == null ? <span className="z-b" />
+                        : <Zelle k="z-b" label="Games" wert={fmtZahl(l.partien)} />}
+                      <span className="z-c" />
                     </>
                   ) : (
                     <>
@@ -3259,7 +3265,7 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen, kzSpieler }) {
           <ol className="kz-listen">
             {kzSpieler.decks.map((d, i) => (
               <KaizokuListe key={d.d.join("|")} nr={i + 1} namen={namen}
-                            liste={{ d: d.d, w: d.w, m: d.m, pilot: 1, gegner: d.gegner }} />
+                            liste={{ d: kartenzeilen(d.d), w: d.w, m: d.m, gegner: d.gegner }} />
             ))}
           </ol>
         </Abschnitt>
@@ -3316,7 +3322,9 @@ function KaizokuListe({ liste, nr, namen }) {
         </button>
         <span className={"z " + wrKlasse(rate)}>{fmtProz(liste.w, liste.m)}</span>
         <span className="z">{fmtZahl(liste.m)} games</span>
-        <span className="z">{liste.pilot} {liste.pilot === 1 ? "pilot" : "pilots"}</span>
+        {liste.pilot == null ? null : (
+          <span className="z">{liste.pilot} {liste.pilot === 1 ? "pilot" : "pilots"}</span>
+        )}
         <button type="button" className="knopf leise" aria-expanded={karten}
                 onClick={() => setKarten((o) => !o)}>{karten ? "Hide list" : "Show list"}</button>
       </div>
