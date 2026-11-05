@@ -46,14 +46,20 @@ class SpielerTests(unittest.TestCase):
         eimer = {"total_matches": 20, "total_wins": 12,
                  "leader_stats": [{"playerLeader": "A", "games_played": 5, "wins": 3,
                                    "matchup_stats": [{"oppLeaderKey": "B", "games_played": 2, "wins": 1}]}],
-                 "deck_stats": [{"playerLeader": "A", "decklist": "4xX\n3xY", "games_played": 5, "wins": 3,
+                 "deck_stats": [{"playerLeader": "A", "decklist": "4xOP17-039\n3xP-108", "games_played": 5, "wins": 3,
                                  "matchup_stats": [{"oppLeader": "B", "games_played": 2, "wins": 1}]},
                                 {"decklist": ""}]}
         f = s.form_bauen(eimer)
-        self.assertEqual(f["decks"][0]["d"], ["4xX", "3xY"])
+        self.assertEqual(f["decks"][0]["d"], ["4xOP17-039", "3xP-108"])
         self.assertEqual(f["decks"][0]["gegner"], [["B", 2, 1]])
         self.assertEqual(len(f["decks"]), 1)
         self.assertEqual(f["leader"][0]["gegner"], [["B", 2, 1]])
+
+    def test_karten_lesen_listentext(self):
+        # So liefert player-stats die Deckliste (Stand 06.11.2026), siehe KARTENZEILE.
+        text = "['1xEB02-030', '4xOP08-051', '2xP-108']"
+        self.assertEqual(s.karten_lesen(text), ["1xEB02-030", "4xOP08-051", "2xP-108"])
+        self.assertEqual(s.karten_lesen(None), [])
 
     def test_alle_holen_zaehlt_und_faengt_fehler(self):
         def ablauf(spieler, von, bis, **_):

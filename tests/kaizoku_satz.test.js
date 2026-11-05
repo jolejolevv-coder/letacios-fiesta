@@ -1,7 +1,7 @@
 // Tests fuer den Kaizoku Adapter in src/daten.js: Form wie bei aktualisieren.py eindampfen.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { istKaizokuQuelle, kaizokuZuSatz, verschmelzen } from "../src/daten.js";
+import { istKaizokuQuelle, kaizokuZuSatz, kartenzeilen, verschmelzen } from "../src/daten.js";
 
 const roh = {
   stand: "20261102",
@@ -58,4 +58,11 @@ test("zweite Quelle traegt Schluessel und Namen der besten Spieler", () => {
   assert.equal(verschmelzen([s], s.name).quelle, "kaizoku_op17_lw_p_top10");
   assert.equal(istKaizokuQuelle("kaizoku_op17_lw_p_top10"), true);
   assert.equal(istKaizokuQuelle("Roh_mode_0_3000"), false);
+});
+
+test("kartenzeilen liest Zeilen und den Python Listentext der Spielerdaten", () => {
+  assert.deepEqual(kartenzeilen(["2xOP17-044", "4xOP17-040"]), ["2xOP17-044", "4xOP17-040"]);
+  assert.deepEqual(kartenzeilen(["['1xEB02-030', '4xOP08-051', '2xP-108']"]),
+                   ["1xEB02-030", "4xOP08-051", "2xP-108"]);
+  assert.deepEqual(kartenzeilen(undefined), []);
 });

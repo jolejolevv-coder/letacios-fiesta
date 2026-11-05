@@ -38,6 +38,9 @@ MODUS_RANKED = 0
 DECKS_JE_SPIELER = 12
 GEGNER_JE_DECK = 8
 LEADER_GEGNER = 10
+# Eine Kartenzeile "4xOP17-039". player-stats liefert die Deckliste nicht wie die CDN
+# Dateien zeilenweise, sondern als Python Listentext "['1xEB02-030', '4xOP08-051', ...]".
+KARTENZEILE = re.compile(r"(\d+)x([A-Z]{2,4}\d{2}-\d{3}|P-\d{3})")
 MINDEST_ERFOLG = 1                # null zugeordnete Spieler gilt als Fehlschlag
 ZIEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "public", "kaizoku_spieler.json.gz")
 
@@ -107,11 +110,16 @@ def _gegner(zeilen, grenze):
             for m in aus]
 
 
+def karten_lesen(decklist):
+    """Kartenzeilen "4xOP17-039" aus der Deckliste, egal ob zeilenweise oder als Listentext."""
+    return [f"{n}x{karte}" for n, karte in KARTENZEILE.findall(str(decklist or ""))]
+
+
 def form_bauen(eimer):
     """Kompakte Form: Kopfzahlen, Leader mit Gegnern, Decklisten mit Gegnern."""
     decks = []
     for d in eimer.get("deck_stats") or []:
-        karten = [k for k in str(d.get("decklist", "")).split("\n") if k]
+        karten = karten_lesen(d.get("decklist"))
         if karten:
             decks.append({"leader": d.get("playerLeader"), "d": karten,
                           "m": d.get("games_played") or 0, "w": d.get("wins") or 0,

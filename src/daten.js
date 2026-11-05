@@ -40,6 +40,15 @@ export function kennung(text) {
   return t ? t[1] : String(text ?? "");
 }
 
+/* Kartenzeilen "4xOP17-039" aus einer Deckliste. Die Kaizoku Spielerdaten trugen bis
+ * zum 06.11.2026 je Deck nur eine Zeile mit dem Python Listentext
+ * "['1xEB02-030', '4xOP08-051', ...]"; das hier liest beide Formen. */
+const KARTENZEILE = /(\d+)x([A-Z]{2,4}\d{2}-\d{3}|P-\d{3})/g;
+export function kartenzeilen(eintraege) {
+  const text = (eintraege || []).join("\n");
+  return [...text.matchAll(KARTENZEILE)].map((t) => `${t[1]}x${t[2]}`);
+}
+
 export function anzahl(text) {
   const t = /^(\d+)x/.exec(String(text ?? ""));
   return t ? parseInt(t[1], 10) : 1;
