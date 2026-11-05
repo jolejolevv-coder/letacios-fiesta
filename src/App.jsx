@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import gsap from "gsap";
 import Sombrero from "./Sombrero.jsx";
 import Girlande from "./Girlande.jsx";
+import Fehlergrenze, { ReiterFehler } from "./Fehlergrenze.jsx";
 import { fahnenFarben, FARBNAME, farbBuchstaben, LEADERFARBE, leaderTon, themaFarbe } from "./leaderfarben.js";
 import {
   anmelden,
@@ -10,10 +11,12 @@ import {
   bildpfad,
   bildpfadCdn,
   deckSchluessel,
+  EntsperrFehler,
   grossesBild,
   holen,
   kartenLaden,
   KARTE,
+  kryptoDa,
   KAIZOKU_QUELLEN,
   istKaizokuQuelle,
   kaizokuLaden,
@@ -23,6 +26,7 @@ import {
   satzLaden,
   spielerJeListe,
   verschluesselung,
+  verschmelzen,
   zeitraumLaden,
 } from "./daten.js";
 import { eindampfen, schritteBauen } from "./replay.js";
@@ -1171,7 +1175,7 @@ function Bestenliste({ daten, namen, oeffnen }) {
   // Winrate; sie ergibt sich aus der Summe ueber die gespielten Leader.
   const angereichert = useMemo(
     () =>
-      daten.spieler.map((e) => {
+      (daten.spieler || []).map((e) => {
         const leader = (e.leader || []).filter((l) => l.leader);
         if (e.quelle === "ocr") return { ...e, leader, siege: null, partien: null, wr: null };
         /* Die Web API liefert Siege und Partien je Spieler selbst; aeltere Mitschnitte nur je Leader. */
@@ -1806,7 +1810,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck, zeilenDirekt, analyseDire
   }, [i, logOffen]);
 
   if (zeilen === null) {
-    return <p className="laedt">Loading the replay</p>;
+    return <p className="laedt" aria-live="polite">Loading the replay</p>;
   }
   if (zeilen === false || !schritte.length) {
     return (
@@ -2020,7 +2024,7 @@ function MulliganJeGegner({ leaderId, namen }) {
     return () => { ab = true; };
   }, [leaderId]);
 
-  if (daten === undefined) return <Abschnitt titel="Mulligan by matchup"><p className="laedt">Loading mulligan data</p></Abschnitt>;
+  if (daten === undefined) return <Abschnitt titel="Mulligan by matchup"><p className="laedt" aria-live="polite">Loading mulligan data</p></Abschnitt>;
   if (daten === null) {
     return (
       <Abschnitt titel="Mulligan by matchup">
@@ -2030,15 +2034,18 @@ function MulliganJeGegner({ leaderId, namen }) {
   }
   const mindest = daten.grenzen?.min_zelle ?? 30;
   const name = (id) => (id === "alle" ? "All opponents" : (namen[id] || {}).n || id);
-  const liste = Object.entries(daten.gegner)
-    .filter(([g, e]) => g === "alle" || e.first || e.second)
-    .sort(([a, x], [b, y]) => (a === "alle" ? -1 : b === "alle" ? 1 :
-      (y.partien.first + y.partien.second) - (x.partien.first + x.partien.second)));
-  const eintrag = daten.gegner[gegner] || daten.gegner.alle;
+  // Fehlende Felder duerfen den Reiter nicht abbauen: ohne gegner bleibt die Liste leer.
+  const alleGegner = daten.gegner || {};
+  const summe = (e) => ((e.partien || {}).first || 0) + ((e.partien || {}).second || 0);
+  const liste = Object.entries(alleGegner)
+    .filter(([g, e]) => g === "alle" || (e && (e.first || e.second)))
+    .sort(([a, x], [b, y]) => (a === "alle" ? -1 : b === "alle" ? 1 : summe(y) - summe(x)));
+  const eintrag = alleGegner[gegner] || alleGegner.alle;
   const m = eintrag?.[sitz]?.[stufe] || (stufe === "spitze" ? null : eintrag?.[sitz]?.feld);
-  const wr = (w, n) => (n >= mindest && w !== null ? w.toFixed(1) + " %" : "\u2013");
+  const wr = (w, n) => (n >= mindest && Number.isFinite(w) ? w.toFixed(1) + " %" : "\u2013");
   const karten = (m?.karten || [])
-    .map((k) => ({ ...k, abstand: k.behalten >= mindest && k.weg >= mindest ? k.wr_behalten - k.wr_weg : null }))
+    .map((k) => ({ ...k, abstand: k.behalten >= mindest && k.weg >= mindest && Number.isFinite(k.wr_behalten) && Number.isFinite(k.wr_weg)
+      ? k.wr_behalten - k.wr_weg : null }))
     .sort((a, b) => (b.abstand ?? -99) - (a.abstand ?? -99));
   const gut = karten.filter((k) => k.abstand !== null && k.abstand >= MULLIGAN_ABSTAND).slice(0, 3);
   const schlecht = karten.filter((k) => k.abstand !== null && k.abstand <= -MULLIGAN_ABSTAND).slice(-3).reverse();
@@ -2592,7 +2599,7 @@ function Book({ namen, startLeader }) {
     </p>
   );
   const kopf = (titel) => <section className="vorspann"><h1>{titel}</h1>{lead}</section>;
-  if (liste === undefined) return <>{kopf("Guide")}<p className="laedt">Loading the guide</p></>;
+  if (liste === undefined) return <>{kopf("Guide")}<p className="laedt" aria-live="polite">Loading the guide</p></>;
   if (liste === null) return <>{kopf("Guide")}<MetacoachHinweis fehler={listeFehler} was="guide" /></>;
   if (!liste.length) return <>{kopf("Guide")}<p className="leer-satz">No leader has a guide yet. Check back after the next data day.</p></>;
 
@@ -2636,7 +2643,7 @@ function Book({ namen, startLeader }) {
       </div>
 
       {daten === undefined ? (
-        <p className="laedt">Loading the guide</p>
+        <p className="laedt" aria-live="polite">Loading the guide</p>
       ) : daten === null ? (
         datenFehler?.grund === "fehlt"
           ? <p className="leer-satz" style={{ marginTop: 16 }}>No guide for this leader yet. It appears once enough games are in.</p>
@@ -3032,9 +3039,9 @@ function EigenesReplay({ namen }) {
           </ol>
         </Abschnitt>
 
-        {leseFehler ? <p className="meldung fehler">{leseFehler}</p> : null}
+        {leseFehler ? <p className="meldung fehler" role="alert">{leseFehler}</p> : null}
         {gelesen && !partie ? (
-          <p className="meldung fehler">This log could not be analyzed: {LESEGRUND[gelesen.grund] || gelesen.grund}</p>
+          <p className="meldung fehler" role="alert">This log could not be analyzed: {LESEGRUND[gelesen.grund] || gelesen.grund}</p>
         ) : null}
         {!kartenDa ? <p className="meldung">Card data is still loading.</p> : null}
       </>
@@ -3102,7 +3109,7 @@ function EigenesReplay({ namen }) {
       ) : null}
 
       {laedtModell ? (
-        <p className="laedt">Loading the model</p>
+        <p className="laedt" aria-live="polite">Loading the model</p>
       ) : (
         <>
           {analyse && ich ? <EigeneAnalyse analyse={analyse} ich={ich} eigenName={spielerName(ich).split("#")[0]} /> : null}
@@ -3263,7 +3270,7 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen, kzSpieler }) {
             games played in the simulator, so this can be only part of the games.
           </p>
           <ol className="kz-listen">
-            {kzSpieler.decks.map((d, i) => (
+            {(kzSpieler.decks || []).filter((d) => d && Array.isArray(d.d)).map((d, i) => (
               <KaizokuListe key={d.d.join("|")} nr={i + 1} namen={namen}
                             liste={{ d: kartenzeilen(d.d), w: d.w, m: d.m, gegner: d.gegner }} />
             ))}
@@ -3331,7 +3338,7 @@ function KaizokuListe({ liste, nr, namen }) {
       {karten ? <Decktabellen eintraege={liste.d} namen={namen} /> : null}
       {bilanz ? (
         <ul className="bilanz-liste">
-          {liste.gegner.length ? liste.gegner.map(([gid, m, w]) => {
+          {(liste.gegner || []).length ? liste.gegner.map(([gid, m, w]) => {
             const id = kennung(gid);
             return (
               <li key={gid}>
@@ -3481,9 +3488,18 @@ const eigenerKlick = (e) => !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey |
    Schloss
    -------------------------------------------------------------------------- */
 
-function Schloss({ aufSchliessen }) {
+/* Meldungen fuer Fehler beim Entsperren, je Grund aus EntsperrFehler (daten.js). */
+const ENTSPERR_TEXT = {
+  krypto: "This browser cannot unlock the data. Open the page over https in a current browser.",
+  netz: "The page could not reach its key file. Check the connection and try again.",
+  kaputt: "The key file could not be read. Try again later.",
+};
+const entsperrText = (fehler) =>
+  (fehler instanceof EntsperrFehler && ENTSPERR_TEXT[fehler.grund]) || ENTSPERR_TEXT.kaputt;
+
+function Schloss({ aufSchliessen, hinweis = "" }) {
   const [passwort, setPasswort] = useState("");
-  const [fehlerText, setFehlerText] = useState("");
+  const [fehlerText, setFehlerText] = useState(hinweis);
   const [laeuft, setLaeuft] = useState(false);
 
   async function absenden(e) {
@@ -3491,8 +3507,15 @@ function Schloss({ aufSchliessen }) {
     if (!passwort || laeuft) return;
     setLaeuft(true);
     setFehlerText("");
-    const ok = await anmelden(passwort);
-    setLaeuft(false);
+    let ok = false;
+    try {
+      ok = await anmelden(passwort);
+    } catch (fehler) {
+      setFehlerText(entsperrText(fehler));
+      return;
+    } finally {
+      setLaeuft(false);
+    }
     if (!ok) {
       setFehlerText("That password does not fit.");
       setPasswort("");
@@ -3524,7 +3547,7 @@ function Schloss({ aufSchliessen }) {
         <button type="submit" disabled={laeuft || !passwort} className="knopf voll">
           {laeuft ? "Checking" : "Continue"}
         </button>
-        {fehlerText ? <p className="meldung fehler">{fehlerText}</p> : null}
+        {fehlerText ? <p className="meldung fehler" role="alert">{fehlerText}</p> : null}
       </form>
     </div>
   );
@@ -3619,9 +3642,16 @@ const MATRIX_HANDY_TOP = 8;
 /* Reiter mit Leaderkopf; nur dort traegt die Seite die Leaderfarbe. */
 const LEADER_KOPF = ["decks", "matchups", "analyse"];
 const LEADER_REITER = ["decks", "matchups", "matrix", "analyse", "book"];
+/* Reiter, die ohne geladenen Satz nichts zeigen koennen. */
+const SATZ_REITER = ["decks", "matchups", "matrix", "rang", "analyse"];
+/* Meldungen fuer Besucher, wenn Verzeichnis oder Satz nicht laden (P1-1). */
+const DATEN_FEHLT = "The statistics could not be loaded. Leaderboard, Guide and Changelog still work; try again in a minute.";
+const SATZ_FEHLT = "This data set could not be loaded. Pick another source above or try again in a minute.";
 
 export default function App() {
   const [entsperrt, setEntsperrt] = useState(null);
+  // Meldung, wenn schon das Entsperren beim Start scheitert (P1-3); die Anmeldung zeigt sie.
+  const [entsperrHinweis, setEntsperrHinweis] = useState("");
   const [verzeichnis, setVerzeichnis] = useState(null);
   const [satz, setSatz] = useState(null);
   const [laedt, setLaedt] = useState(true);
@@ -3728,23 +3758,32 @@ export default function App() {
   useEffect(() => {
     let abgebrochen = false;
     (async () => {
-      const info = await verschluesselung();
-      if (abgebrochen) return;
-      if (!info) {
-        setEntsperrt(true);
-        return;
-      }
-      let gemerkt = null;
       try {
-        gemerkt = localStorage.getItem("lf.pw");
-      } catch {
-        /* egal */
+        const info = await verschluesselung();
+        if (abgebrochen) return;
+        if (!info) {
+          setEntsperrt(true);
+          return;
+        }
+        if (!kryptoDa()) throw new EntsperrFehler("krypto", "crypto.subtle fehlt");
+        let gemerkt = null;
+        try {
+          gemerkt = localStorage.getItem("lf.pw");
+        } catch {
+          /* egal */
+        }
+        if (gemerkt && (await anmelden(gemerkt))) {
+          if (!abgebrochen) setEntsperrt(true);
+          return;
+        }
+        if (!abgebrochen) setEntsperrt(false);
+      } catch (fehler) {
+        // Kein WebCrypto, Schluesseldatei kaputt oder nicht erreichbar: Anmeldung mit Meldung
+        // statt einer leeren Seite.
+        if (abgebrochen) return;
+        setEntsperrHinweis(entsperrText(fehler));
+        setEntsperrt(false);
       }
-      if (gemerkt && (await anmelden(gemerkt))) {
-        if (!abgebrochen) setEntsperrt(true);
-        return;
-      }
-      if (!abgebrochen) setEntsperrt(false);
     })();
     return () => {
       abgebrochen = true;
@@ -3842,11 +3881,7 @@ export default function App() {
         setWahl((w) => ({ ...w, von: start, bis: letzter }));
       })
       .catch((e) => {
-        setFehlerText(
-          "Data missing. Run `python3 aktualisieren.py --tage 30 --bilder` once. (" +
-            e.message +
-            ")"
-        );
+        setFehlerText(DATEN_FEHLT + " (" + e.message + ")");
         setLaedt(false);
       });
     return undefined;
@@ -3877,7 +3912,9 @@ export default function App() {
                   t.tag <= wahl.bis
               )
               .map((t) => t.datei);
-            if (!dateien.length) return Promise.reject(new Error("No day in that range"));
+            // Kein Tag im Zeitraum ist ein leerer Satz, kein Fehler: die Reiter zeigen dann
+            // "No games in this range" (P2-3).
+            if (!dateien.length) return Promise.resolve(verschmelzen([], wahl.von + " to " + wahl.bis));
             const name =
               wahl.von === wahl.bis
                 ? wahl.von
@@ -3900,7 +3937,7 @@ export default function App() {
       })
       .catch((e) => {
         if (abgebrochen) return;
-        setFehlerText(e.message);
+        setFehlerText(SATZ_FEHLT + " (" + e.message + ")");
         setLaedt(false);
       });
     return () => {
@@ -3992,10 +4029,23 @@ export default function App() {
 
   /* Adresse mitfuehren, sobald Reiter oder Leader stehen. In der Matrix steht dort der
      Fokus, nicht der gewaehlte Leader: /matrix ohne Abfrage ist die ganze Matrix. */
+  /* Spieler und Replay fuehren ihre Adresse selbst (Effekte weiter oben); hier wuerde sonst
+     ?id= oder ?p= gleich wieder abgeschnitten (P1-2). Die erste Leaderwahl nach dem Laden
+     ersetzt den Eintrag, statt einen zweiten anzulegen. */
+  const vorherGewaehlt = useRef(null);
   useEffect(() => {
-    if (entsperrt !== true || !gewaehlt) return;
-    adresseSetzen(reiter, reiter === "matrix" ? matrixFokus : gewaehlt, false, null, null, matrixSort);
+    if (entsperrt !== true || reiter === "spieler" || reiter === "replay") return;
+    if (!gewaehlt && LEADER_REITER.includes(reiter)) return;
+    const ersterLeader = gewaehlt && vorherGewaehlt.current === null;
+    vorherGewaehlt.current = gewaehlt;
+    adresseSetzen(reiter, reiter === "matrix" ? matrixFokus : gewaehlt, ersterLeader, null, null, matrixSort);
   }, [reiter, gewaehlt, entsperrt, matrixFokus, matrixSort]);
+
+  /* Titel je Reiter, damit Verlauf und Tabs sagen, wo man war (P2-9). */
+  useEffect(() => {
+    const name = REITER_NAME[reiter] || (REITER.find(([k]) => k === reiter) || REITER[0])[1];
+    document.title = name + " · Letacios Fiesta";
+  }, [reiter]);
 
   /* Fokus setzen; der fokussierte Leader wird auch der gewaehlte fuer die anderen Reiter. */
   const fokusSetzen = useCallback((id) => {
@@ -4047,18 +4097,8 @@ export default function App() {
   }, [satz]);
 
   if (entsperrt === null) return null;
-  if (entsperrt === false) return <Schloss aufSchliessen={() => setEntsperrt(true)} />;
-
-  if (fehlerText && !satz) {
-    return (
-      <div className="fehlerseite">
-        <div className="marke" style={{ marginBottom: 14 }}>
-          <Sombrero groesse={40} />
-          <b style={{ font: "700 22px/1 var(--kopf-font)" }}>Letacios Fiesta</b>
-        </div>
-        <p className="meldung fehler">{fehlerText}</p>
-      </div>
-    );
+  if (entsperrt === false) {
+    return <Schloss hinweis={entsperrHinweis} aufSchliessen={() => { setEntsperrHinweis(""); setEntsperrt(true); }} />;
   }
 
   const leaderbezogen = LEADER_KOPF.includes(reiter);
@@ -4156,9 +4196,14 @@ export default function App() {
     </section>
   ) : null;
 
+  // Reiter, die den Satz brauchen, warten auf ihn; alle anderen laufen auch ohne (P1-1).
+  // Ein Ladefehler des Satzes steht dann oben in der Buehne, die Quellenwahl bleibt im Kopf.
+  const brauchtSatz = SATZ_REITER.includes(reiter);
   let inhalt = null;
-  if (!leader) {
-    inhalt = <p className="laedt">Loading</p>;
+  if (brauchtSatz && !leader) {
+    inhalt = satz && !laedt
+      ? <p className="leer-satz">No games in this range. Pick a longer range or another source.</p>
+      : fehlerText && !satz ? null : <p className="laedt" aria-live="polite">Loading</p>;
   } else if (reiter === "changelog") {
     inhalt = <Changelog />;
   } else if (reiter === "decks") {
@@ -4340,10 +4385,10 @@ export default function App() {
     );
   } else if (reiter === "spieler") {
     inhalt = beste === null || spielerAlle === null ? (
-      <p className="laedt">Loading</p>
+      <p className="laedt" aria-live="polite">Loading</p>
     ) : (
       <Spieler
-        eintrag={beste && beste.spieler
+        eintrag={beste && Array.isArray(beste.spieler)
           ? beste.spieler.find((e) => String(e.user_id) === String(spielerId))
           : null}
         daten={spielerAlle && spielerAlle.spieler ? spielerAlle.spieler[String(spielerId)] : null}
@@ -4360,8 +4405,8 @@ export default function App() {
     );
   } else {
     inhalt = beste === null ? (
-      <p className="laedt">Loading the ladder</p>
-    ) : beste === false ? (
+      <p className="laedt" aria-live="polite">Loading the ladder</p>
+    ) : beste === false || !Array.isArray(beste.spieler) || !beste.spieler.length ? (
       <p className="leer-satz">No ladder snapshot yet. It appears after the next data day.</p>
     ) : (
       <Bestenliste
@@ -4378,9 +4423,11 @@ export default function App() {
 
   const buehne = (
     <div ref={buehneRef} className={"buehne" + (laedt && satz ? " dimmt" : "")}>
-      {fehlerText ? <p className="meldung fehler">{fehlerText}</p> : null}
-      {leaderbezogen ? leaderKopf : null}
-      {inhalt}
+      {fehlerText && (satz || brauchtSatz) ? <p className="meldung fehler" role="alert">{fehlerText}</p> : null}
+      <Fehlergrenze key={reiter} ersatz={() => <ReiterFehler zurueck={() => setReiter("decks")} />}>
+        {leaderbezogen ? leaderKopf : null}
+        {inhalt}
+      </Fehlergrenze>
     </div>
   );
 
@@ -4408,7 +4455,7 @@ export default function App() {
           <div className="quelle-huelle" ref={quelleRef}>
             <button type="button" className="quelle-chip" aria-expanded={quelleOffen}
                     onClick={() => setQuelleOffen((o) => !o)}>
-              <span className="lang">{satz ? satz.name : "loading"}</span>
+              <span className="lang">{satz ? satz.name : fehlerText ? "Pick a source" : "loading"}</span>
               {satz ? <span className="z">{fmtZahl(satz.partien)}</span> : null}
               <Zeichen name="dreh" groesse={14} />
             </button>

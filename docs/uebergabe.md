@@ -220,3 +220,22 @@ rendert sie aber für jeden Spieler mit Daten in `kaizoku_spieler.json.gz`; Reac
 mit Testdatei geprüft (Prüfkonfiguration `.impeccable/review/vite.kz.mjs`, Port 5181). Branch
 `claude/top100-klick`. Offen, nur auf Wunsch: eine Error Boundary, damit ein Fehler in einem Teil
 nicht die ganze Seite leert.
+
+## Stand 06.11.2026, Härten gebaut (wartet auf Push)
+
+Spec `specs/features/haerten.md` (freigegeben 06.11.) umgesetzt auf Branch `claude/haerten-5ddc19`,
+aufbauend auf `claude/spielerseite-api`. Error Boundary `src/Fehlergrenze.jsx` um jeden Reiter
+(key = Reiter) und um die App (`main.jsx`). Ladefehler zeigen die normale Hülle mit Meldung für
+Besucher, Reiter ohne Satz (Leaderboard, Player, Replay, Guide, Analyze, Changelog) laufen weiter.
+`?id=` und `?p=` bleiben stehen. `daten.js`: Fehlschläge in `holen` werden vergessen,
+`schluessel.json` nur bei 404 (oder index.html vom Vite Server) als unverschlüsselt gemerkt,
+sonst `EntsperrFehler` mit Grund netz, kaputt, krypto. Leerer Satz zeigt „No games in this range“.
+Touchziele 44 px bis 760 px (Block am Ende von `index.css`, Tokens `--touch`, `--dreh-bild`).
+Tests in `tests/daten.test.js`, `npm test` und Build grün. Geprüft in der Vorschau
+`.impeccable/review/vite.haerten.mjs` (gitignored, Port 5182, Fehler per Cookie `probe=`:
+satz404, leersatz, krypto, wurf, ohnespieler, ohnegegner, ohnedecks) bei 375 px und Desktop.
+
+Annahmen: Ein leerer Zeitraum ohne Tagesdateien ist ein leerer Satz statt Fehler. Die erste
+Leaderwahl nach dem Laden ersetzt den Verlaufseintrag statt einen zweiten anzulegen. Der
+Drehknopf bleibt am Handy optisch 26 px, die Trefferfläche ist 44 px (negativer Rand).
+Offen: Push und PR nur mit OK des Nutzers.

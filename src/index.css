@@ -6,6 +6,9 @@
    Schätzung: Raute und kursiv, echte Zahlen aufrecht. Die Namen der Variablen stammen noch
    aus der Spielhilfe von Metacoach, ihre Werte sind neu. */
 :root {
+  /* Mindesthoehe fuer Touchziele am Handy (P2-10) und sichtbare Groesse des Drehknopfs dort. */
+  --touch: 44px;
+  --dreh-bild: 26px;
   --grund: #08090a;
   --karton: #0f1013;
   --karton-hoch: #16171c;
@@ -3449,3 +3452,45 @@ p.leer-satz::before { opacity: .7; }
   50% { transform: rotate(9deg) translateY(-2px); }
 }
 @media (prefers-reduced-motion: reduce) { .laedt::before { animation: none; } }
+
+/* --------------------------------------------------------------- Touchziele am Handy
+   Audit vom 06.11.2026, P2-10 (specs/features/haerten.md): bis 760 px Breite sind alle
+   Bedienelemente mindestens 44 px hoch. Der Block steht am Ende, damit er die engeren
+   Werte weiter oben schlaegt. */
+@media (max-width: 760px) {
+  .knopf,
+  .feld,
+  .schalter button,
+  .sitzwahl button,
+  .leiste-knopf,
+  .voreinstellung .knopf {
+    min-height: var(--touch);
+  }
+  /* Der Drehknopf in den Zeilen bleibt optisch klein: die Flaeche waechst auf 44 px, der
+     negative Rand haelt die Zeile gleich hoch, der sichtbare Rahmen liegt im ::before. */
+  .dreh,
+  .dreh[aria-expanded="true"] {
+    position: relative;
+    isolation: isolate;
+    min-width: var(--touch);
+    min-height: var(--touch);
+    margin: calc((var(--dreh-bild) - var(--touch)) / 2);
+    border-color: transparent;
+    background: transparent;
+  }
+  .dreh::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: 50%;
+    left: 50%;
+    width: var(--dreh-bild);
+    height: var(--dreh-bild);
+    transform: translate(-50%, -50%);
+    border: 1px solid var(--linie-stark);
+    border-radius: var(--r);
+    pointer-events: none;
+  }
+  .dreh:hover::before { border-color: var(--akzent-hell); }
+  .dreh[aria-expanded="true"]::before { border-color: var(--akzent); background: var(--akzent-flaeche); }
+}

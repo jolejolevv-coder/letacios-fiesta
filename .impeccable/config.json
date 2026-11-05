@@ -4,6 +4,73 @@
     "ignoreFiles": [
       ".impeccable/vorschau/richtungen.html"
     ],
-    "ignoreValues": []
+    "ignoreValues": [
+      {
+        "rule": "design-system-radius",
+        "value": "4px",
+        "createdAt": "2026-11-05T23:37:19.406Z",
+        "reason": "agent: inner radius = r-klein 6px minus 2px padding (kbd, Schalter and Sitzwahl buttons), redesign 02.11.2026"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "2px",
+        "createdAt": "2026-11-05T23:37:19.451Z",
+        "reason": "agent: miniature pieces on the replay board (life, don) and history bars, too small for r-klein"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "5px",
+        "createdAt": "2026-11-05T23:37:19.500Z",
+        "reason": "agent: frame of the 44px card image in the leader head, follows the card corner"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "17px",
+        "createdAt": "2026-11-05T23:37:19.545Z",
+        "reason": "agent: phone step down of kennwert 18px and of marke/step headings, used only in 760px blocks and Rat lines"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "22px",
+        "createdAt": "2026-11-05T23:37:19.590Z",
+        "reason": "agent: hero number of the first Kennzahl tile (phone) and large exact value, display size from redesign 02.11.2026"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "26px",
+        "createdAt": "2026-11-05T23:37:19.635Z",
+        "reason": "agent: hero number of the first Kennzahl tile in the leader head, display size from redesign 02.11.2026"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "9.5px",
+        "createdAt": "2026-11-05T23:37:19.679Z",
+        "reason": "agent: miniature labels on the scaled replay board and the opponent tag at phone width"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgba(0, 0, 0, 0.5)",
+        "createdAt": "2026-11-05T23:37:19.726Z",
+        "reason": "agent: scrim behind More sheet and Palette dialog, not a surface color"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgba(0, 0, 0, 0.72)",
+        "createdAt": "2026-11-05T23:37:19.772Z",
+        "reason": "agent: count badge on top of card images, must stay readable on any art"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#000",
+        "createdAt": "2026-11-05T23:37:19.817Z",
+        "reason": "agent: mask-image gradient stop, only alpha matters, no visible color"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgba(0, 0, 0, .35)",
+        "createdAt": "2026-11-05T23:37:19.863Z",
+        "reason": "agent: hairline ring that separates leader colour dots from dark ground"
+      }
+    ]
   }
 }
