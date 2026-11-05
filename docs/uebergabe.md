@@ -210,3 +210,13 @@ mit Plasma 6.8 verträgt die nachinstallierten X11 Pakete nicht, das Systemupdat
 27.10. (Bazzite auf 44.20261026). Entscheidung des Nutzers offen: X11 behalten oder Mitschnitt
 auf Wayland. Guide lernt auf Wunsch weiter ab 24.09., keine neue Meta (Entscheidung 02.11.).
 Alles auf Branch `claude/meldungen-still`, samt Logzeile „Formatsatz aus dem CDN“.
+
+## Stand 06.11.2026, Spielerseite schwarz
+
+Klick auf einen Spieler der Top 100 (gemeldet: MircoMorsico) machte die Seite schwarz. Ursache:
+`KaizokuListe` wurde beim Umbau „Kaizoku als Dataset“ (82a930e) gelöscht, die Spielerseite
+rendert sie aber für jeden Spieler mit Daten in `kaizoku_spieler.json.gz`; React warf
+`ReferenceError` ohne Error Boundary. Komponente und CSS (`kz-listen`, `kz-kopf`) sind zurück, lokal
+mit Testdatei geprüft (Prüfkonfiguration `.impeccable/review/vite.kz.mjs`, Port 5181). Branch
+`claude/top100-klick`. Offen, nur auf Wunsch: eine Error Boundary, damit ein Fehler in einem Teil
+nicht die ganze Seite leert.
