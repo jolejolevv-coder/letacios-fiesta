@@ -22,9 +22,9 @@ stehen in `docs/historie.md`.
 * Selbstlauf Phase 3 (Wachen, Event Ablauf) und Phase 4 (Meldungen), Stand offen.
 * Update Log: Bot und Secrets beim Nutzer, Stand offen.
 
-* Ingame Namen: Gedächtnis gemergt (PR 38), Wachstum nach einigen Läufen prüfen.
+* Ingame Namen: Gedächtnis gemergt (PR 38). Soll wachsen (Nutzer 06.11.): Zeile „Gedaechtnis“ im Action Log beobachten, Ziel 36 Spieler mit frischen Partien.
 
-* Spielerseite: Bountyverlauf und gewertete Partien auf `pi/spielerseite-verlauf`, wartet auf Push.
+* Spielerseite: Bountyverlauf, gewertete und nur komplette Partien gemergt (PR 39, 40).
 
 ## Später, nur auf Wunsch
 
