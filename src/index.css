@@ -125,6 +125,12 @@
 }
 
 /* ------------------------------------------------------------------ Blatt und Karte */
+/* Bilder und Leistung (specs/features/bilder-leistung.md): die Scrollleiste haelt ihren Platz
+   von Anfang an frei. Sonst erscheint sie erst mit dem Inhalt, und die zentrierte Seite
+   rutscht seitlich (Layoutverschiebung am Rechner). */
+html {
+  scrollbar-gutter: stable;
+}
 .blatt {
   max-width: 1180px;
   margin: 28px auto 36px;
@@ -239,9 +245,11 @@ kbd {
 }
 
 /* ---------------------------------------------------------------------------- Inhalt */
+/* Der Inhalt fuellt mindestens eine Bildschirmhoehe. So steht die Fusszeile beim ersten Bild
+   schon unter dem sichtbaren Bereich und springt nicht, wenn die Liste nachlaedt. */
 .inhalt {
+  min-height: 100vh;
   padding: 22px 24px 26px;
-  min-height: 40vh;
 }
 .vorspann h1 {
   margin: 0 0 6px;
