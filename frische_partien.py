@@ -85,19 +85,53 @@ def ingame_name(partie, text):
     return None
 
 
+def gegner_name(partie, text):
+    """Der Ingame Name des Gegners in dieser Partie, oder None. Gleiche Regel wie ingame_name:
+    eindeutig nur, wenn die beiden Seiten verschiedene Leader spielten."""
+    seiten = log_spieler(text)
+    if len(seiten) != 2 or seiten[0][1] == seiten[1][1]:
+        return None
+    for name, leader in seiten:
+        if leader == partie.get("gegner_leader"):
+            return name
+    return None
+
+
+def belege_sammeln(auftraege, texte):
+    """[(Ingame Name, user_id)] aus jeder Partie: der Profilinhaber und, wenn die Profilzeile
+    seine gegner_id kennt, auch der Gegner. Der Gegner steht oft ausserhalb der Top 100; sein
+    Name liegt dann schon im Gedaechtnis, wenn er aufsteigt."""
+    belege = []
+    for uid, p in auftraege:
+        text = texte.get(p["replay"])
+        eigener = ingame_name(p, text)
+        if eigener:
+            belege.append((eigener, str(uid)))
+        if p.get("gegner_id") is not None:
+            fremder = gegner_name(p, text)
+            if fremder:
+                belege.append((fremder, str(p["gegner_id"])))
+    return belege
+
+
+def belege_eindeutig(belege):
+    """{Ingame Name: user_id}. Ein Name mit zwei verschiedenen user_ids im selben Lauf ist
+    nicht eindeutig und faellt weg. Eine user_id darf mehrere Namen haben: wer sich umbenennt,
+    spielt die neuen Partien unter dem neuen Namen."""
+    je_name = {}
+    for name, uid in belege:
+        je_name.setdefault(name, set()).add(uid)
+    return {name: next(iter(uids)) for name, uids in je_name.items() if len(uids) == 1}
+
+
 def namen_lernen(spieler, eimer):
-    """{Ingame Name: user_id} aus den Schnappschusspartien."""
+    """{Ingame Name: user_id} aus den Schnappschusspartien, Profilinhaber und Gegner."""
     auftraege = []
     for uid, d in spieler.items():
         for p in [p for p in d.get("partien", []) if p.get("replay")][:LERN_PARTIEN]:
             auftraege.append((uid, p))
     texte = parallel_laden([p["replay"] for _, p in auftraege], eimer)
-    namen = {}
-    for uid, p in auftraege:
-        name = ingame_name(p, texte.get(p["replay"]))
-        if name and uid not in namen.values():
-            namen[name] = uid
-    return namen
+    return belege_eindeutig(belege_sammeln(auftraege, texte))
 
 
 def gedaechtnis_leer():
@@ -322,7 +356,9 @@ def main():
     grenze = min(bounties) - BOUNTY_RAND
 
     gelernt = namen_lernen(spieler, eimer)
-    print(f"  {len(gelernt)} Ingame Namen von {len(spieler)} Spielern aus dem Schnappschuss")
+    in_top = sum(1 for uid in gelernt.values() if uid in spieler)
+    print(f"  {len(gelernt)} Ingame Namen aus dem Schnappschuss, davon {in_top} von "
+          f"{len(spieler)} Spielern der Bestenliste")
     schl = schluessel_holen()
     gedaechtnis = gedaechtnis_sicher_laden(schl)
     vorher = len(gedaechtnis["namen"])

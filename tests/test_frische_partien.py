@@ -74,6 +74,34 @@ class Mischen(unittest.TestCase):
         self.assertEqual(len(F.mischen([], neu)), F.PARTIEN_JE_SPIELER)
 
 
+class Gegner(unittest.TestCase):
+    def test_gegner_name_ueber_seinen_leader(self):
+        self.assertEqual(F.gegner_name({"gegner_leader": "OP13-004"}, LOG), "AKUMA#7749")
+
+    def test_gegner_im_mirror_kein_name(self):
+        self.assertIsNone(F.gegner_name({"gegner_leader": "OP17-039"}, MIRROR))
+
+    def test_belege_mit_gegner(self):
+        p = {"replay": "R/1", "eigener_leader": "OP14-041", "gegner_leader": "OP13-004", "gegner_id": 999}
+        belege = F.belege_sammeln([("132161", p)], {"R/1": LOG})
+        self.assertEqual(belege, [("himm#7921", "132161"), ("AKUMA#7749", "999")])
+
+    def test_ohne_gegner_id_nur_der_inhaber(self):
+        p = {"replay": "R/1", "eigener_leader": "OP14-041", "gegner_leader": "OP13-004"}
+        self.assertEqual(F.belege_sammeln([("132161", p)], {"R/1": LOG}), [("himm#7921", "132161")])
+
+    def test_eindeutig(self):
+        belege = [("a#1", "1"), ("a#1", "1"), ("b#2", "2")]
+        self.assertEqual(F.belege_eindeutig(belege), {"a#1": "1", "b#2": "2"})
+
+    def test_name_mit_zwei_ids_faellt_weg(self):
+        self.assertEqual(F.belege_eindeutig([("You#1", "1"), ("You#1", "2"), ("b#2", "3")]), {"b#2": "3"})
+
+    def test_id_mit_zwei_namen_behaelt_beide(self):
+        # Umbenennung: alte und neue Partien sollen beide zugeordnet werden.
+        self.assertEqual(F.belege_eindeutig([("a#1", "1"), ("c#3", "1")]), {"a#1": "1", "c#3": "1"})
+
+
 SCHNAPP, BOUNTY = F.QUELLE_SCHNAPPSCHUSS, F.QUELLE_BOUNTY
 
 
