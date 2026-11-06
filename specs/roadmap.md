@@ -15,11 +15,10 @@ stehen in `docs/historie.md`.
 * Spielerseite: KaizokuListe und Leader aus der Web API (PR 28, 29).
 * Härten nach Audit mit Error Boundaries (PR 30) und Optimieren (PR 31).
 * AGENTS.md und lokaler Issue Tracker (PR 32).
+* Polish (PR 33), Bilder und Ladepfad am Handy (PR 35), Replaypfade aus Firestore (PR 36).
 
 ## In Arbeit
 
-* Polish (`specs/features/polish.md` auf dem Branch): PR 33 offen.
-* Bilder und Leistung (`specs/features/bilder-leistung.md`): Branch `claude/bilder-leistung`, lokal.
 * Selbstlauf Phase 3 (Wachen, Event Ablauf) und Phase 4 (Meldungen), Stand offen.
 * Update Log: Bot und Secrets beim Nutzer, Stand offen.
 
