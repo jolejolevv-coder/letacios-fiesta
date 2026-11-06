@@ -1,0 +1,60 @@
+# Spielerseite: Bountyverlauf und Partien ohne Ergebnis
+
+Stand 06.11.2026, freigegeben am 06.11.2026. Idee aus `alexfrey317/optcg-data` (nur Idee, kein Code).
+
+## Ausgangslage
+1. Das Profil in `PublicUsers/<id>.Western` führt `Graph.y`: die Bounty nach jeder Partie der
+   Saison, älteste zuerst, ohne Zeitstempel (`Graph.x` ist nur 1, 2, 3 …). Rang 1 hatte am
+   06.11. 96 Punkte bei 71 Siegen und 25 Niederlagen. `spieler_daten.py` holt das Profil,
+   wirft das Feld aber weg.
+2. Die Liste der letzten Partien zeigt auch Partien, die der Client nicht als Ergebnis wertet.
+   Im Spielpaket (Anzeige einer Profilzeile) gilt: Farbe für Sieg oder Niederlage nur bei
+   `mtch[14] >= MIN_MATCH_TIME` (60 s) oder bei einer Niederlage; einen Replay Knopf gibt es
+   erst ab 15 s. Partien ohne Sieger (`selfdc` gegen `selfdc`, `unresolved`, `started`,
+   `cancelled`) haben gar kein Ergebnis. Bei uns zählt jede davon als „L“. In den Top 100
+   waren das am 06.11. 90 Partien ohne Sieger und 14 Siege unter 60 s, von 843.
+
+## Goal
+Die Spielerseite zeigt den Bountyverlauf der Saison und nur noch Partien, die der Client als
+Ergebnis wertet.
+
+## Scope
+- In scope: `Graph.y` in `spieler.json.gz`; eine Verlaufskurve auf der Spielerseite;
+  Partien ohne Sieger und Siege unter 60 s fallen aus der Liste.
+- Out of scope: Bountyänderung je Partie, Archiv über Läufe, Profilzeitstempel, Hinweis auf
+  den Saisonreset (alles Punkte 3 bis 6 der Analyse, offen); Leader raten.
+
+## Acceptance criteria
+- [ ] `spieler_daten.py` speichert je Spieler `verlauf`: die Werte aus `Graph.y`, auf eine
+      Nachkommastelle gerundet, nur Zahlen. Fehlt das Feld, fehlt `verlauf`; die Seite zeigt
+      dann keine Kurve.
+- [ ] Die Spielerseite zeigt unter den Kennzahlen eine Kurve „Bounty this season“: x = Partie
+      Nummer, y = Bounty, mit Start, Höchstwert und aktuellem Wert als Zahl. Ohne neue
+      Bibliothek, als eigenes SVG. Bei 390 px Breite kein seitliches Scrollen.
+- [ ] Partien ohne Sieger und Siege unter 60 s stehen nicht mehr in „Recent games“. Eine
+      Niederlage unter 60 s bleibt (wie im Client). Die Regel steht an einer Stelle
+      (`spieler_daten.py`), mit Verweis auf das Spielpaket.
+- [ ] Auch `frische_partien.py` und das Lernen der Namen sehen nur die gewerteten Partien.
+- [ ] Python Tests für Verlauf und Filter, Node Test für die Kurvenpunkte; alle bestehenden
+      Tests grün; `npm run build` grün.
+
+## Implementation plan
+Phase 1, Daten: `verlauf_aus(west)` und `gewertet(zeile)` in `spieler_daten.py`, `holen()`
+nutzt beide. Konstante `MIN_PARTIE_S = 60` mit Verweis. Tests.
+
+Phase 2, Seite: `src/verlauf.js` rechnet aus den Werten die SVG Punkte (reine Funktion, Test),
+`Verlauf` Komponente in `App.jsx` im Stil von DESIGN.md, eingebaut in `Spieler`. Prüfung bei
+1280 und 390 px mit der lokalen Vorschau.
+
+Phase 3: Doku (README Abschnitt Spielerseite, Übergabe), Branch, PR nach deinem OK.
+
+Tradeoffs: `Graph.y` hat keine Zeitachse, die Kurve zeigt also Partien, nicht Tage. Ein Tag
+mit 30 Partien und eine Woche Pause sehen gleich aus. Dafür ist sie vollständig und kostet keinen
+Abruf. Das Profil schreibt nur der Client des Spielers; wer die App länger nicht öffnet, hat
+eine ältere Kurve als seine Bounty in der Bestenliste. Den letzten Punkt gleichen wir nicht an.
+Ausblenden statt neutral zeigen: der Client zeigt solche Partien grau; wir lassen sie weg,
+weil die Liste ohnehin nur neun Partien hat und ein „L“ ohne Ergebnis irreführt.
+
+## Open questions
+- Keine. Annahme: die Kurve steht über „Leaders played“; die Größe (etwa 120 px hoch) wähle ich
+  nach DESIGN.md.
