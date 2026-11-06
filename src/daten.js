@@ -37,7 +37,7 @@ export function bildpfadCdn(id) {
 /* Reihenfolge der Bildquellen (specs/features/bilder-leistung.md). Kleine Bilder (16 bis 36 px)
  * kommen zuerst aus der eigenen Datei: 120 px, rund 9 KB. Das CDN liefert 600 px mit rund
  * 290 KB und ist dort nur der Rueckfall, wenn die eigene Datei fehlt (img/offen.txt).
- * Scharfe Bilder (Leaderbild hinter dem Titel, Replaybrett) werden gross gezeigt und kommen
+ * Scharfe Bilder (Karten auf dem Replaybrett) werden gross gezeigt und kommen
  * zuerst vom CDN, die eigene Datei ist ihr Rueckfall. */
 export function bildQuellen(id, scharf = false) {
   const eigene = bildpfad(id);

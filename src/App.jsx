@@ -4168,7 +4168,7 @@ export default function App() {
   /* Titel und Kennzeile des gewaehlten Leaders */
   const leaderKopf = leader ? (
     <section className="vorspann leaderkopf">
-      <Bild key={lid} id={lid} className="kopf-bild" scharf vorrang />
+      <Bild key={lid} id={lid} className="kopf-bild" vorrang />
       <div className="titelzeile">
         <Kartenbild id={lid} breite={44} />
         <div>
