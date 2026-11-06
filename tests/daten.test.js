@@ -189,3 +189,24 @@ test("Derselbe Zeitraum ein zweites Mal wird nicht neu geholt", async () => {
     assert.equal(a, b);
   });
 });
+
+/* Bilder und Leistung (specs/features/bilder-leistung.md): Reihenfolge der Bildquellen. */
+import { bildQuellen, BILD_CDN } from "../src/daten.js";
+
+test("Kleine Bilder kommen zuerst aus der eigenen Datei, das CDN ist der Rueckfall", () => {
+  const [erste, zweite] = bildQuellen("OP17-039");
+  assert.match(erste, /img\/OP17-039\.jpg$/);
+  assert.equal(zweite, BILD_CDN + "OP17-039.webp");
+});
+
+test("Scharfe Bilder kommen zuerst vom CDN, die eigene Datei ist der Rueckfall", () => {
+  const [erste, zweite] = bildQuellen("OP17-039", true);
+  assert.equal(erste, BILD_CDN + "OP17-039.webp");
+  assert.match(zweite, /img\/OP17-039\.jpg$/);
+});
+
+test("Karten mit X Vorsilbe zeigen auf das Bild ohne X, in beiden Quellen", () => {
+  const quellen = bildQuellen("XOP17-039");
+  assert.match(quellen[0], /img\/OP17-039\.jpg$/);
+  assert.equal(quellen[1], BILD_CDN + "OP17-039.webp");
+});

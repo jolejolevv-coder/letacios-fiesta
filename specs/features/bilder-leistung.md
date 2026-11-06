@@ -31,13 +31,13 @@ Out of scope:
 - Die übrigen Lighthouse Punkte: ungenutztes JS (65 KB), ungenutztes CSS (15 KB), Render Blocking (bis 290 ms).
 
 ## Acceptance criteria
-- [ ] Decklists lädt am Handy höchstens 1 MB, gemessen mit Lighthouse auf dem Produktionsbuild.
+- [x] Decklists lädt am Handy höchstens 1 MB, gemessen mit Lighthouse auf dem Produktionsbuild.
 - [ ] LCP auf Decklists am Handy unter 2,5 s, am Rechner unter 1,2 s.
-- [ ] CLS auf Decklists an beiden Geräten unter 0,1.
+- [x] CLS auf Decklists an beiden Geräten unter 0,1.
 - [ ] Leistung auf Decklists an beiden Geräten mindestens 90, Leaderboard bleibt bei mindestens 99.
-- [ ] Fehlt ein eigenes Bild, erscheint es weiter vom CDN; fehlt es auch dort, steht der Platzhalter mit Kennung wie bisher (Test und Probe im Browser).
-- [ ] Die Kartenbilder sehen bei 16 bis 36 px so scharf aus wie vorher (Sichtprüfung am Retina Bildschirm, 120 px reicht bis 40 px bei 3x).
-- [ ] `npm test` und `npx vite build` grün.
+- [x] Fehlt ein eigenes Bild, erscheint es weiter vom CDN; fehlt es auch dort, steht der Platzhalter mit Kennung wie bisher (Test und Probe im Browser).
+- [x] Die Kartenbilder sehen bei 16 bis 36 px so scharf aus wie vorher (Sichtprüfung am Retina Bildschirm, 120 px reicht bis 40 px bei 3x).
+- [x] `npm test` und `npx vite build` grün.
 
 ## Implementation plan
 Phase 1: Quellenreihenfolge in `Bild` umdrehen (eigene Datei, dann CDN, dann Platzhalter), Test dazu.
@@ -49,3 +49,23 @@ Tradeoffs: Die eigenen Bilder kommen von GitHub Pages statt von einem schnellen 
 
 ## Open questions
 - Leaderbild oben (340 × 475 px, 26 % Deckkraft, weich ausgeblendet): bleibt es scharf vom CDN (290 KB, ein Bild je Seite) oder kommt es aus der eigenen 120 px Datei (9 KB, sichtbar weicher)? Entschieden am 06.11.2026: CDN, scharf. Spec freigegeben.
+
+## Ergebnis 06.11.2026
+Lighthouse 13.6 auf dem Produktionsbuild, vorher und nachher:
+
+| Seite | Leistung | LCP | CLS | Gewicht |
+|---|---|---|---|---|
+| Decklists Handy | 71 → 77 | 26,3 s → 6,3 s | 0,104 → 0,001 | 5,1 MB → 0,87 MB |
+| Decklists Rechner | 56 → 95 | 6,3 s → 1,5 s | 0,415 → 0,002 | 9,5 MB → 1,0 MB |
+| Leaderboard Handy | 99 → 99 | 1,6 s → 1,7 s | 0,001 → 0,001 | 5,1 MB → 0,56 MB |
+| Leaderboard Rechner | 100 → 100 | 0,4 s → 0,4 s | 0,004 → 0,004 | 7,9 MB → 0,66 MB |
+
+Umgesetzt: `bildQuellen` in `src/daten.js` legt die Reihenfolge fest (klein: eigene Datei, dann CDN; scharf: CDN, dann eigene Datei), `Bild` geht sie der Reihe nach durch und zeigt danach den Platzhalter. Scharf sind das Leaderbild und die Karten auf dem Replaybrett (dort unverändert). Das Leaderbild lädt mit `loading="eager"` und `fetchpriority="high"`. `html { scrollbar-gutter: stable }` und `.inhalt { min-height: 100vh }` (vorher 40vh) nehmen die Sprünge. Auf Decklists kamen 211 von 212 Bildern aus der eigenen Datei, nur das Leaderbild vom CDN.
+
+Nicht erreicht:
+- LCP am Handy unter 2,5 s und Leistung am Handy mindestens 90. Das LCP Element ist das scharfe Leaderbild (278 KB). Zur Probe mit der eigenen 120 px Datei: Handy 86 Punkte und LCP 4,1 s, Rechner 99 Punkte und LCP 0,9 s. Auch dann bleibt das Handy über 2,5 s, weil vor dem Bild das JS (130 KB) und der Satz (160 KB) laden. Beides ist out of scope.
+- LCP am Rechner unter 1,2 s: 1,5 s mit dem CDN Bild, 0,9 s mit der eigenen Datei.
+
+Rückfall auf das CDN: per Test geprüft (`bildQuellen`); im Browser fehlte auf Decklists kein eigenes Bild, ein echter Rückfall war also nicht zu sehen.
+
+Tradeoff: Kurze Seiten (Changelog, Analyze) haben jetzt eine Bildschirmhöhe Platz vor der Fußzeile.

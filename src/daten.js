@@ -34,6 +34,17 @@ export function bildpfadCdn(id) {
   return BILD_CDN + bildpfad(id).replace(/^.*\/img\//, "").replace(/\.jpg$/, "") + ".webp";
 }
 
+/* Reihenfolge der Bildquellen (specs/features/bilder-leistung.md). Kleine Bilder (16 bis 36 px)
+ * kommen zuerst aus der eigenen Datei: 120 px, rund 9 KB. Das CDN liefert 600 px mit rund
+ * 290 KB und ist dort nur der Rueckfall, wenn die eigene Datei fehlt (img/offen.txt).
+ * Scharfe Bilder (Leaderbild hinter dem Titel, Replaybrett) werden gross gezeigt und kommen
+ * zuerst vom CDN, die eigene Datei ist ihr Rueckfall. */
+export function bildQuellen(id, scharf = false) {
+  const eigene = bildpfad(id);
+  const cdn = bildpfadCdn(id);
+  return scharf ? [cdn, eigene] : [eigene, cdn];
+}
+
 export const KARTE = /([A-Z]{2,4}\d{2}-\d{3}|P-\d{3})/;
 
 export function kennung(text) {

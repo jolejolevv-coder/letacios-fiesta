@@ -9,7 +9,7 @@ import {
   anmelden,
   anzahl,
   bildpfad,
-  bildpfadCdn,
+  bildQuellen,
   deckSchluessel,
   EntsperrFehler,
   grossesBild,
@@ -128,13 +128,13 @@ function Zeichen({ name, groesse = 18 }) {
    Bausteine
    -------------------------------------------------------------------------- */
 
-function Bild({ id, className = "", alt = "", breite, hoehe }) {
-  const [kaputt, setKaputt] = useState(false);
-  // Erst das CDN, bei einem Fehler die eigene Datei, danach der Platzhalter.
-  const [eigene, setEigene] = useState(false);
+function Bild({ id, className = "", alt = "", breite, hoehe, scharf = false, vorrang = false }) {
+  // Die Quellen der Reihe nach (bildQuellen), danach der Platzhalter mit der Kennung.
+  const [stufe, setStufe] = useState(0);
   // Ohne Kennung (etwa ein unbekannter Leader in einer Partie) steht ein leerer Platzhalter.
   if (!id) return <span className={className + " kb-kaputt"} aria-hidden="true" />;
-  if (kaputt) {
+  const quellen = bildQuellen(id, scharf);
+  if (stufe >= quellen.length) {
     const strich = id.lastIndexOf("-");
     return (
       <span className={className + " kb-kaputt"} title={id}>
@@ -143,16 +143,18 @@ function Bild({ id, className = "", alt = "", breite, hoehe }) {
       </span>
     );
   }
+  // vorrang: das Bild ist das groesste im ersten Bild (LCP) und laedt sofort und zuerst.
   return (
     <img
-      src={eigene ? bildpfad(id) : bildpfadCdn(id)}
+      src={quellen[stufe]}
       alt={alt}
       width={breite}
       height={hoehe}
-      loading="lazy"
+      loading={vorrang ? "eager" : "lazy"}
+      fetchpriority={vorrang ? "high" : undefined}
       decoding="async"
       className={className}
-      onError={() => (eigene ? setKaputt(true) : setEigene(true))}
+      onError={() => setStufe((s) => s + 1)}
     />
   );
 }
@@ -1440,7 +1442,7 @@ function Brett({ wer, stand, leader, namen, eigen, gedreht, amZug, geist }) {
                         Stand kennt sie nicht mehr. Siehe replay.js, angriffeSchieben. */}
                     {geist && geist.platz === i ? <Geist id={geist.karte} namen={namen} /> : null}
                     <span className="platz" data-platz={i}>
-                      <Bild id={k} breite={120} hoehe={168}
+                      <Bild id={k} scharf breite={120} hoehe={168}
                             className={"bkarte" + (gerestet.has(i) ? " gerestet" : "")}
                             alt={(namen[k] || {}).n || k
                                  + (gerestet.has(i) ? ", rested" : "")} />
@@ -1462,7 +1464,7 @@ function Brett({ wer, stand, leader, namen, eigen, gedreht, amZug, geist }) {
               <div className="zonenname">Leader</div>
               {leader ? (
                 <span className="platz" data-platz="leader">
-                  <Bild id={leader} breite={120} hoehe={168}
+                  <Bild id={leader} scharf breite={120} hoehe={168}
                         className={"bkarte leader" + (s.leaderGerestet ? " gerestet" : "")}
                         alt={(namen[leader] || {}).n || leader} />
                   {/* Der Slot 99xx meint den Leader. */}
@@ -1475,7 +1477,7 @@ function Brett({ wer, stand, leader, namen, eigen, gedreht, amZug, geist }) {
             <div className="zonenpaar">
               <div className="zonenname">Stage</div>
               {s.stagekarten && s.stagekarten.length ? (
-                <Bild id={s.stagekarten[0]} breite={120} hoehe={168}
+                <Bild id={s.stagekarten[0]} scharf breite={120} hoehe={168}
                       className="bkarte" alt={s.stagekarten[0]} />
               ) : (
                 <Stapel n={don.stage || 0} />
@@ -1515,7 +1517,7 @@ function Brett({ wer, stand, leader, namen, eigen, gedreht, amZug, geist }) {
         <div className="rhand">
           {hand.length ? (
             hand.map((k, i) => (
-              <Bild key={k + i} id={k} breite={120} hoehe={168}
+              <Bild key={k + i} id={k} scharf breite={120} hoehe={168}
                     className="bkarte" alt={(namen[k] || {}).n || k} />
             ))
           ) : (
@@ -1531,7 +1533,7 @@ function Brett({ wer, stand, leader, namen, eigen, gedreht, amZug, geist }) {
 function Geist({ id, namen }) {
   return (
     <span className="platz geist" data-platz="geist" aria-hidden="true">
-      <Bild id={id} breite={120} hoehe={168} className="bkarte gerestet"
+      <Bild id={id} scharf breite={120} hoehe={168} className="bkarte gerestet"
             alt={((namen[id] || {}).n || id) + ", destroyed"} />
     </span>
   );
@@ -4166,7 +4168,7 @@ export default function App() {
   /* Titel und Kennzeile des gewaehlten Leaders */
   const leaderKopf = leader ? (
     <section className="vorspann leaderkopf">
-      <Bild id={lid} className="kopf-bild" />
+      <Bild key={lid} id={lid} className="kopf-bild" scharf vorrang />
       <div className="titelzeile">
         <Kartenbild id={lid} breite={44} />
         <div>
