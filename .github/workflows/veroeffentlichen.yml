@@ -234,6 +234,25 @@ jobs:
           SEITEN_PASSWORT: ${{ secrets.SEITEN_PASSWORT }}
         run: python3 verschluesseln.py --ziel dist
 
+      # Das Gedaechtnis der Ingame Namen (frische_partien.py, specs/features/ingame-namen.md)
+      # zurueck ins Repo, nur verschluesselt. Erst nach dem Bau: das pull --rebase holt sonst
+      # womoeglich neueren Code mitten in den Lauf. Scheitert der Push, lernt der naechste
+      # Lauf die Namen aus dem Schnappschuss neu; die Seite haengt nicht daran.
+      - name: Gedaechtnis der Ingame Namen sichern
+        run: |
+          set -uo pipefail
+          git add ingame_namen.json.gz.enc 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "  Gedaechtnis unveraendert"
+            exit 0
+          fi
+          git -c user.name="ladder" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Ingame Namen, $(date +%F)"
+          git pull -q --rebase --autostash origin main
+          git push -q origin HEAD:main
+        continue-on-error: true
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

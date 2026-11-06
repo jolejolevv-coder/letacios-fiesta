@@ -17,6 +17,18 @@ Einzelheiten zu diesen Runden stehen in `docs/uebergabe-archiv-2026-11-06.md` (N
 
 Offen: ein Replay vom 05.11. oder später auf der Live Seite öffnen (hinter dem Passwort, prüft der Nutzer); Replaybrett und Handygröße der verschobenen Reiter mit echtem Replay prüfen.
 
+## Ingame Namen 06.11.2026 (Branch `pi/ingame-namen`, nicht gepusht)
+
+Spec `specs/features/ingame-namen.md`, freigegeben (Gedächtnis im Repo, Schwelle 95 %).
+Phase 1: `frische_partien.py` merkt gelernte Ingame Namen in `ingame_namen.json.gz.enc` (Repo
+Wurzel, nur verschlüsselt, schreibt nur bei Änderung). Konflikte zweier Belege sperren den
+Namen. Neuer Workflow Schritt „Gedaechtnis der Ingame Namen sichern“ am Ende von `bauen`
+committet die Datei (pull rebase autostash, continue on error). Lokaler Probelauf: 24 Namen,
+zweiter Lauf „unveraendert“. Phase 2: Bounty im Replay Dokument ist nicht die Bounty der
+Bestenliste (100 bis 900 darunter, springt), Precision 0, Phase 3 entfällt
+(`werkzeuge/ingame_bounty_messung.py`). Offen: Push und PR nach OK, danach nach einigen Läufen
+prüfen, ob die Zeile „Gedaechtnis“ und „Partien aus Replays für N Spieler“ wächst (Ziel 36).
+
 ## Nächste Schritte
 
 1. Nächster Leistungshebel am Handy, falls gewünscht: Leaderbild aus `?leader=` vor dem Satz oder eine Kopfdatei des Satzes (siehe `specs/features/ladepfad-handy.md`).

@@ -22,6 +22,8 @@ stehen in `docs/historie.md`.
 * Selbstlauf Phase 3 (Wachen, Event Ablauf) und Phase 4 (Meldungen), Stand offen.
 * Update Log: Bot und Secrets beim Nutzer, Stand offen.
 
+* Ingame Namen: Gedächtnis gebaut auf `pi/ingame-namen`, wartet auf Push (Spec `ingame-namen.md`).
+
 ## Später, nur auf Wunsch
 
 * Signalfarben im Ladder ohne Partienzahl, Kartenleiste am Handy, gleichnamige Leader.
@@ -54,3 +56,9 @@ Steht in `specs/features/ladepfad-handy.md`: messen nach jeder Phase half. Falsc
 1. Gut: im Spielpaket nachgesehen, wie der Client selbst sucht, statt den Hash zu erraten. Die Sammlung `Replays` war die fertige Antwort.
 2. Falsche Annahme: was nicht geladen wird, liegt unter einem anderen Namen. Tatsächlich hat der Client die meisten Partien nie hochgeladen.
 3. Besser spezifizieren: ein Ziel für die Trefferquote erst festlegen, wenn bekannt ist, wie viel überhaupt in Storage liegt.
+
+## Rückblick Ingame Namen 06.11.2026
+
+1. Gut: vor dem Einbau gegen bekannte Namen gemessen. Die Bountyerkennung wäre sonst mit falschen Zuordnungen live gegangen.
+2. Falsche Annahme: `winner_bounty` im Replay Dokument sei die Bounty der Bestenliste. Sie liegt weit darunter und springt.
+3. Besser spezifizieren: bei einem Fingerabdruck vorher an drei Belegen prüfen, ob das Feld überhaupt dasselbe misst.

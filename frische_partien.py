@@ -14,6 +14,10 @@ alle neueren Replays der letzten TAGE gesucht.
 Gesucht wird nicht in allen Replays: nur in denen, bei denen eine Seite mindestens so viel
 Bounty hatte wie Rang 100 abzüglich BOUNTY_RAND. Am 20.10.2026 waren das 180 von 2582 am Tag.
 
+Gelernte Namen bleiben im Gedächtnis `ingame_namen.json.gz.enc` (nur verschlüsselt im Repo,
+specs/features/ingame-namen.md). Der Schnappschuss rollt weiter, ein einmal gelernter Name
+bleibt so über Läufe erhalten und die Abdeckung wächst von Tag zu Tag.
+
 Läuft in der Action nach `spieler_daten.py` und vor `replays_holen.py`; der holt und packt
 die Logs der neuen Partien dann mit.
 
@@ -38,6 +42,13 @@ from spieler_daten import leader_kennung  # noqa: E402
 
 SPIELER = os.path.join(HIER, "public", "spieler.json.gz")
 BESTE = os.path.join(HIER, "public", "bestenliste.json.gz")
+# Bewusst ausserhalb von public: das Gedaechtnis braucht nur der Lauf, nicht die Seite.
+GEDAECHTNIS = os.path.join(HIER, "ingame_namen.json.gz.enc")
+
+# Woher eine Zuordnung im Gedaechtnis stammt. Der Schnappschuss ist ein Beleg (user_id und
+# Replay derselben Partie), die Bounty nur eine Schaetzung.
+QUELLE_SCHNAPPSCHUSS = "schnappschuss"
+QUELLE_BOUNTY = "bounty"
 
 TAGE = 5                     # so weit zurück werden Replays gesucht
 FENSTER_STUNDEN = 6          # eine Abfrage je Zeitfenster
@@ -87,6 +98,77 @@ def namen_lernen(spieler, eimer):
         if name and uid not in namen.values():
             namen[name] = uid
     return namen
+
+
+def gedaechtnis_leer():
+    return {"namen": {}, "gesperrt": []}
+
+
+def gedaechtnis_laden(schl, pfad=None):
+    """Das Gedaechtnis aus der verschluesselten Datei, leer wenn es sie noch nicht gibt."""
+    from verschluesseln import entschluesseln
+    pfad = pfad or GEDAECHTNIS
+    if not os.path.exists(pfad):
+        return gedaechtnis_leer()
+    with open(pfad, "rb") as datei:
+        roh = gzip.decompress(entschluesseln(schl, datei.read()))
+    gedaechtnis = gedaechtnis_leer()
+    gedaechtnis.update(json.loads(roh))
+    return gedaechtnis
+
+
+def gedaechtnis_speichern(gedaechtnis, schl, pfad=None):
+    """Schreibt nur, wenn sich der Inhalt geaendert hat. Die Verschluesselung nimmt jedes Mal
+    einen neuen Zufallswert; ohne diese Pruefung gaebe es jeden Tag einen leeren Commit.
+    Gibt zurueck, ob geschrieben wurde."""
+    from verschluesseln import verschluesseln
+    pfad = pfad or GEDAECHTNIS
+    if os.path.exists(pfad) and gedaechtnis_laden(schl, pfad) == gedaechtnis:
+        return False
+    roh = json.dumps(gedaechtnis, ensure_ascii=False, sort_keys=True,
+                     separators=(",", ":")).encode()
+    with open(pfad, "wb") as datei:
+        datei.write(verschluesseln(schl, gzip.compress(roh, compresslevel=9, mtime=0)))
+    return True
+
+
+def namen_einpflegen(gedaechtnis, neu, quelle, heute):
+    """Neue Zuordnungen {Ingame Name: user_id} ins Gedaechtnis. Aendert es an Ort und Stelle.
+
+    Regeln: Ein gesperrter Name bleibt draussen. Ein Beleg aus dem Schnappschuss ersetzt eine
+    abweichende Schaetzung aus der Bounty (die war dann falsch). Widersprechen sich zwei
+    Belege, ist der Name nicht eindeutig (etwa ein Allerweltsname): er fliegt raus und wird
+    gesperrt, statt still den alten Eintrag zu ueberschreiben.
+    Gibt {"neu", "korrigiert", "konflikte"} zurueck."""
+    zaehlung = {"neu": 0, "korrigiert": 0, "konflikte": 0}
+    namen, gesperrt = gedaechtnis["namen"], set(gedaechtnis["gesperrt"])
+    for name, uid in neu.items():
+        uid = str(uid)
+        if name in gesperrt:
+            continue
+        alt = namen.get(name)
+        if alt is None:
+            namen[name] = {"uid": uid, "quelle": quelle, "seit": heute}
+            zaehlung["neu"] += 1
+        elif alt["uid"] == uid:
+            if quelle == QUELLE_SCHNAPPSCHUSS and alt["quelle"] != quelle:
+                alt["quelle"] = quelle
+        elif alt["quelle"] == QUELLE_BOUNTY and quelle == QUELLE_SCHNAPPSCHUSS:
+            namen[name] = {"uid": uid, "quelle": quelle, "seit": heute}
+            zaehlung["korrigiert"] += 1
+        elif quelle == QUELLE_BOUNTY and alt["quelle"] == QUELLE_SCHNAPPSCHUSS:
+            continue
+        else:
+            del namen[name]
+            gesperrt.add(name)
+            zaehlung["konflikte"] += 1
+    gedaechtnis["gesperrt"] = sorted(gesperrt)
+    return zaehlung
+
+
+def namen_aus_gedaechtnis(gedaechtnis):
+    """{Ingame Name: user_id} fuer zuordnen()."""
+    return {name: e["uid"] for name, e in gedaechtnis["namen"].items()}
 
 
 def parallel_laden(pfade, eimer):
@@ -239,8 +321,16 @@ def main():
         return
     grenze = min(bounties) - BOUNTY_RAND
 
-    namen = namen_lernen(spieler, eimer)
-    print(f"  {len(namen)} Ingame Namen von {len(spieler)} Spielern gelernt")
+    gelernt = namen_lernen(spieler, eimer)
+    print(f"  {len(gelernt)} Ingame Namen von {len(spieler)} Spielern aus dem Schnappschuss")
+    schl = schluessel_holen()
+    gedaechtnis = gedaechtnis_sicher_laden(schl)
+    vorher = len(gedaechtnis["namen"])
+    heute = datetime.date.today().isoformat()
+    zaehlung = namen_einpflegen(gedaechtnis, gelernt, QUELLE_SCHNAPPSCHUSS, heute)
+    print(f"  Gedaechtnis: {vorher} vorher, {zaehlung['neu']} neu, "
+          f"{zaehlung['korrigiert']} korrigiert, {zaehlung['konflikte']} Konflikte")
+    namen = namen_aus_gedaechtnis(gedaechtnis)
 
     db = Db()
     jetzt = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
@@ -252,6 +342,8 @@ def main():
     bounty_je_id = {str(e["user_id"]): e.get("bounty") for e in beste if e.get("user_id") is not None}
     neu = zuordnen(docs, texte, namen, bounty_je_id)
 
+    # Das Gedaechtnis kennt auch Spieler, die heute nicht mehr in den Top 100 stehen.
+    neu = {uid: partien for uid, partien in neu.items() if uid in spieler}
     for uid, partien in neu.items():
         spieler[uid]["partien"] = mischen(spieler[uid].get("partien", []), partien)
     print(f"  {sum(len(v) for v in neu.values())} Partien aus Replays für {len(neu)} Spieler")
@@ -259,12 +351,36 @@ def main():
     roh = json.dumps(paket, ensure_ascii=False, separators=(",", ":")).encode()
     with gzip.open(SPIELER, "wb", compresslevel=9) as datei:
         datei.write(roh)
-    from bestenliste_einbauen import seitenpasswort
-    from verschluesseln import salz_holen, schluessel, verschluesseln
-    passwort = seitenpasswort()
-    if passwort:
+    if schl:
+        from verschluesseln import verschluesseln
         with open(SPIELER + ".enc", "wb") as datei:
-            datei.write(verschluesseln(schluessel(passwort, salz_holen()), roh_gz(SPIELER)))
+            datei.write(verschluesseln(schl, roh_gz(SPIELER)))
+        geschrieben = gedaechtnis_speichern(gedaechtnis, schl)
+        print(f"  Gedaechtnis {'geschrieben' if geschrieben else 'unveraendert'}, "
+              f"{len(gedaechtnis['namen'])} Namen")
+    else:
+        print("  kein SEITEN_PASSWORT, das Gedaechtnis bleibt ungelesen und ungeschrieben")
+
+
+def gedaechtnis_sicher_laden(schl):
+    """Wie gedaechtnis_laden, aber ein unlesbares Gedaechtnis (anderes Passwort, kaputte
+    Datei) kostet nicht den ganzen Schritt: dann beginnt es leer, mit einer Warnung."""
+    if not schl:
+        return gedaechtnis_leer()
+    try:
+        return gedaechtnis_laden(schl)
+    except Exception as fehler:
+        print(f"::warning::Gedaechtnis der Ingame Namen unlesbar ({type(fehler).__name__}), "
+              "es beginnt leer")
+        return gedaechtnis_leer()
+
+
+def schluessel_holen():
+    """Der Schluessel aus dem Seitenpasswort, oder None ohne Passwort."""
+    from bestenliste_einbauen import seitenpasswort
+    from verschluesseln import salz_holen, schluessel
+    passwort = seitenpasswort()
+    return schluessel(passwort, salz_holen()) if passwort else None
 
 
 def roh_gz(pfad):
