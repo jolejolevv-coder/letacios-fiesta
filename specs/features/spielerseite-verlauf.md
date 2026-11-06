@@ -25,18 +25,25 @@ Ergebnis wertet.
   den Saisonreset (alles Punkte 3 bis 6 der Analyse, offen); Leader raten.
 
 ## Acceptance criteria
-- [ ] `spieler_daten.py` speichert je Spieler `verlauf`: die Werte aus `Graph.y`, auf eine
+- [x] `spieler_daten.py` speichert je Spieler `verlauf`: die Werte aus `Graph.y`, auf eine
       Nachkommastelle gerundet, nur Zahlen. Fehlt das Feld, fehlt `verlauf`; die Seite zeigt
       dann keine Kurve.
-- [ ] Die Spielerseite zeigt unter den Kennzahlen eine Kurve „Bounty this season“: x = Partie
+- [x] Die Spielerseite zeigt unter den Kennzahlen eine Kurve „Bounty this season“: x = Partie
       Nummer, y = Bounty, mit Start, Höchstwert und aktuellem Wert als Zahl. Ohne neue
       Bibliothek, als eigenes SVG. Bei 390 px Breite kein seitliches Scrollen.
-- [ ] Partien ohne Sieger und Siege unter 60 s stehen nicht mehr in „Recent games“. Eine
+- [x] Partien ohne Sieger und Siege unter 60 s stehen nicht mehr in „Recent games“. Eine
       Niederlage unter 60 s bleibt (wie im Client). Die Regel steht an einer Stelle
       (`spieler_daten.py`), mit Verweis auf das Spielpaket.
-- [ ] Auch `frische_partien.py` und das Lernen der Namen sehen nur die gewerteten Partien.
-- [ ] Python Tests für Verlauf und Filter, Node Test für die Kurvenpunkte; alle bestehenden
+- [x] Auch `frische_partien.py` und das Lernen der Namen sehen nur die gewerteten Partien.
+- [x] Python Tests für Verlauf und Filter, Node Test für die Kurvenpunkte; alle bestehenden
       Tests grün; `npm run build` grün.
+
+## Ergebnis 06.11.2026
+Probe gegen Firestore mit den Top 95: 930 Partien vorher, 842 nachher; alle 95 haben einen
+Verlauf, der längste hat 1.124 Punkte. `spieler.json.gz` wächst dadurch von 31 auf 74 KB
+gepackt; geladen wird die Datei nur in den Reitern Player und Decklists. Kurve bei 1280 und 390
+px geprüft, kein seitliches Scrollen (`scrollWidth` 1265 und 375). Tests: Python 11 neu, Node
+6 neu, 109 grün; `npm run build` grün.
 
 ## Implementation plan
 Phase 1, Daten: `verlauf_aus(west)` und `gewertet(zeile)` in `spieler_daten.py`, `holen()`

@@ -22,7 +22,9 @@ stehen in `docs/historie.md`.
 * Selbstlauf Phase 3 (Wachen, Event Ablauf) und Phase 4 (Meldungen), Stand offen.
 * Update Log: Bot und Secrets beim Nutzer, Stand offen.
 
-* Ingame Namen: Gedächtnis gebaut auf `pi/ingame-namen`, wartet auf Push (Spec `ingame-namen.md`).
+* Ingame Namen: Gedächtnis gemergt (PR 38), Wachstum nach einigen Läufen prüfen.
+
+* Spielerseite: Bountyverlauf und gewertete Partien auf `pi/spielerseite-verlauf`, wartet auf Push.
 
 ## Später, nur auf Wunsch
 
@@ -62,3 +64,9 @@ Steht in `specs/features/ladepfad-handy.md`: messen nach jeder Phase half. Falsc
 1. Gut: vor dem Einbau gegen bekannte Namen gemessen. Die Bountyerkennung wäre sonst mit falschen Zuordnungen live gegangen.
 2. Falsche Annahme: `winner_bounty` im Replay Dokument sei die Bounty der Bestenliste. Sie liegt weit darunter und springt.
 3. Besser spezifizieren: bei einem Fingerabdruck vorher an drei Belegen prüfen, ob das Feld überhaupt dasselbe misst.
+
+## Rückblick Spielerseite Verlauf 06.11.2026
+
+1. Gut: die Regel für gewertete Partien aus dem Spielpaket gelesen statt von optcg-data übernommen; dort stand 15 s, der Client nimmt 60 s.
+2. Falsche Annahme: der Import von `.impeccable/review/aufnahmen.py` läuft ohne Schutz durch `__main__` und hat alle Prüfbilder neu geschrieben (nur lokal, gitignored).
+3. Besser spezifizieren: die erwartete Dateigröße neuer Felder vorab nennen (hier 31 auf 74 KB).
