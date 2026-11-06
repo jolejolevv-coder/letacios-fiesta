@@ -7,8 +7,27 @@
  * JSON und 0,41 MB gepackt. Ohne das waere ein tagesgenauer Zeitraum nicht ladbar.
  */
 
+import { abrufArt, vorabAbnehmen } from "./vorab.js";
+
 const zwischenspeicher = new Map();
 const HTTP_NICHT_GEFUNDEN = 404;
+
+/**
+ * fetch mit Vorabruf: liegt die Antwort schon aus index.html bereit (src/vorab.js),
+ * wird sie genommen. Ist der Vorabruf gescheitert, wird normal geholt; ein Netzfehler
+ * im Vorabruf soll nicht ueber die eigene Fehlerbehandlung des Aufrufers entscheiden.
+ */
+async function abrufen(adresse, art) {
+  const vorab = vorabAbnehmen(adresse);
+  if (vorab) {
+    try {
+      return await vorab;
+    } catch {
+      // Vorabruf gescheitert: selbst holen.
+    }
+  }
+  return fetch(adresse, art);
+}
 
 /** Basis der Datendateien. Feste Wurzel, weil Adressen wie /matrix sonst danebengreifen. */
 function basis() {
@@ -32,6 +51,17 @@ export function bildpfad(id) {
 export const BILD_CDN = "https://static.dotgg.gg/onepiece/card/";
 export function bildpfadCdn(id) {
   return BILD_CDN + bildpfad(id).replace(/^.*\/img\//, "").replace(/\.jpg$/, "") + ".webp";
+}
+
+/* Reihenfolge der Bildquellen (specs/features/bilder-leistung.md). Kleine Bilder (16 bis 36 px)
+ * kommen zuerst aus der eigenen Datei: 120 px, rund 9 KB. Das CDN liefert 600 px mit rund
+ * 290 KB und ist dort nur der Rueckfall, wenn die eigene Datei fehlt (img/offen.txt).
+ * Scharfe Bilder (Karten auf dem Replaybrett) werden gross gezeigt und kommen
+ * zuerst vom CDN, die eigene Datei ist ihr Rueckfall. */
+export function bildQuellen(id, scharf = false) {
+  const eigene = bildpfad(id);
+  const cdn = bildpfadCdn(id);
+  return scharf ? [cdn, eigene] : [eigene, cdn];
 }
 
 export const KARTE = /([A-Z]{2,4}\d{2}-\d{3}|P-\d{3})/;
@@ -151,7 +181,7 @@ export async function verschluesselung() {
   if (schluesselInfo !== undefined) return schluesselInfo;
   let antwort;
   try {
-    antwort = await fetch(basis() + "schluessel.json", { cache: "no-cache" });
+    antwort = await abrufen(basis() + "schluessel.json", abrufArt("schluessel.json"));
   } catch (fehler) {
     throw new EntsperrFehler("netz", "schluessel.json nicht erreichbar: " + fehler.message);
   }
@@ -219,10 +249,10 @@ async function schluesselAbleiten(passwort, info) {
   );
 }
 
-// Dateien, deren Inhalt sich unter demselben Namen nie mehr aendert: ein Replay,
-// ein Tagesausschnitt, ein fertiger Satz. Sie tragen Datum oder Partie im Namen.
-// Alles andere wird taeglich neu geschrieben und behaelt seinen Namen.
-const UNVERAENDERLICH = /^(replays|tage|saetze|analyse)\//;
+// Dateien, deren Inhalt sich unter demselben Namen nie mehr aendert (ein Replay, ein
+// Tagesausschnitt, ein fertiger Satz), holt der Browser aus seinem Speicher; alles andere
+// wird taeglich neu geschrieben. Die Regel steht in src/vorab.js (`abrufArt`), weil der
+// Vorabruf dieselbe Abrufart braucht.
 
 /** Entschluesselter oder roher Inhalt als JSON, gzip oder nicht. */
 async function auspacken(puffer) {
@@ -248,9 +278,7 @@ export async function holen(datei) {
     // Dateien ist das richtig, sonst saehe man bis zu zehn Minuten alte Zahlen. Fuer
     // die unveraenderlichen ist es verschenkt: ein Tagesausschnitt wiegt bis zu 400 KB
     // und wurde bisher bei jedem Wechsel des Zeitraums neu geholt.
-    const antwort = await fetch(basis() + datei + (verschluesselt ? ".enc" : ""), {
-      cache: UNVERAENDERLICH.test(datei) ? "default" : "no-cache",
-    });
+    const antwort = await abrufen(basis() + datei + (verschluesselt ? ".enc" : ""), abrufArt(datei));
     if (!antwort.ok) throw new Error(datei + ": HTTP " + antwort.status);
     let puffer = await antwort.arrayBuffer();
     if (verschluesselt) {

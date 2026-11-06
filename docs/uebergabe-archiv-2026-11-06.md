@@ -176,3 +176,48 @@ geprüft. Die Vorschau `.impeccable/review/vite.haerten.mjs` liefert jetzt auch 
 `public/tage` des Hauptcheckouts und ein künstliches Replay mit 200 Ereignissen unter `/replays/`.
 Annahme: Wechsel zurück auf einen früheren Zeitraum parst die Tage neu (aus dem Browser Cache).
 Offen: Push und PR nur mit OK des Nutzers.
+
+
+# Nachtrag beim Merge von PR 34 (06.11.2026)
+
+## Replaypfade 06.11.2026 (Branch `claude/replay-pfade`)
+
+Gemeldet: kein Replay ließ sich laden. Ursache: seit etwa W43 legt der Client Replays als
+`<Verlierer>_<Hash>.log` ab, das Wochenetikett weicht von der ISO Woche ab; unser gerechneter
+Pfad traf nie. Fix nach Spec `specs/features/replay-pfade.md` (freigegeben): `spieler_daten.py`
+holt den echten Pfad aus Firestore `Replays` (wie der Client), `replays_holen.py` zählt je
+Woche und trägt fehlende Replays aus, die Seite zeigt dort keinen Knopf. Nur etwa jede fünfte
+Partie wird überhaupt hochgeladen. Annahmen: neuer Branch ab main, unabhängig von PR 35; die
+Austragung läuft nicht, wenn kein einziges Replay gefunden wurde (Storage Ausfall). Offen:
+Push und PR nach OK, danach im Action Log die Zeile „je Woche gefunden“ prüfen und ein Replay
+vom 05.11. oder später auf der Seite öffnen. Dieses File ist über 10 KB; Archivieren nach dem
+Merge von PR 33 und 35, sonst Konflikte.
+
+## Polish 06.11.2026
+
+Härten (PR 30) und Optimieren (PR 31) sind in main. Branch `claude/polish` ab main b90f2f2 im
+Worktree `website-redesign-bc8edc`. Spec `specs/features/polish.md` freigegeben (alle vier Punkte) und umgesetzt, Ergebnis
+in der Spec. Gemergt als PR 33 am 06.11. Vorschau: launch.json Eintrag `polish` (`.impeccable/review/vite.polish.mjs`,
+gitignored, Port 5183, liefert auch `/tage/` aus dem Hauptcheckout).
+
+## Bilder und Leistung 06.11.2026
+
+Polish ist als PR 33 gemergt. Lighthouse auf Produktionsbuild
+mit lokalen Daten (launch.json `lighthouse`, `vite preview --config .impeccable/review/vite.polish.mjs`,
+Port 5184, Ausgabe `.impeccable/review/dist-lh`): Decklists Leistung 71 Handy / 56 Rechner, LCP 26,3 s /
+6,3 s, CLS 0,104 / 0,415. Ursache: Kartenbilder 600 px WebP vom CDN (290 KB) statt eigener 120 px JPG
+(9 KB). Spec `specs/features/bilder-leistung.md` freigegeben, Leaderbild bleibt scharf vom CDN.
+Branch `claude/bilder-leistung` ab main a045e1b. Annahme: Basis main statt claude/polish, damit die PRs
+unabhängig bleiben; neue CSS Regeln daher nicht am Dateiende (dort ändert PR 33).
+Umgesetzt und committet (7538d2e), Ergebnis in der Spec. Decklists Handy 77 Punkte, LCP 6,3 s;
+Ziel 90 und 2,5 s nicht erreicht, LCP Element ist das scharfe Leaderbild vom CDN (Probe mit eigener
+Datei: 86 und 4,1 s). Nutzer entschied danach: Leaderbild aus eigener Datei (c6f3adb), Decklists Handy 86 und 4,1 s,
+Rechner 99 und 0,8 s. Offen: Push und PR. Rückblick für
+roadmap.md steht noch aus; erst nach dem Merge von PR 33 anhängen, sonst Konflikt am Dateiende.
+
+## Ladepfad am Handy 06.11.2026 (Extrarunde, spät)
+Spec `specs/features/ladepfad-handy.md`, freigegeben, alle vier Phasen gebaut auf `claude/bilder-leistung` (zusammen mit Bilder und Leistung ein PR). Ergebnis und Rückblick stehen in der Spec: FCP 1,7 auf 0,9 s, `index.js` 130 auf 73 KB gz, Daten laden parallel zum JS; LCP am Handy simuliert weiter 4,1 bis 4,4 s, 85 bis 87 Punkte, weil der Satz (161 KB) die Leitung bestimmt.
+
+Annahmen: „push und merke“ des Nutzers als Push und PR gelesen, nicht als Merge (Merge stellt die Produktion um, Verschlüsselung nur lokal mit Node nachgestellt).
+
+Offen für morgen: Merge nach OK des Nutzers; Replay mit echtem Brett und Handygröße prüfen; nächster Hebel (Leaderbild vor dem Satz aus `?leader=`, oder Kopfdatei des Satzes) entscheiden; Rückblick Bilder und Leistung und Ladepfad in roadmap.md, sobald PR 33 gemergt ist; diese Datei ist über 10 KB und gehört archiviert.

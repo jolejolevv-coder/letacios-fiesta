@@ -229,7 +229,7 @@ Zwei gedämpfte Töne nur für die Lesart einer Winrate, nie für Flächen der O
 - **Lead** (400, 16px, höchstens 76ch), **Body** (400, 14.5px; Grundtext), **Klein** (400, 13px).
 - **Bedienung** (500, 13.5px): Reiter, Knöpfe, Links, Suchfeld.
 - **Abschnitt** (500, 13px, Text 2, mit auslaufender Haarlinie), **Etikett** (500, 11.5px).
-- **Kennwert** (Mono 500, 18px, am Handy 17px): Wert einer Kachel (`.kennzeile dd`). **Zahl** (Mono 500, 12 bis 13.5px): Zellen und Tabellen. **Tastenkürzel** (Mono 500, 11px).
+- **Kennwert** (Mono 500, 18px, am Handy 17px): Wert einer Kachel (`.kennzeile dd`). **Zahl** (Mono 500, 12.5 bis 14.5px): Zellen und Tabellen. Andere Größen gibt es nur für die freigestellten Fälle in `.impeccable/config.json` (Polish 06.11.2026). Am Handy stehen Eingabefelder auf 16px, damit iOS beim Fokus nicht heranzoomt. **Tastenkürzel** (Mono 500, 11px).
 
 ### Named Rules
 **The Printed Numbers Rule.** Jede echte Zahl steht in Geist Mono mit Tabellenziffern und ist aufrecht; eine Schätzung steht kursiv in Text 2 hinter der hellblauen Raute.

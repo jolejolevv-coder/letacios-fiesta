@@ -6,46 +6,25 @@ bei Bedarf `README.md`, `PRODUCT.md`, `DESIGN.md` und `AGENTS.md`. Ältere Absch
 
 ## Stand 06.11.2026
 
-Main steht auf a045e1b (Merge PR 32). Alle bisherigen PRs bis 32 sind gemergt, PR 21 wurde
-geschlossen (verworfen). Zuletzt gemergt am 05. und 06.11.:
+Alle PRs bis 37 sind gemergt, PR 21 wurde geschlossen (verworfen). Am 06.11. dazu:
 
-* PR 28 `claude/top100-klick`: Spielerseite zeigt `KaizokuListe` wieder, Klick auf einen Spieler
-  der Top 100 macht die Seite nicht mehr schwarz.
-* PR 29 `claude/spielerseite-api`: Leader aus der Web API, Kaizoku Decklisten richtig angezeigt.
-* PR 30 `claude/haerten-5ddc19`: Error Boundary `src/Fehlergrenze.jsx` um jeden Reiter und um
-  die App (`main.jsx`), Ladefehler mit Hülle, Adressen `?id=` und `?p=`, Entsperren mit
-  Fehlerpfad (`EntsperrFehler`), 44 px Touchziele. Damit ist die frühere Frage nach einer Error
-  Boundary für die Spielerseite erledigt (geprüft: Datei und Einbau in `App.jsx` und `main.jsx`).
-* PR 31 `claude/optimieren`: Replay Log nur bei offenem Protokoll, `zeitraumLaden` holt in
-  Gruppen zu drei und rechnet laufend ein.
-* PR 32 `pi/issue-tracker-lokal`: `AGENTS.md` und lokaler Issue Tracker in `.scratch/`
-  (gitignored, nie committen), Regeln in `docs/agents/issue-tracker.md`, Begriffe in
-  `docs/agents/domain.md`.
+* PR 33 `claude/polish`: Bounty am Handy vollständig, Touchziele, Schriftgrößen auf der Skala (Spec `specs/features/polish.md`).
+* PR 35 `claude/bilder-leistung`: kleine Kartenbilder und Leaderbild aus eigener 120 px Datei, Vorabruf der Startdaten (`src/vorab.js`, `vite.vorab.js`), seltene Reiter als eigener Chunk (`src/Selten.jsx`), gsap erst bei Bedarf. Decklists Handy 86 Punkte, LCP 4,1 s; Ziel 90 und 2,5 s nicht erreicht (Specs `bilder-leistung.md`, `ladepfad-handy.md`).
+* PR 36 `claude/replay-pfade`: Seit etwa W43 legt der Client Replays als `<Verlierer>_<Hash>.log` ab, das Wochenetikett weicht ab. `spieler_daten.py` holt den echten Pfad jetzt aus Firestore `Replays` (wie der Client), `replays_holen.py` zählt je Woche („je Woche gefunden“ im Action Log) und trägt fehlende Replays aus; die Seite zeigt dort keinen Knopf. Erster Lauf: 121 neu statt 32. Nur etwa jede fünfte neue Partie wird überhaupt hochgeladen.
+* PR 34 und 37: Doku, Archiv und Rückblicke.
 
-Die lokalen Branches `claude/haerten` und `claude/haerten-5ddc19` sind gelöscht. Der Remote
-Branch `origin/claude/haerten-5ddc19` besteht noch.
+Einzelheiten zu diesen Runden stehen in `docs/uebergabe-archiv-2026-11-06.md` (Nachtrag beim Merge von PR 34).
 
-Offener PR 33 `claude/polish` (Bounty am Handy vollständig, Touchziele, Schriftgrößen auf der
-Skala; Spec `specs/features/polish.md` liegt nur auf dem Branch). Der Branch ändert auch
-`docs/uebergabe.md` und `specs/roadmap.md` (Abschnitt Polish, Rückblick Polish); beim Merge
-gibt es dort einen Konflikt mit dieser Fassung, Abschnitte beider Seiten behalten.
-
-Lokaler Branch `claude/bilder-leistung` (Spec `specs/features/bilder-leistung.md` nach
-Lighthouse, freigegeben 06.11., Übergabe Stand Bilder und Leistung) liegt im Worktree
-`.claude/worktrees/website-redesign-bc8edc`, nicht gepusht, kein PR. Dort wird gebaut: 7 Commits
-vom 06.11. zwischen 01:20 und 01:30 (kleine Kartenbilder aus eigener Datei, Leaderbild mit
-Vorrang, preconnect entfernt, Spec Ladepfad am Handy). Laufende Arbeit, keine Altlast.
-
-Regel des Nutzers (06.11.): PR 33 und `claude/polish` nicht anfassen.
+Offen: ein Replay vom 05.11. oder später auf der Live Seite öffnen (hinter dem Passwort, prüft der Nutzer); Replaybrett und Handygröße der verschobenen Reiter mit echtem Replay prüfen.
 
 ## Nächste Schritte
 
-1. PR 33 (Polish): nicht anfassen (Nutzer, 06.11.). Beim späteren Merge Dokukonflikt beachten.
+1. Nächster Leistungshebel am Handy, falls gewünscht: Leaderbild aus `?leader=` vor dem Satz oder eine Kopfdatei des Satzes (siehe `specs/features/ladepfad-handy.md`).
 2. Selbstlauf: Phase 1 (Formaterkennung, PR 11) und Phase 2 (Kartendaten aus Kaizoku und tcgcsv,
    PR 12) sind gemergt. Offen laut `specs/features/selbstlauf.md`: Phase 3 (Wachen für CDN und
    Firestore Zugang, Event Ablauf `bis`) und Phase 4 (Meldungen). Die Wache nach Quelle kam mit
    PR 27, ob Phase 3 damit fertig ist, ist nicht geprüft.
-3. Bilder und Leistung (Branch `claude/bilder-leistung`) nach Freigabe weiterbauen.
+3. Nach dem nächsten Action Lauf die Zeile „je Woche gefunden“ ansehen; kippt die neueste Woche auf 0, hat der Client das Namensschema wieder gewechselt.
 4. Spielerseite mit Bountyverlauf aus der API (Spec `specs/features/` nötig, früher vom Nutzer
    gewünscht, kein Stand im Repo).
 5. Nur auf Wunsch: Signalfarben im Ladder ohne Partienzahl, Umbruch der Kartenleiste am Handy,
@@ -134,7 +113,7 @@ und nie ausgegeben.
 
 ## Tests
 
-`npm test` (81 Tests, Stand Optimieren) und `npx vite build`.
+`npm test` (96 Tests), Python Tests mit `python3 -m unittest discover -s tests -p "test_*.py"` und `npx vite build`.
 
 ## Zuletzt behoben
 
