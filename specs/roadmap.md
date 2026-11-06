@@ -1,60 +1,31 @@
 # Roadmap Letacios Fiesta
 
-Stand 29.10.2026. Ausführlich in `docs/uebergabe.md`.
+Stand 06.11.2026. Ausführlich in `docs/uebergabe.md`. Frühere Erledigt Listen und Rückblicke
+stehen in `docs/historie.md`.
 
-## Erledigt
+## Erledigt (alle gemergt, PR 1 bis 32)
 
-* EB05 Queue: Sätze „EB05 Queue“ und „EB05 Heroines Event“, fehlende Kartenbilder aus
-  dem Sim (`specs/features/eb05-queue.md`). Rangliste und Replays gestrichen.
-* Ladder per Bildschirmfoto und OCR vom Bazzite, mit Plausibilitätsschutz (PR 2).
-* Zähler zeigen sofort den Endwert (PR 3).
-* EB05 Heroines Event: alle Winrates nur gegen Event Leader (PR 5). Seit 26.10. aus dem
-  neuen Formatsatz.
-* Format OP17 plus EB05 (`specs/features/format-op17-eb05.md`): Satz „OP17 + EB05 Standard“
-  ab 27.10., OP17 als „format (old)“ (PR 7). Heroines Event aus dem neuen Satz (PR 8). Vom 28.10. bis 02.11. aus Replays (PR 10), seitdem nur aus CDN mode_0 ab 29.10. (`format-aus-cdn.md`).
-* Update Notice auf dem Bazzite wird automatisch gesetzt (PR 10).
-* Redesign „Werkzeug“ (`specs/features/redesign.md`): Linear / Raycast, Geist, ⌘K Leadersuche,
-  untere Leiste am Handy. Auf Branch `claude/website-redesign-bc8edc`, wartet auf Push und Merge.
-* Härten nach Audit (`specs/features/haerten.md`): Error Boundaries, Ladefehler mit Hülle,
-  Adressen für Spieler und Replay, Entsperren mit Fehlerpfad, 44 px Touchziele. Gebaut auf
-  `claude/haerten-5ddc19`, wartet auf Push und PR.
+* Ladder per OCR, Zähler, EB05 Queue und Heroines Event, Format OP17 plus EB05 (PR 2 bis 10).
+* Selbstlauf Phase 1 Formaterkennung (PR 11), Phase 2 Kartendaten aus Kaizoku und tcgcsv (PR 12),
+  Formatsatz nur aus CDN (PR 16).
+* Update Log aus Discord (PR 13, 14), Mitschnitt täglich (PR 15), Wache nach Quelle und stille
+  Meldungen (PR 27).
+* Redesign „Werkzeug“ und Signatur (PR 17, 18, 23).
+* Bestenliste aus der Web API (PR 19, 20), Kaizoku als Dataset (PR 22 bis 26).
+* Spielerseite: KaizokuListe und Leader aus der Web API (PR 28, 29).
+* Härten nach Audit mit Error Boundaries (PR 30) und Optimieren (PR 31).
+* AGENTS.md und lokaler Issue Tracker (PR 32).
+* Polish (PR 33), Bilder und Ladepfad am Handy (PR 35), Replaypfade aus Firestore (PR 36).
 
-## In Arbeit und in Planung
+## In Arbeit
 
-* Selbstlauf (`specs/features/selbstlauf.md`): Phase 1 Formaterkennung gebaut (PR 11),
-  Phase 2 tcgcsv Daten, Phase 3 Wachen und Event Ablauf, Phase 4 Meldungen.
-* Kartenquelle tcgcsv (`specs/features/kartenquelle-tcgcsv.md`): Bilder live (PR 6),
-  Daten aus tcgcsv mit Kaizoku als Ersatz offen.
-* Update Log aus Discord (`specs/features/update-log.md`): Phase 1 gebaut, wartet auf Bot und
-  Secrets des Nutzers (`docs/discord-bot-anleitung.md`).
-* Zuordnung der user_id über die Leaderzahl (`specs/features/zuordnung-leaderzahl.md`).
+* Selbstlauf Phase 3 (Wachen, Event Ablauf) und Phase 4 (Meldungen), Stand offen.
+* Update Log: Bot und Secrets beim Nutzer, Stand offen.
 
 ## Später, nur auf Wunsch
 
 * Signalfarben im Ladder ohne Partienzahl, Kartenleiste am Handy, gleichnamige Leader.
 
-## Rückblick 24.10.2026
-
-1. Gut: erst messen, dann bauen. Die Notice als Ursache war nach einem Blick auf die Fotos klar.
-2. Falsche Annahmen: der Merge von PR 1 baut nicht (paths ignore), und rAF im verborgenen
-   Pane steht still, obwohl `document.hidden` false meldet.
-3. Besser spezifizieren: bei jeder neuen Spielversion vorher klären, wer die Notice wegklickt.
-
-## Rückblick Redesign 02.11.2026
-
-1. Gut: Vergleichsseite mit vier Richtungen vor der Spec, dann v0 am echten Code. Die Wahl war
-   danach schnell, und Tokens mit alten Namen hielten alle Ansichten zusammen.
-2. Falsche Annahmen: Geist Mono ist breiter als Saira, feste Spaltenbreiten brachen um
-   (Leaderleiste, Anteil in Rankings). Der Browser Pane zeigt zudem alte Stände, wenn der
-   Nutzer im selben Tab klickt.
-3. Besser spezifizieren: bei einem Schriftwechsel vorher alle festen Breiten für Zahlen auflisten.
-
-## Rückblick Härten 06.11.2026
-
-1. Gut: Fehler per Cookie in einer eigenen Vorschau simulieren, ohne `src/` anzufassen.
-2. Falsche Annahme: der Vite Server liefert für eine fehlende `schluessel.json` index.html mit
-   200; die strengere Prüfung hätte `npm run dev` gebrochen. Fiel erst im Browser auf.
-3. Besser spezifizieren: welche Antwort des Servers „keine Verschlüsselung“ heißt.
 
 ## Rückblick Optimieren 06.11.2026
 
