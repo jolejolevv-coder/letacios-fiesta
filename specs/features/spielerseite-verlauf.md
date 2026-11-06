@@ -45,6 +45,16 @@ gepackt; geladen wird die Datei nur in den Reitern Player und Decklists. Kurve b
 px geprüft, kein seitliches Scrollen (`scrollWidth` 1265 und 375). Tests: Python 11 neu, Node
 6 neu, 109 grün; `npm run build` grün.
 
+## Nachtrag 06.11.2026: nur komplette Partien
+Entscheidung des Nutzers nach dem Merge von PR 39: „Recent games“ zeigt nur Partien mit beiden
+Leadern. Fehlt ein Deck, lief die Partie ohne Sim Sync (Handy oder „play anyway“); keine dieser
+Partien hatte ein Replay. Gezählt am Lauf 42204105619: 830 Partien, 342 komplett, 10 Spieler
+ohne sichtbare Partie, Median 2 je Spieler. Gefiltert wird nur in der Anzeige
+(`src/partien.js`, Test `tests/partien.test.js`); die Daten bleiben vollständig, weil der Reiter
+Decklists sie braucht. Unter der Liste steht, wie viele Partien ausgeblendet sind.
+- [x] Nur Partien mit beiden Leadern sichtbar, Zahl der ausgeblendeten genannt; ohne sichtbare
+      Partie ein eigener Satz statt „No recent games recorded“.
+
 ## Implementation plan
 Phase 1, Daten: `verlauf_aus(west)` und `gewertet(zeile)` in `spieler_daten.py`, `holen()`
 nutzt beide. Konstante `MIN_PARTIE_S = 60` mit Verweis. Tests.

@@ -29,7 +29,7 @@ Bestenliste (100 bis 900 darunter, springt), Precision 0, Phase 3 entfällt
 (`werkzeuge/ingame_bounty_messung.py`). Offen: Push und PR nach OK, danach nach einigen Läufen
 prüfen, ob die Zeile „Gedaechtnis“ und „Partien aus Replays für N Spieler“ wächst (Ziel 36).
 
-## Spielerseite Verlauf 06.11.2026 (Branch `pi/spielerseite-verlauf`, nicht gepusht)
+## Spielerseite Verlauf 06.11.2026 (PR 39 gemergt; Nachtrag nur komplette Partien auf `pi/nur-komplette-partien`)
 
 Spec `specs/features/spielerseite-verlauf.md`, freigegeben. `spieler_daten.py`: `verlauf_aus()`
 übernimmt `Graph.y`, `gewertet()` lässt Partien ohne Sieger und Siege unter 60 s weg
