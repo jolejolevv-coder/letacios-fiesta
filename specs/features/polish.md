@@ -22,12 +22,12 @@ Out of scope:
 - Alles, was das Aussehen am Rechner sichtbar verändert, außer den kleinen Größenverschiebungen aus Punkt 4.
 
 ## Acceptance criteria
-- [ ] Im Leaderboard steht bei 375 px jede Bounty vollständig (geprüft: `scrollWidth <= clientWidth` für alle `.bounty`).
-- [ ] Bei 375 px sind Suchfeld, Quellenchip, Sombrero, Spielernamen im Leaderboard und Kartenknopf im Mulligan mindestens 44 px hoch (oder haben eine Trefferfläche dieser Größe); keine Seite scrollt seitlich.
-- [ ] Am Handy zeigt Decklists und Matchups nach dem Öffnen keine leere Fläche über den Kennzahlen, sobald die Daten da sind.
-- [ ] `src/index.css` nutzt nur noch Größen aus der Skala oder freigestellte Werte; jede Verschiebung folgt der Rolle (Body 14.5, Bedienung 13.5, Klein 13, Zahl 12.5, Etikett 11.5). `DESIGN.md` beschreibt danach, was gebaut ist.
-- [ ] Am Rechner sehen Decklists, Matchups, Rankings, Leaderboard und Guide vorher und nachher gleich aus, bis auf die halben Pixel.
-- [ ] `npm test` und `npx vite build` grün, Detektor ohne neue Funde.
+- [x] Im Leaderboard steht bei 375 px jede Bounty vollständig (geprüft: `scrollWidth <= clientWidth` für alle `.bounty`).
+- [x] Bei 375 px sind Suchfeld, Quellenchip, Sombrero, Spielernamen im Leaderboard und Kartenknopf im Mulligan mindestens 44 px hoch (oder haben eine Trefferfläche dieser Größe); keine Seite scrollt seitlich.
+- [x] Am Handy zeigt Decklists und Matchups nach dem Öffnen keine leere Fläche über den Kennzahlen, sobald die Daten da sind.
+- [x] `src/index.css` nutzt nur noch Größen aus der Skala oder freigestellte Werte; jede Verschiebung folgt der Rolle (Body 14.5, Bedienung 13.5, Klein 13, Zahl 12.5, Etikett 11.5). `DESIGN.md` beschreibt danach, was gebaut ist.
+- [x] Am Rechner sehen Decklists, Matchups, Rankings, Leaderboard und Guide vorher und nachher gleich aus, bis auf die halben Pixel.
+- [x] `npm test` und `npx vite build` grün, Detektor ohne neue Funde.
 
 ## Implementation plan
 Phase 1: Bounty und Touchziele im Block `@media (max-width: 760px)` am Ende von `src/index.css`, Messung bei 375 px.
@@ -38,4 +38,14 @@ Phase 4: Detektor, Tests, Build, Commit auf `claude/polish`, PR nach deinem OK.
 Tradeoffs: Größere Touchziele im Kopf machen die Kopfzeile am Handy etwa 10 px höher. Die Schriftgrößen zu vereinheitlichen verschiebt 49 Stellen um einen halben bis einen Pixel; das ist sauberer, aber eine breite Änderung, die man in jedem Reiter gegenprüfen muss.
 
 ## Open questions
-- Punkt 4 (Schriftgrößen) mit rein oder als eigene Runde später?
+- Punkt 4 (Schriftgrößen) mit rein oder als eigene Runde später? Beantwortet: mit rein.
+
+## Ergebnis 06.11.2026
+Freigegeben mit „Alle vier“. Geprüft in der Vorschau auf allen neun Reitern bei 375 px und am Rechner.
+
+1. Bounty: Die Rechnerregel `.ladder.mit-zahlen.ohne-zeit .vorn` hat vier Klassen und schlug am Handy die Spalten. Die Handyregel setzt jetzt auch die Spalten. Alle 100 Bountys stehen vollständig.
+2. Touchziele: Suchfeld 187 × 44, Quellenchip 96 × 44, Sombrero 44 × 44. Die Kartenbilder im Mulligan behalten 26 × 36 px, ihre Trefferfläche ist 44 px groß (nur im Mulligan, in den Kartenstreifen würden sich die Flächen überlappen). Die Spielernamen im Leaderboard bleiben klein: die ganze Zeile ist die Trefferfläche, ein Tipp in die Zeile öffnet die Spielerseite (geprüft).
+3. Lücke: nicht nachstellbar. Der Leaderblock steht nach etwa 0,3 s da und hat keine Einblendung. Die leere Fläche aus dem Befund war ein Bildschirmfoto direkt nach dem Umschalten der Vorschau auf Handygröße. Keine Änderung.
+4. Schriftgrößen: 81 Stellen auf die Skala gezogen (14 → 14.5 oder 13.5 für Zahlen, 15 → 14.5, 15.5 → 16, 12 → 11.5 oder 12.5 für Zahlen, 10.5 → 11). Detektor ohne Funde.
+
+Annahme: Eingabefelder (`.feld`) stehen am Handy auf 16 px, die Palettensuche überall auf 16 px. Unter 16 px zoomt iOS beim Fokus heran. Das war nicht im Befund, gehört aber zu Punkt 4.
