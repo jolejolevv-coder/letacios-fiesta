@@ -14,6 +14,12 @@ Der Replaypfad ist daraus berechenbar, der Client bildet ihn genauso:
 
     Replays/{ISO-Woche}/{game_mode}/{sieger_leader}/{verlierer_leader}_{sieger_mmr}_{verlierer_mmr}.log
 
+**Seit etwa W43 (Ende Oktober 2026) stimmt das nicht mehr.** Der Client legt die Datei jetzt
+als `{verlierer_leader}_{64 Hex Zeichen}.log` ab, und das Wochenetikett weicht ab. Den echten
+Pfad nennt die Sammlung `Replays` in Firestore, in der der Client selbst nachsieht
+(`get_firestore_replay_candidate_paths`). `replay_aus_metadaten` sucht ihn dort; der
+gerechnete Pfad bleibt nur als Rueckfall fuer alte Wochen (specs/features/replay-pfade.md).
+
 **Harte Grenze:** neun Partien je Spieler, mehr schreibt der Server nicht ins Profil.
 Der Bestand waechst nur mit den Laeufen, nicht rueckwirkend. Deshalb wird auch hier
 fortgeschrieben statt ersetzt.
@@ -25,11 +31,13 @@ uebernommen, was fuer Decklisten und Replays gebraucht wird.
     python3 spieler_daten.py --grenze 5 # nur die ersten fuenf, zum Ausprobieren
 """
 import argparse
+import concurrent.futures as futures
 import datetime
 import difflib
 import gzip
 import json
 import os
+import re
 import sys
 import urllib.request
 
@@ -135,6 +143,103 @@ def replaypfad(zeile):
                 f"{verlierer}_{s_mmr}_{v_mmr}.log")
     except Exception:
         return None
+
+
+# Suche in der Firestore Sammlung `Replays`, nachgebaut aus dem Client.
+REPLAY_VORLAUF = datetime.timedelta(hours=1)   # der Client sucht ab eine Stunde vor der Partie
+REPLAY_NACHLAUF = datetime.timedelta(days=1)   # Uploads kamen in Proben 2 bis 20 Minuten danach
+REPLAY_ABFRAGE_LIMIT = 300                     # der Client nimmt 80; beliebte Paarungen fuellen das
+REPLAY_PARALLEL = 8                            # gleichzeitige Abfragen
+ZEIT_FORMAT = "%Y-%m-%dT%H:%M:%S"
+PFAD_TEILE = re.compile(r"^Replays/[^/]+/(\d+)/([^/]+)/(.+)_(-?\d+)_(-?\d+)\.log$")
+
+
+def pfad_teile(pfad):
+    """(Modus, Sieger, Verlierer, Sieger Bounty, Verlierer Bounty) aus einem gerechneten
+    Pfad, oder None. Der Pfad traegt alles, was die Suche braucht."""
+    m = PFAD_TEILE.match(str(pfad or ""))
+    if not m:
+        return None
+    modus, sieger, verlierer, s_mmr, v_mmr = m.groups()
+    return modus, sieger, verlierer, int(s_mmr), int(v_mmr)
+
+
+def replay_frage(modus, sieger, verlierer, zeit):
+    """Die Abfrage, die auch der Client stellt: gleiche Leader und Modus, Zeit ab einer
+    Stunde vor der Partie. Nach oben begrenzt, damit die Antwort klein bleibt."""
+    start = datetime.datetime.fromisoformat(zeit)
+    gleich = lambda feld, w: {"fieldFilter": {"field": {"fieldPath": feld}, "op": "EQUAL",
+                                              "value": {"stringValue": w}}}
+    zeitgrenze = lambda op, t: {"fieldFilter": {"field": {"fieldPath": "timestamp"}, "op": op,
+                                                "value": {"stringValue": t.strftime(ZEIT_FORMAT)}}}
+    return {"structuredQuery": {
+        "from": [{"collectionId": "Replays"}],
+        "where": {"compositeFilter": {"op": "AND", "filters": [
+            gleich("winner_leader", sieger), gleich("loser_leader", verlierer),
+            gleich("game_mode", modus),
+            zeitgrenze("GREATER_THAN", start - REPLAY_VORLAUF),
+            zeitgrenze("LESS_THAN", start + REPLAY_NACHLAUF)]}},
+        "orderBy": [{"field": {"fieldPath": "timestamp"}, "direction": "ASCENDING"}],
+        "limit": REPLAY_ABFRAGE_LIMIT}}
+
+
+def passender_pfad(docs, s_mmr, v_mmr):
+    """Der Pfad des ersten Dokuments mit derselben Bounty, abgeschnitten wie im Client
+    (`_metadata_matches_direct_replay`). None, wenn keines passt."""
+    for d in docs:
+        try:
+            passt = (int(float(d.get("winner_bounty"))) == s_mmr
+                     and int(float(d.get("loser_bounty"))) == v_mmr)
+        except (TypeError, ValueError):
+            continue
+        if passt and d.get("path"):
+            return str(d["path"])
+    return None
+
+
+def replay_dokumente(db, frage):
+    r = urllib.request.Request(db.basis + ":runQuery", data=json.dumps(frage).encode(),
+                               method="POST")
+    r.add_header("Authorization", "Bearer " + db.tok)
+    r.add_header("Content-Type", "application/json")
+    with urllib.request.urlopen(r, timeout=60) as antwort:
+        return [{k: wert(v) for k, v in d["document"]["fields"].items()}
+                for d in json.loads(antwort.read().decode()) if "document" in d]
+
+
+def replay_aus_metadaten(db, partie_eintrag):
+    """Den echten Storagepfad einer Partie aus `Replays` holen, oder None ohne Treffer.
+    Fehler der Abfrage gehen nach oben; der Aufrufer behaelt dann den gerechneten Pfad."""
+    teile = pfad_teile(partie_eintrag.get("replay"))
+    if not teile or not partie_eintrag.get("zeit"):
+        return None
+    modus, sieger, verlierer, s_mmr, v_mmr = teile
+    docs = replay_dokumente(db, replay_frage(modus, sieger, verlierer, partie_eintrag["zeit"]))
+    return passender_pfad(docs, s_mmr, v_mmr)
+
+
+def replays_aufloesen(db, partien):
+    """Fuer jede Partie mit gerechnetem Pfad den echten eintragen. Ohne Treffer bleibt der
+    gerechnete; alte Wochen liegen noch unter ihm. Gibt (gefunden, ohne, Fehler) zurueck."""
+    offen = [p for p in partien if pfad_teile(p.get("replay"))]
+
+    def eins(p):
+        try:
+            return p, replay_aus_metadaten(db, p), None
+        except Exception as f:
+            return p, None, f
+
+    gefunden = ohne = fehler = 0
+    with futures.ThreadPoolExecutor(REPLAY_PARALLEL) as pool:
+        for p, pfad, f in pool.map(eins, offen):
+            if f is not None:
+                fehler += 1
+            elif pfad:
+                p["replay"] = pfad
+                gefunden += 1
+            else:
+                ohne += 1
+    return gefunden, ohne, fehler
 
 
 def partie(zeile, eigene_id):
@@ -336,6 +441,7 @@ def main():
     if a.grenze:
         beste = beste[:a.grenze]
     neu = fehler = 0
+    geholt = []
     for i, e in enumerate(beste, 1):
         if e.get("user_id") is None:
             continue
@@ -349,9 +455,17 @@ def main():
             continue
         d["name"] = e.get("name")
         bestand[kennung] = d
+        geholt.append(kennung)
         neu += 1
         if i % 20 == 0:
             print(f"  {i} von {len(beste)}")
+
+    frisch = [p for k in geholt for p in bestand[k]["partien"]]
+    gefunden, ohne, fehler_meta = replays_aufloesen(db, frisch)
+    print(f"  Replaypfade aus Firestore: {gefunden} gefunden, {ohne} ohne Upload, "
+          f"{fehler_meta} Abfragen gescheitert")
+    if fehler_meta:
+        print("  Warnung: fuer die gescheiterten Abfragen bleibt der gerechnete Pfad")
 
     # Der Speicherort der Replays gehoert in die Datei, damit die Seite die Adresse
     # bilden kann, ohne ihn zu kennen.
