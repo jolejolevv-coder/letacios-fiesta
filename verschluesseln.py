@@ -12,7 +12,8 @@ VERFAHREN. AES-256-GCM. Der Schluessel kommt aus PBKDF2-HMAC-SHA256 ueber das Pa
 Ableitung nur einmal rechnen muss. Jede Datei bekommt einen eigenen Zufallsvektor.
 
     Dateiformat   iv (12 Byte) || Geheimtext mit angehaengtem GCM-Tag
-    schluessel.json   Salz, Rundenzahl und eine Probe zum Pruefen des Passworts
+    schluessel.json   Salz, Rundenzahl, eine Probe zum Pruefen des Passworts und offen
+                      der Name der Startdatei (`start`, fuer den Vorabruf in src/vorab.js)
 
 Die Kartenbilder bleiben unverschluesselt. Es sind oeffentliche Kartenscans, sie tragen
 keine Information ueber den Nutzer, und 2200 Dateien zu verschluesseln waere Aufwand
@@ -23,9 +24,11 @@ ohne Gewinn.
 import argparse
 import base64
 import glob
+import gzip
 import hashlib
 import json
 import os
+import re
 import secrets
 import sys
 
@@ -84,6 +87,30 @@ def lesen(pfad: str) -> bytes:
         return entschluesseln(schluessel(passwort, salz_holen()), datei.read())
 
 
+SATZDATEI = re.compile(r"^saetze/[\w.-]+\.json\.gz$")
+
+
+def start_datei(ziel: str) -> str | None:
+    """Satzdatei, die die Seite beim Start zeigt, offen fuer den Vorabruf (src/vorab.js).
+
+    Der Vorabruf laeuft, bevor das Passwort den Schluessel liefert, und kann das
+    verschluesselte Verzeichnis deshalb nicht lesen. Der Dateiname verraet nichts: alle
+    Namen liegen im oeffentlichen Repo ohnehin offen, der Inhalt bleibt verschluesselt.
+    Fehlt der Start oder ist der Name ungewoehnlich, gibt es kein Feld, und die Seite
+    holt den Satz wie bisher erst nach dem Entsperren.
+    """
+    pfad = os.path.join(ziel, "verzeichnis.json.gz")
+    try:
+        with gzip.open(pfad, "rt", encoding="utf-8") as datei:
+            verzeichnis = json.load(datei)
+    except (OSError, ValueError):
+        return None
+    saetze = verzeichnis.get("saetze") or []
+    satz = next((s for s in saetze if s.get("schluessel") == verzeichnis.get("start")), None)
+    datei = satz.get("datei") if satz else None
+    return datei if isinstance(datei, str) and SATZDATEI.match(datei) else None
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ziel", default="public")
@@ -100,6 +127,8 @@ def main() -> None:
     # dieses einen Passworts. Dafuer sind die 200.000 Runden da.
     salz = salz_holen()
     schl = schluessel(passwort, salz)
+    # Vor dem Verschluesseln lesen: danach liegt das Verzeichnis nur noch als .enc vor.
+    start = start_datei(args.ziel)
 
     muster = [
         os.path.join(args.ziel, "*.json.gz"),
@@ -116,11 +145,14 @@ def main() -> None:
         os.remove(pfad)
 
     with open(os.path.join(args.ziel, "schluessel.json"), "w", encoding="utf-8") as datei:
-        json.dump({
+        info = {
             "salz": base64.b64encode(salz).decode(),
             "runden": RUNDEN,
             "probe": base64.b64encode(verschluesseln(schl, PROBE)).decode(),
-        }, datei)
+        }
+        if start:
+            info["start"] = start
+        json.dump(info, datei)
 
     print(f"  {len(dateien)} Dateien verschluesselt, schluessel.json geschrieben")
 

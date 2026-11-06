@@ -266,3 +266,10 @@ Ziel 90 und 2,5 s nicht erreicht, LCP Element ist das scharfe Leaderbild vom CDN
 Datei: 86 und 4,1 s). Nutzer entschied danach: Leaderbild aus eigener Datei (c6f3adb), Decklists Handy 86 und 4,1 s,
 Rechner 99 und 0,8 s. Offen: Push und PR. Rückblick für
 roadmap.md steht noch aus; erst nach dem Merge von PR 33 anhängen, sonst Konflikt am Dateiende.
+
+## Ladepfad am Handy 06.11.2026 (Extrarunde, spät)
+Spec `specs/features/ladepfad-handy.md`, freigegeben, alle vier Phasen gebaut auf `claude/bilder-leistung` (zusammen mit Bilder und Leistung ein PR). Ergebnis und Rückblick stehen in der Spec: FCP 1,7 auf 0,9 s, `index.js` 130 auf 73 KB gz, Daten laden parallel zum JS; LCP am Handy simuliert weiter 4,1 bis 4,4 s, 85 bis 87 Punkte, weil der Satz (161 KB) die Leitung bestimmt.
+
+Annahmen: „push und merke“ des Nutzers als Push und PR gelesen, nicht als Merge (Merge stellt die Produktion um, Verschlüsselung nur lokal mit Node nachgestellt).
+
+Offen für morgen: Merge nach OK des Nutzers; Replay mit echtem Brett und Handygröße prüfen; nächster Hebel (Leaderbild vor dem Satz aus `?leader=`, oder Kopfdatei des Satzes) entscheiden; Rückblick Bilder und Leistung und Ladepfad in roadmap.md, sobald PR 33 gemergt ist; diese Datei ist über 10 KB und gehört archiviert.

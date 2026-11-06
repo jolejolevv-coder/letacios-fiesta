@@ -32,14 +32,14 @@ Out of scope:
 - Service Worker, Caching Header (GitHub Pages lässt sie nicht setzen), `lf.pw` in localStorage.
 
 ## Acceptance criteria
-- [ ] Im Netzwerkverlauf starten `schluessel.json`, `verzeichnis`, `karten` und der Startsatz, bevor `index.js` fertig geladen ist (Lighthouse Abhängigkeitsbaum, Produktionsbuild).
-- [ ] `index.js` für Decklists höchstens 85 KB gz; Replay, Analyze, Changelog und Book laden eigene Chunks erst beim Öffnen.
-- [ ] Decklists Handy: LCP unter 2,5 s und mindestens 90 Punkte (Median aus drei Läufen, lokale Vorschaudaten).
-- [ ] Decklists Rechner bleibt bei mindestens 99 Punkten, Leaderboard Handy bei mindestens 97 und Rechner bei 100; CLS überall unter 0,1.
-- [ ] Mit Verschlüsselung (Build mit `SEITEN_PASSWORT`, lokal entsperrt) lädt Decklists korrekt, der Vorabruf greift, ein falsches oder fehlendes `start` Feld führt nur zum normalen Abruf.
-- [ ] Replayviewer, Analyze, Changelog und Book sehen und verhalten sich wie vorher (Probe im Browser an beiden Größen); ein fehlgeschlagener Chunk zeigt die vorhandene Fehlergrenze des Reiters.
-- [ ] Einzug sieht aus wie vorher, mit `prefers-reduced-motion` ohne Bewegung; Zähler zeigen den richtigen Endwert.
-- [ ] `npm test` und `npx vite build` grün.
+- [x] Im Netzwerkverlauf starten `schluessel.json`, `verzeichnis`, `karten` und der Startsatz, bevor `index.js` fertig geladen ist (Lighthouse Abhängigkeitsbaum, Produktionsbuild).
+- [x] `index.js` für Decklists höchstens 85 KB gz; Replay, Analyze, Changelog und Book laden eigene Chunks erst beim Öffnen.
+- [ ] Decklists Handy: LCP unter 2,5 s und mindestens 90 Punkte (Median aus drei Läufen, lokale Vorschaudaten). Nicht erreicht: 85 Punkte, LCP 4,4 s, siehe Ergebnis.
+- [ ] Decklists Rechner bleibt bei mindestens 99 Punkten, Leaderboard Handy bei mindestens 97 und Rechner bei 100; CLS überall unter 0,1. Rechner 99 und 100, CLS 0; Leaderboard Handy schwankt 93 bis 100.
+- [x] Mit Verschlüsselung (Build mit `SEITEN_PASSWORT`, lokal entsperrt) lädt Decklists korrekt, der Vorabruf greift, ein falsches oder fehlendes `start` Feld führt nur zum normalen Abruf.
+- [ ] Replayviewer, Analyze, Changelog und Book sehen und verhalten sich wie vorher (Probe im Browser an beiden Größen); ein fehlgeschlagener Chunk zeigt die vorhandene Fehlergrenze des Reiters. Teilweise: Inhalt im Browser geprüft, nur am Rechner; Brett mit echtem Replay und Handygröße offen; die Fehlergrenze griff beim fehlenden Import (behoben).
+- [x] Einzug sieht aus wie vorher, mit `prefers-reduced-motion` ohne Bewegung; Zähler zeigen den richtigen Endwert.
+- [x] `npm test` und `npx vite build` grün.
 
 ## Implementation plan
 Phase 1: Vorabruf. Skript in `index.html`, Abnahme in `holen`, Feld `start` in `verschluesseln.py`, Tests. Messung.
@@ -60,4 +60,36 @@ Annahme: Die Arbeit baut auf `claude/bilder-leistung` auf (Leaderbild und Bildqu
 
 ## Open questions
 - Soll das HTML Skript auch schon die Schlüsselableitung (PBKDF2 aus `lf.pw`) starten? Spart in der Produktion geschätzt 0,2 bis 0,5 s am Handy, braucht aber rund 30 Zeilen Kryptocode doppelt. Vorschlag: nein, erst messen.
-- Feld `start` offen in `schluessel.json`: einverstanden?
+- Feld `start` offen in `schluessel.json`: einverstanden? Entschieden am 06.11.2026: ja, offen. PBKDF2 im HTML: nein, erst messen. Spec freigegeben.
+
+## Ergebnis 06.11.2026
+Lighthouse 13.6 auf dem Produktionsbuild mit den lokalen Vorschaudaten, Decklists am Handy je drei Läufe:
+
+| Stand | Leistung | FCP | LCP | `index.js` gz |
+|---|---|---|---|---|
+| Vorher | 86 | 1,7 s | 4,1 s | 130 KB |
+| Phase 1 Vorabruf | 85 bis 86 | 1,7 s | 4,1 bis 4,2 s | 130 KB |
+| Phase 2 Spielerdatei später | 86 | 1,7 s | 4,1 s | 130 KB |
+| Phase 3 Code Splitting, gsap per `import()` | 85 bis 87 | 0,9 s | 4,1 bis 4,4 s | 73 KB |
+
+Übrige Seiten zum Schluss: Decklists Rechner 99 (LCP 0,9 s), Leaderboard Rechner 100, Leaderboard Handy schwankt zwischen 93 und 100 (zwei Läufe), CLS überall 0. Gewicht Decklists Handy 0,56 MB.
+
+Umgesetzt:
+- `src/vorab.js`, eingebettet in index.html durch `vite.vorab.js`: holt `schluessel.json`, Verzeichnis, Karten und auf Seiten mit Satz den Startsatz, während das JS lädt. `holen` und `verschluesselung` in `src/daten.js` nehmen die Antwort einmal ab. Ohne gemerktes Passwort holt der Vorabruf nur `schluessel.json`. Auf Leaderboard, Spieler, Replay, Guide, Analyze und Changelog holt er keinen Satz; mit Satz fiel das Leaderboard am Handy auf 95.
+- `verschluesseln.py` schreibt `start` (die Satzdatei des Verzeichnisstarts) offen in `schluessel.json`.
+- `spieler.json.gz` startet auf Decklists erst nach dem Satz.
+- `src/Selten.jsx`: Replay, Analyze (Mulligan), Book (Guide), Changelog und eigenes Replay, unverändert aus `App.jsx` verschoben, per `React.lazy` geladen (30 KB gz eigener Chunk). `App.jsx` exportiert dafür 13 kleine Helfer.
+- Einzug mit Web Animations statt gsap (gleiche Werte, neu mit `prefers-reduced-motion` ohne Bewegung). Startdeckkraft 0,01 statt 0: bei 0 zählte Chrome das LCP erst nach dem Ende der Animation (beobachtet 0,73 s statt 0,13 s). Die Zähler laden gsap per `import()` beim ersten Wechsel.
+
+Geprüft im Browser: Decklists lädt `Selten` nicht; Changelog, Mulligan, Guide, Analyze und Replay laden den Chunk und zeigen ihren Inhalt; ein Leaderwechsel lädt gsap und endet auf dem richtigen Wert. Ein echtes Replay war mangels Replaydatei in den Vorschaudaten nicht zu sehen, nur die Meldung des Viewers. Verschlüsselt: mit einem testweise per Node verschlüsselten Build (gleiches Verfahren wie `verschluesseln.py`, das lokal mangels `cryptography` nicht läuft) zeigt die Seite ohne Passwort die Anmeldung und holt nur `schluessel.json`; mit Passwort starten Verzeichnis, Karten und Satz als `.enc` nach 27 bis 30 ms und die Seite steht.
+
+Warum das Handy nicht unter 2,5 s kommt: beobachtet steht das Leaderbild nach 0,13 s. Die Simulation von Lighthouse (1,6 Mbit/s, vierfach gedrosselte CPU) rechnet aber mit allen Bytes, die vor dem Bild über die Leitung gehen. Seit Phase 1 laufen Daten und JS gleichzeitig und teilen sich die Leitung; der Engpass ist jetzt die Menge, allen voran der Satz mit 161 KB. Das Leaderbild hängt am Satz, weil erst der Satz sagt, welcher Leader oben steht. Gewonnen sind FCP (1,7 auf 0,9 s) und 57 KB weniger JS für jeden Reiter.
+
+Nächster Hebel (nicht gebaut, Entscheidung offen):
+- Das Leaderbild vor dem Satz zeigen, wenn die Adresse `?leader=` trägt, oder den zuletzt gewählten Leader merken. Dann hängt das LCP nicht mehr am Satz.
+- Ein kleiner Kopfteil des Satzes (Leaderliste mit Kennzahlen) als eigene Datei vor dem vollen Satz. Umbau in `aktualisieren.py`.
+
+## Rückblick
+1. Gut: nach jeder Phase messen. So fiel auf, dass der Vorabruf allein nichts an der Punktzahl ändert und dass der Satz das Leaderboard bremste.
+2. Falsche Annahme: weniger Wartezeit in der Kette heißt besseres LCP. Die Simulation ist bandbreitengebunden, parallel ist dort kaum schneller als nacheinander. Und Deckkraft 0 im Einzug verschiebt das LCP, sobald die Animation auf dem Compositor läuft.
+3. Besser spezifizieren: ein Ziel in Punkten von Lighthouse braucht vorher eine Rechnung, wie viele Bytes vor dem LCP Element liegen dürfen.
