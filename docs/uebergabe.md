@@ -263,5 +263,6 @@ Branch `claude/bilder-leistung` ab main a045e1b. Annahme: Basis main statt claud
 unabhängig bleiben; neue CSS Regeln daher nicht am Dateiende (dort ändert PR 33).
 Umgesetzt und committet (7538d2e), Ergebnis in der Spec. Decklists Handy 77 Punkte, LCP 6,3 s;
 Ziel 90 und 2,5 s nicht erreicht, LCP Element ist das scharfe Leaderbild vom CDN (Probe mit eigener
-Datei: 86 und 4,1 s). Offen: Entscheidung des Nutzers zum Leaderbild, Push und PR. Rückblick für
+Datei: 86 und 4,1 s). Nutzer entschied danach: Leaderbild aus eigener Datei (c6f3adb), Decklists Handy 86 und 4,1 s,
+Rechner 99 und 0,8 s. Offen: Push und PR. Rückblick für
 roadmap.md steht noch aus; erst nach dem Merge von PR 33 anhängen, sonst Konflikt am Dateiende.
