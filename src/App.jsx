@@ -28,6 +28,7 @@ import {
   zeitraumLaden,
 } from "./daten.js";
 import { leaderSuchen } from "./leadersuche.js";
+import { partienTeilen } from "./partien.js";
 import { verlaufBauen, VERLAUF_BREITE, VERLAUF_HOEHE } from "./verlauf.js";
 import { PASSWORT_SCHLUESSEL, VORGABE_SATZ } from "./vorab.js";
 
@@ -1431,7 +1432,10 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen, kzSpieler }) {
       </>
     );
   }
-  const partien = (daten && daten.partien) || [];
+  const { sichtbar: partien, ausgeblendet } = partienTeilen(daten && daten.partien);
+  const ausgeblendetSatz = ausgeblendet
+    ? `${ausgeblendet} ${ausgeblendet === 1 ? "game" : "games"} without both decks hidden (played without sim sync, no replay).`
+    : "";
   const leader = (eintrag.leader || []).filter((l) => l.leader);
   // Sitzaufteilung gibt es nur aus Replays. Die Web API liefert je Leader Winrate und
   // Partien, die OCR nur die Winrate; beide zeigen die Winrate.
@@ -1529,10 +1533,13 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen, kzSpieler }) {
                 <Partie key={(p.replay || "") + i} nr={i + 1} p={p} namen={namen} replayOeffnen={replayOeffnen} />
               ))}
             </ol>
-            <p className="lesart">A tap on a game turns it over and shows the list and the replay.</p>
+            <p className="lesart">A tap on a game turns it over and shows the list and the replay. {ausgeblendetSatz}</p>
           </>
         ) : (
-          <p className="leer-satz">No recent games recorded for this player. Try another day.</p>
+          <p className="leer-satz">
+            {ausgeblendet ? "No recent game with both decks recorded. " + ausgeblendetSatz
+              : "No recent games recorded for this player. Try another day."}
+          </p>
         )}
       </Abschnitt>
     </>
