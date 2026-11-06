@@ -32,12 +32,15 @@ gibt es dort einen Konflikt mit dieser Fassung, Abschnitte beider Seiten behalte
 
 Lokaler Branch `claude/bilder-leistung` (Spec `specs/features/bilder-leistung.md` nach
 Lighthouse, freigegeben 06.11., Übergabe Stand Bilder und Leistung) liegt im Worktree
-`.claude/worktrees/website-redesign-bc8edc`, nicht gepusht, kein PR. Ob dort schon gebaut wurde,
-ist nicht geprüft.
+`.claude/worktrees/website-redesign-bc8edc`, nicht gepusht, kein PR. Dort wird gebaut: 7 Commits
+vom 06.11. zwischen 01:20 und 01:30 (kleine Kartenbilder aus eigener Datei, Leaderbild mit
+Vorrang, preconnect entfernt, Spec Ladepfad am Handy). Laufende Arbeit, keine Altlast.
+
+Regel des Nutzers (06.11.): PR 33 und `claude/polish` nicht anfassen.
 
 ## Nächste Schritte
 
-1. PR 33 (Polish) prüfen und mergen, nur mit OK des Nutzers; Dokukonflikt beachten.
+1. PR 33 (Polish): nicht anfassen (Nutzer, 06.11.). Beim späteren Merge Dokukonflikt beachten.
 2. Selbstlauf: Phase 1 (Formaterkennung, PR 11) und Phase 2 (Kartendaten aus Kaizoku und tcgcsv,
    PR 12) sind gemergt. Offen laut `specs/features/selbstlauf.md`: Phase 3 (Wachen für CDN und
    Firestore Zugang, Event Ablauf `bis`) und Phase 4 (Meldungen). Die Wache nach Quelle kam mit
@@ -53,13 +56,12 @@ ist nicht geprüft.
 * Bazzite: X11 Pakete behalten oder Mitschnitt auf Wayland? Systemupdate steht seit 27.10. (Entscheidung des Nutzers, Stand 04.11.).
 * Update Log: laufen Bot und Secrets (`docs/discord-bot-anleitung.md`)? Stand im Repo: Phase 2
   gebaut, letzte Prüfung 29.10. ohne Meldung von OPBounty.
-* Zuordnung der user_id über die Leaderzahl: die Spec `specs/features/zuordnung-leaderzahl.md`
-  liegt nicht im Repo. Existiert sie noch irgendwo, und soll das Thema weiter verfolgt werden?
-* Branch `claude/log-formatsatz` (lokal, 2 Commits, einer inhaltsgleich mit dcc75c2 in main):
-  löschen?
 * Bestenliste Web API: Phase 3 ist live; wurde die Beobachtungswoche der Läufe ausgewertet?
 
 ## Zusammenfassung älterer Entscheidungen (Details im Archiv)
+
+* **Altlasten (06.11.):** Das Thema Zuordnung der user_id über die Leaderzahl ist gestrichen,
+  Branch `claude/log-formatsatz` gelöscht.
 
 * **Bestenliste:** Die Action holt zuerst per Web API (`bestenliste_einbauen.py --api`), die OCR
   Liste vom Bazzite bleibt Rückfall. Die Wache kennt die Quelle (`bestenliste_quelle`).
