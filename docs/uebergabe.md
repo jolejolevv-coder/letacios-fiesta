@@ -264,3 +264,10 @@ geprüft. Die Vorschau `.impeccable/review/vite.haerten.mjs` liefert jetzt auch 
 `public/tage` des Hauptcheckouts und ein künstliches Replay mit 200 Ereignissen unter `/replays/`.
 Annahme: Wechsel zurück auf einen früheren Zeitraum parst die Tage neu (aus dem Browser Cache).
 Offen: Push und PR nur mit OK des Nutzers.
+
+## Polish 06.11.2026
+
+Härten (PR 30) und Optimieren (PR 31) sind in main. Branch `claude/polish` ab main b90f2f2 im
+Worktree `website-redesign-bc8edc`. Spec `specs/features/polish.md` freigegeben (alle vier Punkte) und umgesetzt, Ergebnis
+in der Spec. Offen: Push und PR nach OK des Nutzers. Vorschau: launch.json Eintrag `polish` (`.impeccable/review/vite.polish.mjs`,
+gitignored, Port 5183, liefert auch `/tage/` aus dem Hauptcheckout).

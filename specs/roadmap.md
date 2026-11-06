@@ -61,3 +61,9 @@ Stand 29.10.2026. Ausführlich in `docs/uebergabe.md`.
 1. Gut: `verschmelzen` als Sammler umgebaut statt eine zweite Rechnung zu schreiben; das Ergebnis ist dadurch beweisbar gleich.
 2. Falsche Annahme: die Vorschau hatte keine Tagesdateien und keine Replays; beides musste erst durchgereicht werden.
 3. Besser spezifizieren: welche lokalen Daten für eine Leistungsprüfung reichen.
+
+## Rückblick Polish 06.11.2026
+
+1. Gut: der Befund kam aus Messungen im DOM (Höhen, `scrollWidth`, Schriftgrößen je Reiter), nicht aus Bildern; daran ließ sich jedes Kriterium direkt prüfen.
+2. Falsche Annahme: eine leere Fläche auf einem Bildschirmfoto direkt nach dem Umschalten auf Handygröße galt als Fehler der Seite. Beim Nachmessen war sie nicht da.
+3. Besser spezifizieren: bei Trefferflächen über `::after` vorher klären, wo die Knöpfe dicht nebeneinander stehen.
