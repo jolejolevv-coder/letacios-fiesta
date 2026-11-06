@@ -32,3 +32,6 @@ tests/referenz/eingaben/
 public/kaizoku.json.gz
 public/kaizoku_*.json.gz
 public/kaizoku_spieler.json.gz
+
+# Lokale Tickets der Agent Skills (oeffentliches Repo, nie committen)
+.scratch/
