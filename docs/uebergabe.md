@@ -3,6 +3,19 @@
 Stand 28.10.2026. Neue Sitzungen lesen zuerst diese Datei und `specs/roadmap.md`, dann
 bei Bedarf `README.md`, `PRODUCT.md` und `DESIGN.md`.
 
+## Replaypfade 06.11.2026 (Branch `claude/replay-pfade`)
+
+Gemeldet: kein Replay ließ sich laden. Ursache: seit etwa W43 legt der Client Replays als
+`<Verlierer>_<Hash>.log` ab, das Wochenetikett weicht von der ISO Woche ab; unser gerechneter
+Pfad traf nie. Fix nach Spec `specs/features/replay-pfade.md` (freigegeben): `spieler_daten.py`
+holt den echten Pfad aus Firestore `Replays` (wie der Client), `replays_holen.py` zählt je
+Woche und trägt fehlende Replays aus, die Seite zeigt dort keinen Knopf. Nur etwa jede fünfte
+Partie wird überhaupt hochgeladen. Annahmen: neuer Branch ab main, unabhängig von PR 35; die
+Austragung läuft nicht, wenn kein einziges Replay gefunden wurde (Storage Ausfall). Offen:
+Push und PR nach OK, danach im Action Log die Zeile „je Woche gefunden“ prüfen und ein Replay
+vom 05.11. oder später auf der Seite öffnen. Dieses File ist über 10 KB; Archivieren nach dem
+Merge von PR 33 und 35, sonst Konflikte.
+
 ## Stand 28.10.2026
 
 Ins Archiv `docs/uebergabe-archiv-2026-10-28.md` verschoben (Statistikquellen, Abdeckung der Replays, Upload Bedingungen, Bazzite Update Notice).
