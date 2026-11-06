@@ -74,5 +74,90 @@ class Mischen(unittest.TestCase):
         self.assertEqual(len(F.mischen([], neu)), F.PARTIEN_JE_SPIELER)
 
 
+SCHNAPP, BOUNTY = F.QUELLE_SCHNAPPSCHUSS, F.QUELLE_BOUNTY
+
+
+class Gedaechtnis(unittest.TestCase):
+    def test_neuer_name_kommt_dazu(self):
+        g = F.gedaechtnis_leer()
+        z = F.namen_einpflegen(g, {"himm#7921": 132161}, SCHNAPP, "2026-11-06")
+        self.assertEqual(z["neu"], 1)
+        self.assertEqual(F.namen_aus_gedaechtnis(g), {"himm#7921": "132161"})
+
+    def test_bekannter_name_bleibt_ohne_doppelzaehlung(self):
+        g = F.gedaechtnis_leer()
+        F.namen_einpflegen(g, {"himm#7921": "1"}, SCHNAPP, "2026-11-05")
+        z = F.namen_einpflegen(g, {"himm#7921": "1"}, SCHNAPP, "2026-11-06")
+        self.assertEqual(z, {"neu": 0, "korrigiert": 0, "konflikte": 0})
+        self.assertEqual(g["namen"]["himm#7921"]["seit"], "2026-11-05")
+
+    def test_widerspruch_zweier_belege_sperrt_den_namen(self):
+        g = F.gedaechtnis_leer()
+        F.namen_einpflegen(g, {"You#1": "1"}, SCHNAPP, "2026-11-05")
+        z = F.namen_einpflegen(g, {"You#1": "2"}, SCHNAPP, "2026-11-06")
+        self.assertEqual(z["konflikte"], 1)
+        self.assertEqual(F.namen_aus_gedaechtnis(g), {})
+        F.namen_einpflegen(g, {"You#1": "1"}, SCHNAPP, "2026-11-07")
+        self.assertEqual(F.namen_aus_gedaechtnis(g), {}, "gesperrt bleibt gesperrt")
+
+    def test_beleg_korrigiert_schaetzung(self):
+        g = F.gedaechtnis_leer()
+        F.namen_einpflegen(g, {"a#1": "1"}, BOUNTY, "2026-11-05")
+        z = F.namen_einpflegen(g, {"a#1": "2"}, SCHNAPP, "2026-11-06")
+        self.assertEqual(z["korrigiert"], 1)
+        self.assertEqual(g["namen"]["a#1"], {"uid": "2", "quelle": SCHNAPP, "seit": "2026-11-06"})
+
+    def test_schaetzung_ueberstimmt_keinen_beleg(self):
+        g = F.gedaechtnis_leer()
+        F.namen_einpflegen(g, {"a#1": "1"}, SCHNAPP, "2026-11-05")
+        z = F.namen_einpflegen(g, {"a#1": "2"}, BOUNTY, "2026-11-06")
+        self.assertEqual(z, {"neu": 0, "korrigiert": 0, "konflikte": 0})
+        self.assertEqual(F.namen_aus_gedaechtnis(g), {"a#1": "1"})
+
+    def test_beleg_bestaetigt_schaetzung(self):
+        g = F.gedaechtnis_leer()
+        F.namen_einpflegen(g, {"a#1": "1"}, BOUNTY, "2026-11-05")
+        F.namen_einpflegen(g, {"a#1": "1"}, SCHNAPP, "2026-11-06")
+        self.assertEqual(g["namen"]["a#1"]["quelle"], SCHNAPP)
+
+
+class GedaechtnisDatei(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        self.ordner = tempfile.TemporaryDirectory()
+        self.pfad = os.path.join(self.ordner.name, "namen.json.gz.enc")
+        self.schl = bytes(32)
+
+    def tearDown(self):
+        self.ordner.cleanup()
+
+    def test_ohne_datei_leer(self):
+        self.assertEqual(F.gedaechtnis_laden(self.schl, self.pfad), F.gedaechtnis_leer())
+
+    def test_hin_und_zurueck(self):
+        g = F.gedaechtnis_leer()
+        F.namen_einpflegen(g, {"himm#7921": "1"}, SCHNAPP, "2026-11-06")
+        self.assertTrue(F.gedaechtnis_speichern(g, self.schl, self.pfad))
+        self.assertEqual(F.gedaechtnis_laden(self.schl, self.pfad), g)
+
+    def test_unveraendert_wird_nicht_neu_geschrieben(self):
+        g = F.gedaechtnis_leer()
+        F.gedaechtnis_speichern(g, self.schl, self.pfad)
+        with open(self.pfad, "rb") as datei:
+            vorher = datei.read()
+        self.assertFalse(F.gedaechtnis_speichern(g, self.schl, self.pfad))
+        with open(self.pfad, "rb") as datei:
+            self.assertEqual(datei.read(), vorher)
+
+    def test_falscher_schluessel_beginnt_leer(self):
+        F.gedaechtnis_speichern({"namen": {}, "gesperrt": ["x"]}, self.schl, self.pfad)
+        alt = F.GEDAECHTNIS
+        F.GEDAECHTNIS = self.pfad
+        try:
+            self.assertEqual(F.gedaechtnis_sicher_laden(b"\x01" * 32), F.gedaechtnis_leer())
+        finally:
+            F.GEDAECHTNIS = alt
+
+
 if __name__ == "__main__":
     unittest.main()
