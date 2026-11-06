@@ -31,18 +31,36 @@ gemerkt und zusätzlich über Bounty und Leader erkannt werden.
   an der Seite; Upload Bedingungen des Clients.
 
 ## Acceptance criteria
-- [ ] Gelernte Namen bleiben über Läufe erhalten, als `ingame_namen.json.gz.enc` im Repo
+- [x] Gelernte Namen bleiben über Läufe erhalten, als `ingame_namen.json.gz.enc` im Repo
       (nur verschlüsselt, Klartext gitignored). Ein Name, der später einem anderen Spieler
       zugeordnet wird, ersetzt den alten Eintrag nicht stillschweigend: Konflikte fliegen raus
       und werden gezählt.
-- [ ] Erkennung über Bounty und Leader ist gegen die bekannten Namen gemessen: mindestens
+- [x] Erkennung über Bounty und Leader ist gegen die bekannten Namen gemessen: mindestens
       95 % Precision (falsche Zuordnungen höchstens 1 von 20). Unter dieser Schwelle wird
       Phase 2 nicht eingebaut, das Ergebnis steht in dieser Spec.
 - [ ] Ein Lauf der Action ordnet frische Partien mindestens doppelt so vielen Spielern zu wie
       am 06.11. (18), oder die Spec nennt den gemessenen Grund, warum nicht.
-- [ ] Log der Action nennt nur Zahlen: Namen aus Schnappschuss, aus Gedächtnis, aus Bounty,
+- [x] Log der Action nennt nur Zahlen: Namen aus Schnappschuss, aus Gedächtnis, aus Bounty,
       Konflikte. Keine Namen (öffentliches Repo).
-- [ ] Python Tests für Gedächtnis, Konflikte und Bountyerkennung; bestehende Tests grün.
+- [x] Python Tests für Gedächtnis und Konflikte (10 neu, `tests/test_frische_partien.py`
+      19 grün). Bountyerkennung entfällt, siehe Ergebnis. Die zwei Ladefehler in
+      `test_bestenliste_ocr` und `test_bildschirm` bestanden schon vorher (lokal fehlt pillow).
+
+## Ergebnis Phase 2 (06.11.2026)
+Messung mit `werkzeuge/ingame_bounty_messung.py` gegen das ausgelieferte Artefakt von Lauf
+42191370761: 395 Replays, 231 Ingame Namen, 24 Belege, davon 18 in den Replays. Über das ganze
+Raster (Abstand 5 bis 40, Vorsprung 0 bis 20) gibt es 0 richtige und 0 bis 3 falsche
+Zuordnungen, Precision 0. Phase 3 wird deshalb nicht gebaut.
+
+Grund: die Bounty im Replay Dokument (`winner_bounty`, `loser_bounty`) ist nicht die Bounty
+der Bestenliste. Bei den 18 Belegen liegt sie 100 bis 900 darunter und springt zwischen den
+Partien eines Spielers um bis zu 1.900 (etwa 1.668, dann 3.602). Als Fingerabdruck taugt sie
+nicht. Die Leader passen dagegen bei 17 von 18; allein sind sie bei 100 Spielern und einem
+engen Meta aber nicht eindeutig.
+
+Damit trägt nur das Gedächtnis. Es wächst mit jedem Lauf um die Namen aus neuen
+Schnappschusspartien mit Replay. Das dritte Kriterium (36 Spieler) lässt sich erst nach einigen
+Läufen prüfen; der Stand steht dann im Log unter „Gedaechtnis“.
 
 ## Implementation plan
 Phase 1, Gedächtnis: `namen_laden()` und `namen_speichern()` in `frische_partien.py`,
