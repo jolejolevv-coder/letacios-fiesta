@@ -109,8 +109,12 @@ EVENT_DATEI = os.path.join(os.path.dirname(os.path.abspath(__file__)), "eb05_lea
 EVENT_SCHLUESSEL = "Roh_mode_0_op17eb05_event"
 # Felder eines Leaders, die je Gegner eine Spalte tragen, parallel zu `geg`.
 GEGNER_FELDER = ("geg", "gm", "gw", "gfw", "gfl", "gsw", "gsl")
-# Fertige Saetze, die das Spiel noch liefert, die wir aber nicht mehr zeigen.
-AUSGEBLENDET = {"Stats_Special_Queue"}
+# Fertige Saetze, die das Spiel noch liefert, die wir aber nicht mehr zeigen. Die Saetze alter
+# Formate braucht der Nutzer nicht (06.11.2026).
+AUSGEBLENDET = {"Stats_Special_Queue", "Stats_OP17", "Stats_OP17-1BillionBounty"}
+# Abgelegte Saetze alter Formate (zustand["alte"]) erscheinen nicht in der Auswahl. Abgelegt
+# werden sie weiter, damit sie sich mit True wieder zeigen lassen.
+ALTE_FORMATE_ZEIGEN = False
 
 
 def bounty_name(bereich: str) -> str:
@@ -1250,7 +1254,9 @@ def main() -> None:
     format_ergebnis, zustand = format_satz(ziel, zustand)
     zustand_schreiben(ziel, zustand)
     print("\nAlte Formate:")
-    saetze = alte_saetze(ziel, zustand)
+    saetze = alte_saetze(ziel, zustand) if ALTE_FORMATE_ZEIGEN else {}
+    if not ALTE_FORMATE_ZEIGEN:
+        print("  nicht gezeigt (ALTE_FORMATE_ZEIGEN)")
 
     print("\nFertige Saetze:")
     # Leer sein darf das hier: vor der Wochengrenze sind die Wochensaetze ausgeblendet.

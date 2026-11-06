@@ -6,6 +6,7 @@ export const CHANGELOG = [
   {
     tag: "2026-11-06",
     punkte: [
+      "The data set list is shorter: the sets of the old OP17 format, from OPBounty and from Card Kaizoku, are gone. Only the current OP17 + EB05 format remains.",
       "Player pages show a new chart, Bounty this season: the player's bounty after every game of the season, with start, high and latest value. It comes from the player's own profile, so it can lag behind the leaderboard until they open the app again.",
       "Recent games now lists only games with both decks known. Games played without sim sync (on the phone or with play anyway) carry no deck and no replay; the page says how many were hidden.",
       "Games without a winner (both players disconnected, unresolved or cancelled) and wins shorter than 60 seconds no longer show up as results, the same rule the OPBounty client uses.",
