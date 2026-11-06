@@ -28,6 +28,7 @@ import {
   zeitraumLaden,
 } from "./daten.js";
 import { leaderSuchen } from "./leadersuche.js";
+import { verlaufBauen, VERLAUF_BREITE, VERLAUF_HOEHE } from "./verlauf.js";
 import { PASSWORT_SCHLUESSEL, VORGABE_SATZ } from "./vorab.js";
 
 /* Seltene Reiter laden erst beim Oeffnen (src/Selten.jsx, specs/features/ladepfad-handy.md). */
@@ -1390,6 +1391,35 @@ function Partie({ nr, p, namen, replayOeffnen }) {
   );
 }
 
+/** Bounty nach jeder Partie der Saison aus dem Profil (Graph.y). Ohne Zeitachse: x ist die
+    Partie, nicht der Tag. Das Profil schreibt nur der Client des Spielers, die Kurve kann also
+    hinter der Bounty der Bestenliste liegen. */
+function BountyVerlauf({ werte }) {
+  const k = useMemo(() => verlaufBauen(werte), [werte]);
+  if (!k) return null;
+  return (
+    <Abschnitt titel="Bounty this season">
+      <dl className="genau">
+        <div><dt>Start</dt><dd><span className="z">{fmtBounty(k.start)}</span></dd></div>
+        <div><dt>High</dt><dd><span className="z">{fmtBounty(k.hoch)}</span></dd></div>
+        <div><dt>Latest</dt><dd><span className="z">{fmtBounty(k.jetzt)}</span></dd></div>
+      </dl>
+      <div className="kurve-huelle">
+        <svg className="kurve" viewBox={`0 0 ${VERLAUF_BREITE} ${VERLAUF_HOEHE}`} preserveAspectRatio="none"
+             role="img" aria-label={`Bounty after each of ${k.partien} games, from ${fmtBounty(k.start)} to ${fmtBounty(k.jetzt)}`}>
+          <polyline points={k.flaeche} fill="var(--akzent-flaeche)" stroke="none" />
+          <polyline points={k.linie} fill="none" stroke="var(--akzent)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+        </svg>
+        <div className="kurve-achse"><span>Game 1</span><span>Game {k.partien}</span></div>
+      </div>
+      <p className="lesart">
+        Bounty after each game of the season, from the player's own profile. It updates when the player
+        opens the app, so it can lag behind the leaderboard.
+      </p>
+    </Abschnitt>
+  );
+}
+
 function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen, kzSpieler }) {
   if (!eintrag) {
     return (
@@ -1430,6 +1460,8 @@ function Spieler({ eintrag, daten, namen, zurueck, replayOeffnen, kzSpieler }) {
           )}
         </dl>
       </section>
+
+      {daten && daten.verlauf ? <BountyVerlauf werte={daten.verlauf} /> : null}
 
       <Abschnitt titel="Leaders played">
         <div className="tafel-spalten spalten gespielt">
