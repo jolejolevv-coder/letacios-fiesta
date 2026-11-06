@@ -29,6 +29,17 @@ Bestenliste (100 bis 900 darunter, springt), Precision 0, Phase 3 entfällt
 (`werkzeuge/ingame_bounty_messung.py`). Offen: Push und PR nach OK, danach nach einigen Läufen
 prüfen, ob die Zeile „Gedaechtnis“ und „Partien aus Replays für N Spieler“ wächst (Ziel 36).
 
+## Spielerseite Verlauf 06.11.2026 (Branch `pi/spielerseite-verlauf`, nicht gepusht)
+
+Spec `specs/features/spielerseite-verlauf.md`, freigegeben. `spieler_daten.py`: `verlauf_aus()`
+übernimmt `Graph.y`, `gewertet()` lässt Partien ohne Sieger und Siege unter 60 s weg
+(`MIN_MATCH_TIME = 60` im Spielpaket, nicht 15 wie bei optcg-data). Seite: `BountyVerlauf` in
+App.jsx, Punkte aus `src/verlauf.js`. Offen: Push und PR nach OK. Aus der optcg-data Analyse
+noch offen, Nutzer unentschieden: Bountyänderung je Partie (Feld 20, 21), Archiv der Profilzeilen
+über Läufe, Profilzeitstempel, Hinweis auf den Saisonreset vom 27.10. Leader aus der Starthand
+raten lehnte der Nutzer ab. Annahme: lokale Prüfung über `vite.review.mjs`; die Vorschaudaten
+in `.impeccable/vorschau/oeffentlich` sind jetzt Stand 06.11. mit Verlauf.
+
 ## Nächste Schritte
 
 1. Nächster Leistungshebel am Handy, falls gewünscht: Leaderbild aus `?leader=` vor dem Satz oder eine Kopfdatei des Satzes (siehe `specs/features/ladepfad-handy.md`).

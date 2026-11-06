@@ -275,18 +275,56 @@ def partie(zeile, eigene_id):
     }
 
 
+# Kuerzer als das gilt ein Sieg im Client nicht als Ergebnis. Aus dem Spielpaket: die Profilzeile
+# faerbt nur bei `mtch[14] >= MIN_MATCH_TIME` (const 60) oder bei einer Niederlage
+# (specs/features/spielerseite-verlauf.md).
+MIN_PARTIE_S = 60
+VERLAUF_NACHKOMMA = 1
+
+
+def gewertet(zeile, eigene_id):
+    """Wertet der Client diese Partie als Ergebnis? Ohne Sieger (selfdc gegen selfdc,
+    unresolved, started, cancelled) nie; ein Sieg erst ab MIN_PARTIE_S, eine Niederlage immer."""
+    try:
+        seite = sieger_seite(zeile)
+        if seite is None:
+            return False
+        eigene_seite = 2 if str(zeile[P_ID2]) == str(eigene_id) else 1
+        if seite != eigene_seite:
+            return True
+        return float(zeile[P_DAUER] or 0) >= MIN_PARTIE_S
+    except (IndexError, TypeError, ValueError):
+        return False
+
+
+def verlauf_aus(west):
+    """Die Bounty nach jeder Partie der Saison aus `Graph.y`, aelteste zuerst, oder None.
+    Nur Zahlen; alles andere im Feld wird ausgelassen."""
+    werte = ((west or {}).get("Graph") or {}).get("y")
+    if not isinstance(werte, list):
+        return None
+    zahlen = [round(float(v), VERLAUF_NACHKOMMA) for v in werte
+              if isinstance(v, (int, float)) and not isinstance(v, bool)]
+    return zahlen or None
+
+
 def holen(db, user_id):
     d = db.dokument(f"PublicUsers/{user_id}", felder=["Western"])
     west = entpacke(wert(d.get("fields", {}).get("Western")))
     if not west:
         return None
-    partien = [partie(z, user_id) for z in (west.get("Public_matches") or [])]
-    return {
+    zeilen = [z for z in (west.get("Public_matches") or []) if gewertet(z, user_id)]
+    partien = [partie(z, user_id) for z in zeilen]
+    aus = {
         "siege": west.get("Wins"),
         "niederlagen": west.get("Losses"),
         "winrate": west.get("Winrate"),
         "partien": [p for p in partien if p],
     }
+    verlauf = verlauf_aus(west)
+    if verlauf:
+        aus["verlauf"] = verlauf
+    return aus
 
 
 def kandidaten(db):

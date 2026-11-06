@@ -110,6 +110,20 @@ Fensterkoordinaten nach `werkzeuge/referenz/<stelle>.png` legen und Box und Klic
 in `werkzeuge/klickstellen.json` nachziehen. Sieht ein Knopf je nach Zustand verschieden
 aus, bekommt er eine Variante `<stelle>__<zustand>.png`, etwa "Next Page" im Fokus.
 
+### Spielerseite
+
+Der Klick auf einen Namen oeffnet `/player?id=<user_id>`. Die Daten kommen aus dem Profil in
+Firestore `PublicUsers/<id>.Western` (`spieler_daten.py`), das nur der Client des Spielers
+schreibt:
+
+* **Bounty this season**: `Graph.y`, die Bounty nach jeder Partie der Saison, als Kurve ueber
+  die Partien (keine Zeitachse). Kann hinter der Bestenliste liegen, bis der Spieler die App
+  wieder oeffnet.
+* **Recent games**: die letzten Partien aus `Public_matches`, aufgefrischt aus den Replays
+  (`frische_partien.py`). Nur Partien, die der Client wertet: ohne Sieger (`selfdc` gegen
+  `selfdc`, `unresolved`, `started`, `cancelled`) und Siege unter 60 s fallen weg
+  (`gewertet()`, Spec `specs/features/spielerseite-verlauf.md`).
+
 ## Veroeffentlichen
 
 Die Seite laeuft unter **https://fiesta.nahobinoco.com** auf GitHub Pages. Die Action holt
