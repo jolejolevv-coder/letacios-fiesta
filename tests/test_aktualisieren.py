@@ -102,9 +102,14 @@ class Format(unittest.TestCase):
         self.assertFalse(A.ausgeblendet("Stats_lw", woche_ab, woche_ab))
         self.assertEqual(A.anzeigename("Stats_lw"), "Last Week Standard")
 
-    def test_altes_format_bleibt_sichtbar(self):
-        self.assertFalse(A.ausgeblendet("Stats_OP17", "2026-10-27", "2026-11-03"))
-        self.assertEqual(A.anzeigename("Stats_OP17"), "OP17 format (old)")
+    def test_altes_format_ausgeblendet(self):
+        self.assertTrue(A.ausgeblendet("Stats_OP17", "2026-10-27", "2026-11-03"))
+        self.assertTrue(A.ausgeblendet("Stats_OP17-1BillionBounty", "2026-11-06", "2026-11-03"))
+        self.assertFalse(A.ALTE_FORMATE_ZEIGEN)
+
+    def test_nur_formatsaetze(self):
+        # Nutzer 06.11.2026: nur Formatsatz und Event Satz in der Auswahl.
+        self.assertTrue(A.NUR_FORMATSAETZE)
 
     def test_special_queue_ausgeblendet(self):
         self.assertTrue(A.ausgeblendet("Stats_Special_Queue", "2026-11-03", "2026-11-03"))

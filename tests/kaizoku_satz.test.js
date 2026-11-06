@@ -52,11 +52,11 @@ test("Leader ohne Siegquote nach Sitz bekommt Nullen", () => {
 });
 
 test("zweite Quelle traegt Schluessel und Namen der besten Spieler", () => {
-  const s = kaizokuZuSatz(roh, "kaizoku_op17_lw_p_top10");
-  assert.equal(s.quelle, "kaizoku_op17_lw_p_top10");
-  assert.match(s.name, /top 10/);
-  assert.equal(verschmelzen([s], s.name).quelle, "kaizoku_op17_lw_p_top10");
-  assert.equal(istKaizokuQuelle("kaizoku_op17_lw_p_top10"), true);
+  const s = kaizokuZuSatz(roh, "kaizoku_eb05_lw_p_top20");
+  assert.equal(s.quelle, "kaizoku_eb05_lw_p_top20");
+  assert.match(s.name, /top 20/);
+  assert.equal(verschmelzen([s], s.name).quelle, "kaizoku_eb05_lw_p_top20");
+  assert.equal(istKaizokuQuelle("kaizoku_eb05_lw_p_top20"), true);
   assert.equal(istKaizokuQuelle("Roh_mode_0_3000"), false);
 });
 

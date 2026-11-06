@@ -558,9 +558,6 @@ const kaizokuQuelle = (datensatz, name) => ({
 export const KAIZOKU_QUELLEN = {
   kaizoku_eb05_lw_p: kaizokuQuelle("eb05_lw_p", "OP17 + EB05 Standard, last week"),
   kaizoku_eb05_lw_p_top20: kaizokuQuelle("eb05_lw_p_top20", "OP17 + EB05 Standard, last week, top 20"),
-  kaizoku_op17_lw_p: kaizokuQuelle("op17_lw_p", "OP17 Standard, last week"),
-  kaizoku_op17_lw_p_top20: kaizokuQuelle("op17_lw_p_top20", "OP17 Standard, last week, top 20"),
-  kaizoku_op17_lw_p_top10: kaizokuQuelle("op17_lw_p_top10", "OP17 Standard, last week, top 10"),
 };
 export const istKaizokuQuelle = (schluessel) => Object.hasOwn(KAIZOKU_QUELLEN, schluessel);
 

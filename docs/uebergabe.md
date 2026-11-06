@@ -40,6 +40,15 @@ braucht der Nutzer nicht mehr (06.11.). Leader aus der Starthand
 raten lehnte der Nutzer ab. Annahme: lokale Prüfung über `vite.review.mjs`; die Vorschaudaten
 in `.impeccable/vorschau/oeffentlich` sind jetzt Stand 06.11. mit Verlauf.
 
+## Ohne alte Formate 06.11.2026 (Branch `pi/ohne-alte-formate`)
+
+Nutzer: Sätze alter Formate nicht mehr zeigen. `aktualisieren.py`: `Stats_OP17` und
+`Stats_OP17-1BillionBounty` in `AUSGEBLENDET`, abgelegte alte Formatsätze nur noch mit
+`ALTE_FORMATE_ZEIGEN = True` (abgelegt wird weiter). Kaizoku: `op17_lw_p*` aus
+`kaizoku_holen.py` und `KAIZOKU_QUELLEN` entfernt. Danach Nutzer: nur Formate mit EB, also
+`NUR_FORMATSAETZE = True`: kein Last Week Standard, 1B, 2B, 3B mehr (werden nicht geholt).
+Bleiben: OP17 + EB05 Standard, EB05 Heroines Event, Kaizoku eb05 (alle, top 20). Changelog ergänzt.
+
 ## Nächste Schritte
 
 1. Nächster Leistungshebel am Handy, falls gewünscht: Leaderbild aus `?leader=` vor dem Satz oder eine Kopfdatei des Satzes (siehe `specs/features/ladepfad-handy.md`).
