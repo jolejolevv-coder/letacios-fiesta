@@ -45,7 +45,9 @@ in `.impeccable/vorschau/oeffentlich` sind jetzt Stand 06.11. mit Verlauf.
 Nutzer: Sätze alter Formate nicht mehr zeigen. `aktualisieren.py`: `Stats_OP17` und
 `Stats_OP17-1BillionBounty` in `AUSGEBLENDET`, abgelegte alte Formatsätze nur noch mit
 `ALTE_FORMATE_ZEIGEN = True` (abgelegt wird weiter). Kaizoku: `op17_lw_p*` aus
-`kaizoku_holen.py` und `KAIZOKU_QUELLEN` entfernt. Changelog ergänzt.
+`kaizoku_holen.py` und `KAIZOKU_QUELLEN` entfernt. Danach Nutzer: nur Formate mit EB, also
+`NUR_FORMATSAETZE = True`: kein Last Week Standard, 1B, 2B, 3B mehr (werden nicht geholt).
+Bleiben: OP17 + EB05 Standard, EB05 Heroines Event, Kaizoku eb05 (alle, top 20). Changelog ergänzt.
 
 ## Nächste Schritte
 

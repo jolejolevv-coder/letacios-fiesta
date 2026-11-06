@@ -115,6 +115,10 @@ AUSGEBLENDET = {"Stats_Special_Queue", "Stats_OP17", "Stats_OP17-1BillionBounty"
 # Abgelegte Saetze alter Formate (zustand["alte"]) erscheinen nicht in der Auswahl. Abgelegt
 # werden sie weiter, damit sie sich mit True wieder zeigen lassen.
 ALTE_FORMATE_ZEIGEN = False
+# Nur die Saetze des aktuellen Formats mit EB zeigen: den Formatsatz und den Event Satz (Nutzer
+# 06.11.2026). Die Wochensaetze des Spiels und der selbst gerechnete 3B Satz fallen weg und
+# werden gar nicht erst geholt. Mit False kommen sie zurueck.
+NUR_FORMATSAETZE = True
 
 
 def bounty_name(bereich: str) -> str:
@@ -1263,7 +1267,10 @@ def main() -> None:
     # Geprueft wird erst, wenn auch die selbst gerechneten Saetze da sind.
     woche_ab = str(datetime.date.fromisoformat(zustand["start"])
                    + datetime.timedelta(days=WOCHE_TAGE))
-    saetze.update(fertige_saetze(ziel, woche_ab))
+    if NUR_FORMATSAETZE:
+        print("  nicht gezeigt (NUR_FORMATSAETZE)")
+    else:
+        saetze.update(fertige_saetze(ziel, woche_ab))
 
     print("\nKartennamen:")
     # Einmal laden: dieselben Produkte liefern die Kartendaten und die Bildadressen.
@@ -1302,7 +1309,7 @@ def main() -> None:
     bereiche = [b.strip() for b in args.bounty.split(",") if b.strip()]
     modi = [m.strip() for m in args.modi.split(",") if m.strip()]
     for bereich, anzeige in ROH_SAETZE.items():
-        if bereich not in bereiche or not modi:
+        if NUR_FORMATSAETZE or bereich not in bereiche or not modi:
             continue
         print(f"\nSatz aus der Rohebene, {anzeige}:")
         satz = roh_satz(ziel, index_schluessel(), wochentage(fenster(ROH_TAGE), zustand), modi[0],
