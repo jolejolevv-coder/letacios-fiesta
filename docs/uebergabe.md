@@ -251,3 +251,13 @@ geprüft. Die Vorschau `.impeccable/review/vite.haerten.mjs` liefert jetzt auch 
 `public/tage` des Hauptcheckouts und ein künstliches Replay mit 200 Ereignissen unter `/replays/`.
 Annahme: Wechsel zurück auf einen früheren Zeitraum parst die Tage neu (aus dem Browser Cache).
 Offen: Push und PR nur mit OK des Nutzers.
+
+## Bilder und Leistung 06.11.2026
+
+Polish liegt als PR 33 (`claude/polish`) offen, noch nicht gemergt. Lighthouse auf Produktionsbuild
+mit lokalen Daten (launch.json `lighthouse`, `vite preview --config .impeccable/review/vite.polish.mjs`,
+Port 5184, Ausgabe `.impeccable/review/dist-lh`): Decklists Leistung 71 Handy / 56 Rechner, LCP 26,3 s /
+6,3 s, CLS 0,104 / 0,415. Ursache: Kartenbilder 600 px WebP vom CDN (290 KB) statt eigener 120 px JPG
+(9 KB). Spec `specs/features/bilder-leistung.md` freigegeben, Leaderbild bleibt scharf vom CDN.
+Branch `claude/bilder-leistung` ab main a045e1b. Annahme: Basis main statt claude/polish, damit die PRs
+unabhängig bleiben; neue CSS Regeln daher nicht am Dateiende (dort ändert PR 33).
