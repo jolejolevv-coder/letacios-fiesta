@@ -62,6 +62,14 @@ Damit trägt nur das Gedächtnis. Es wächst mit jedem Lauf um die Namen aus neu
 Schnappschusspartien mit Replay. Das dritte Kriterium (36 Spieler) lässt sich erst nach einigen
 Läufen prüfen; der Stand steht dann im Log unter „Gedaechtnis“.
 
+## Nachtrag 06.11.2026: Gegner mitlernen
+Auf Wunsch des Nutzers („soll wachsen“). `namen_lernen()` lernt aus jedem Log zusätzlich den
+Gegner, wenn die Profilzeile seine `gegner_id` kennt und kein Mirror vorliegt (Zuordnung über
+`gegner_leader`, gleiche Regel wie beim Profilinhaber). Ein Name mit zwei user_ids im selben Lauf
+fällt weg; eine user_id darf mehrere Namen haben (Umbenennung). Probelauf auf dem Stand von
+Lauf 42204105619: 47 Namen statt 24, davon 27 statt 24 aus den Top 100, Gedächtnis 48 Namen,
+110 statt 98 frische Partien bei 17 Spielern. Tests in `tests/test_frische_partien.py` (26 grün).
+
 ## Implementation plan
 Phase 1, Gedächtnis: `namen_laden()` und `namen_speichern()` in `frische_partien.py`,
 Zusammenführen mit den neu gelernten Namen, Konfliktregel, Commit der `.enc` Datei durch die
