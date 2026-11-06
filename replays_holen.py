@@ -220,6 +220,49 @@ def eindampfen(text):
     return zeilen
 
 
+def woche_aus(pfad):
+    """Das Wochenetikett eines Storagepfads, fuer die Zaehlung im Log."""
+    teile = str(pfad).split("/")
+    return teile[1] if len(teile) > 2 else "?"
+
+
+def zaehlung(gefunden, fehlend):
+    """Je Woche "gefunden/alle", aufsteigend. Kippt eine Woche auf 0, hat der Client
+    vermutlich wieder das Namensschema gewechselt (specs/features/replay-pfade.md)."""
+    wochen = {}
+    for pfad in gefunden:
+        wochen.setdefault(woche_aus(pfad), [0, 0])[0] += 1
+    for pfad in fehlend:
+        wochen.setdefault(woche_aus(pfad), [0, 0])[1] += 1
+    return ", ".join(f"{w} {g}/{g + f}" for w, (g, f) in sorted(wochen.items()))
+
+
+def fehlende_austragen(quelle, fehlend):
+    """Partien ohne Replay verlieren ihren Pfad. Die Seite zeigt dort dann keinen Knopf,
+    statt erst nach dem Klick "No replay stored" zu melden. Gibt die Zahl zurueck."""
+    fehlend = set(fehlend)
+    ausgetragen = 0
+    for s in quelle["spieler"].values():
+        for partie in s["partien"]:
+            if partie.get("replay") in fehlend:
+                partie["replay"] = None
+                ausgetragen += 1
+    return ausgetragen
+
+
+def quelle_schreiben(quelle, schl):
+    """spieler.json.gz neu schreiben, verschluesselt mit, wenn es ein Passwort gibt."""
+    roh = json.dumps(quelle, ensure_ascii=False, separators=(",", ":")).encode()
+    with gzip.open(QUELLE, "wb", compresslevel=9) as datei:
+        datei.write(roh)
+    if schl:
+        from verschluesseln import verschluesseln
+        with open(QUELLE, "rb") as datei:
+            klar = datei.read()
+        with open(QUELLE + ".enc", "wb") as datei:
+            datei.write(verschluesseln(schl, klar))
+
+
 def main():
     p = argparse.ArgumentParser(description="Replays holen und eindampfen")
     p.add_argument("--grenze", type=int, default=0)
@@ -253,15 +296,19 @@ def main():
 
     neu = fehlt = uebersprungen = 0
     gepackt = 0
+    gefunden, fehlend = [], []
     for i, pfad in enumerate(pfade, 1):
         ziel = os.path.join(ORDNER, dateiname(pfad))
         if os.path.exists(ziel + ".enc") or (not schl and os.path.exists(ziel)):
             uebersprungen += 1
+            gefunden.append(pfad)
             continue
         text = laden(pfad, eimer)
         if text is None:
             fehlt += 1
+            fehlend.append(pfad)
             continue
+        gefunden.append(pfad)
         daten = json.dumps({"pfad": pfad, "zeilen": eindampfen(text)},
                            ensure_ascii=False, separators=(",", ":")).encode()
         with gzip.open(ziel, "wb", compresslevel=9) as datei:
@@ -277,6 +324,12 @@ def main():
             print(f"  {i} von {len(pfade)}")
 
     print(f"  {neu} neu, {uebersprungen} schon da, {fehlt} nicht gefunden")
+    print(f"  je Woche gefunden: {zaehlung(gefunden, fehlend)}")
+    # Ohne einen einzigen Treffer liegt eher Storage brach als jedes Replay; dann bleiben
+    # die Pfade stehen, sonst verschwinden alle Knoepfe fuer einen Tag.
+    if gefunden and fehlend and not a.grenze:
+        print(f"  {fehlende_austragen(quelle, fehlend)} Partien ohne Replay ausgetragen")
+        quelle_schreiben(quelle, schl)
     if neu:
         print(f"  im Schnitt {gepackt // neu // 1024} KB je Replay, "
               f"{gepackt // 1024} KB neu dazu")

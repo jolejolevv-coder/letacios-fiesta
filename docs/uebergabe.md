@@ -3,6 +3,19 @@
 Stand 28.10.2026. Neue Sitzungen lesen zuerst diese Datei und `specs/roadmap.md`, dann
 bei Bedarf `README.md`, `PRODUCT.md` und `DESIGN.md`.
 
+## Replaypfade 06.11.2026 (Branch `claude/replay-pfade`)
+
+Gemeldet: kein Replay ließ sich laden. Ursache: seit etwa W43 legt der Client Replays als
+`<Verlierer>_<Hash>.log` ab, das Wochenetikett weicht von der ISO Woche ab; unser gerechneter
+Pfad traf nie. Fix nach Spec `specs/features/replay-pfade.md` (freigegeben): `spieler_daten.py`
+holt den echten Pfad aus Firestore `Replays` (wie der Client), `replays_holen.py` zählt je
+Woche und trägt fehlende Replays aus, die Seite zeigt dort keinen Knopf. Nur etwa jede fünfte
+Partie wird überhaupt hochgeladen. Annahmen: neuer Branch ab main, unabhängig von PR 35; die
+Austragung läuft nicht, wenn kein einziges Replay gefunden wurde (Storage Ausfall). Offen:
+Push und PR nach OK, danach im Action Log die Zeile „je Woche gefunden“ prüfen und ein Replay
+vom 05.11. oder später auf der Seite öffnen. Dieses File ist über 10 KB; Archivieren nach dem
+Merge von PR 33 und 35, sonst Konflikte.
+
 ## Stand 28.10.2026
 
 Ins Archiv `docs/uebergabe-archiv-2026-10-28.md` verschoben (Statistikquellen, Abdeckung der Replays, Upload Bedingungen, Bazzite Update Notice).
@@ -252,9 +265,16 @@ geprüft. Die Vorschau `.impeccable/review/vite.haerten.mjs` liefert jetzt auch 
 Annahme: Wechsel zurück auf einen früheren Zeitraum parst die Tage neu (aus dem Browser Cache).
 Offen: Push und PR nur mit OK des Nutzers.
 
+## Polish 06.11.2026
+
+Härten (PR 30) und Optimieren (PR 31) sind in main. Branch `claude/polish` ab main b90f2f2 im
+Worktree `website-redesign-bc8edc`. Spec `specs/features/polish.md` freigegeben (alle vier Punkte) und umgesetzt, Ergebnis
+in der Spec. Gemergt als PR 33 am 06.11. Vorschau: launch.json Eintrag `polish` (`.impeccable/review/vite.polish.mjs`,
+gitignored, Port 5183, liefert auch `/tage/` aus dem Hauptcheckout).
+
 ## Bilder und Leistung 06.11.2026
 
-Polish liegt als PR 33 (`claude/polish`) offen, noch nicht gemergt. Lighthouse auf Produktionsbuild
+Polish ist als PR 33 gemergt. Lighthouse auf Produktionsbuild
 mit lokalen Daten (launch.json `lighthouse`, `vite preview --config .impeccable/review/vite.polish.mjs`,
 Port 5184, Ausgabe `.impeccable/review/dist-lh`): Decklists Leistung 71 Handy / 56 Rechner, LCP 26,3 s /
 6,3 s, CLS 0,104 / 0,415. Ursache: Kartenbilder 600 px WebP vom CDN (290 KB) statt eigener 120 px JPG

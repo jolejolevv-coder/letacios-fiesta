@@ -319,7 +319,7 @@ kbd {
 }
 .abschnitt .satz-lead {
   margin: 0 0 10px;
-  font-size: 15.5px;
+  font-size: 16px;
   max-width: 76ch;
 }
 .abschnitt .satz-lead strong {
@@ -569,7 +569,7 @@ kbd {
   align-items: center;
   gap: 6px 10px;
   margin-bottom: 10px;
-  font: 500 12px/1.2 var(--kopf-font);
+  font: 500 11.5px/1.2 var(--kopf-font);
   color: var(--akzent-hell);
 }
 .rueck-blatt .hinweis {
@@ -584,7 +584,7 @@ kbd {
   grid-template-columns: max-content 1fr;
   gap: 5px 16px;
   margin: 0;
-  font-size: 14px;
+  font-size: 14.5px;
 }
 .paare dt {
   color: var(--text-3);
@@ -604,14 +604,14 @@ kbd {
 .tab {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 14.5px;
   font-variant-numeric: tabular-nums;
 }
 .tab th {
   text-align: left;
   padding: 0 8px 7px;
   border-bottom: 1px solid var(--linie-stark);
-  font: 500 12px/1.2 var(--kopf-font);
+  font: 500 11.5px/1.2 var(--kopf-font);
   color: var(--text-3);
   white-space: nowrap;
 }
@@ -645,7 +645,7 @@ kbd {
 .tab .name small {
   white-space: nowrap;
   margin-left: 8px;
-  font: 500 12px/1 var(--kopf-font);
+  font: 500 11.5px/1 var(--kopf-font);
   color: var(--text-3);
 }
 .tab a {
@@ -673,7 +673,7 @@ kbd {
 .zelle em {
   display: block;
   font-style: normal;
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--text-3);
   white-space: nowrap;
 }
@@ -773,7 +773,7 @@ kbd {
   border: 1px solid var(--linie-stark);
   background: var(--karton-hoch);
   color: var(--text);
-  font-size: 14px;
+  font-size: 14.5px;
 }
 .feld::placeholder {
   color: var(--text-3);
@@ -798,7 +798,7 @@ select.feld option {
   color: var(--text);
 }
 textarea.feld {
-  font: 400 14px/1.4 var(--text-font);
+  font: 400 14.5px/1.4 var(--text-font);
   resize: vertical;
 }
 input[type="date"].feld {
@@ -811,7 +811,7 @@ input[type="date"].feld {
   min-width: 0;
 }
 .fl > span {
-  font: 500 12px/1.2 var(--kopf-font);
+  font: 500 11.5px/1.2 var(--kopf-font);
   color: var(--text-3);
 }
 .fl.eng {
@@ -865,7 +865,7 @@ input[type="date"].feld {
   padding: 9px 13px;
   border: 1px solid var(--linie-stark);
   border-radius: var(--r);
-  font-size: 14px;
+  font-size: 14.5px;
   color: var(--text-2);
   max-width: 90ch;
 }
@@ -888,7 +888,7 @@ input[type="date"].feld {
 }
 .meldung {
   margin: 10px 0 0;
-  font-size: 14px;
+  font-size: 14.5px;
   color: var(--text-2);
 }
 .meldung.fehler {
@@ -897,7 +897,7 @@ input[type="date"].feld {
 .laedt {
   margin: 0;
   padding: 18px 0;
-  font-size: 14px;
+  font-size: 14.5px;
   color: var(--text-3);
 }
 .leer-satz {
@@ -974,7 +974,7 @@ input[type="date"].feld {
   background: var(--kopfzeile);
   border: 1px solid var(--linie);
   border-radius: var(--r-gross) var(--r-gross) 0 0;
-  font: 500 12px/1.2 var(--kopf-font);
+  font: 500 11.5px/1.2 var(--kopf-font);
   color: var(--text-3);
 }
 .spalten .rechts {
@@ -1008,14 +1008,14 @@ input[type="date"].feld {
 }
 .gegner b {
   font-weight: 600;
-  font-size: 15px;
+  font-size: 14.5px;
 }
 .gegner:hover b {
   text-decoration: underline;
 }
 .kartennr {
   white-space: nowrap;
-  font: 500 12px/1 var(--zahl-font);
+  font: 500 12.5px/1 var(--zahl-font);
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
@@ -1030,7 +1030,7 @@ input[type="date"].feld {
 .anteil .z {
   width: 44px;
   text-align: right;
-  font-size: 14px;
+  font-size: 13.5px;
 }
 /* Winrate je Sitz in der Tafel, rechtsbündig in Tabellenziffern */
 .sitzwr {
@@ -1069,7 +1069,7 @@ input[type="date"].feld {
   flex-wrap: wrap;
   gap: 6px 28px;
   margin: 0;
-  font-size: 14px;
+  font-size: 14.5px;
 }
 .rueck-zeilen div {
   display: flex;
@@ -1102,7 +1102,7 @@ input[type="date"].feld {
 }
 .ruhig h2 {
   margin: 0 0 8px;
-  font: 500 12px/1.2 var(--kopf-font);
+  font: 500 11.5px/1.2 var(--kopf-font);
   color: var(--text-3);
 }
 .ruhig p {
@@ -1188,7 +1188,7 @@ input[type="date"].feld {
 }
 .leiste-block h3 {
   margin: 0 0 8px;
-  font: 500 12px/1 var(--kopf-font);
+  font: 500 11.5px/1 var(--kopf-font);
   color: var(--text-3);
 }
 .pikto-liste {
@@ -1219,7 +1219,7 @@ input[type="date"].feld {
   border-radius: var(--r);
   border: 1px solid var(--linie-stark);
   text-decoration: none;
-  font: 600 14px/1 var(--zahl-font);
+  font: 600 13.5px/1 var(--zahl-font);
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
@@ -1329,7 +1329,7 @@ input[type="date"].feld {
   gap: 3px;
 }
 .saetze li {
-  font-size: 15.5px;
+  font-size: 16px;
 }
 .saetze .zahl {
   margin-left: 6px;
@@ -1380,7 +1380,7 @@ input[type="date"].feld {
 }
 .allezahlen .abschnitt > p {
   margin: 0 0 10px;
-  font-size: 14px;
+  font-size: 14.5px;
   color: var(--text-2);
   max-width: 80ch;
 }
@@ -1457,7 +1457,7 @@ input[type="date"].feld {
 }
 .play b {
   font-weight: 600;
-  font-size: 15.5px;
+  font-size: 16px;
 }
 .play .kartennr {
   margin-left: 8px;
@@ -1469,7 +1469,7 @@ input[type="date"].feld {
 }
 .wr-text {
   flex: 1;
-  font-size: 14px;
+  font-size: 14.5px;
   white-space: nowrap;
 }
 .wr-text .mit {
@@ -1485,7 +1485,7 @@ input[type="date"].feld {
 .don,
 .partien {
   text-align: right;
-  font-size: 14px;
+  font-size: 14.5px;
 }
 .don {
   color: var(--text-2);
@@ -1523,13 +1523,13 @@ input[type="date"].feld {
 }
 .plays .titel {
   font-weight: 600;
-  font-size: 15px;
+  font-size: 14.5px;
   margin-right: 8px;
 }
 .plays .richtung {
   color: var(--text-2);
   margin-right: 8px;
-  font-size: 14px;
+  font-size: 14.5px;
 }
 .plays .klein {
   grid-column: 2;
@@ -1553,7 +1553,7 @@ input[type="date"].feld {
 }
 .merkmale .z {
   text-align: right;
-  font-size: 14px;
+  font-size: 13.5px;
 }
 .linien li {
   display: flex;
@@ -1630,14 +1630,14 @@ input[type="date"].feld {
 }
 .partie summary .ausgang {
   margin-left: 8px;
-  font: 500 12px/1 var(--kopf-font);
+  font: 500 11.5px/1 var(--kopf-font);
   color: var(--text-3);
 }
 .partie summary .ausgang.sieg {
   color: var(--akzent-hell);
 }
 .partie .acc {
-  font-size: 14px;
+  font-size: 14.5px;
   white-space: nowrap;
 }
 .partie .noten {
@@ -1654,7 +1654,7 @@ input[type="date"].feld {
   padding-left: 18px;
   display: grid;
   gap: 4px;
-  font-size: 14px;
+  font-size: 14.5px;
 }
 .partie ul {
   margin-top: 8px;
@@ -1693,7 +1693,7 @@ input[type="date"].feld {
 }
 .leck li p {
   margin: 0;
-  font-size: 15.5px;
+  font-size: 16px;
 }
 .leck li p b {
   font-weight: 600;
@@ -1773,7 +1773,7 @@ input[type="date"].feld {
 .metaliste p {
   margin: 3px 0 0;
   color: var(--text-2);
-  font-size: 14px;
+  font-size: 14.5px;
 }
 .metaliste .knopfreihe,
 .metaliste .knopf {
@@ -1875,7 +1875,7 @@ input[type="date"].feld {
     font-size: 25px;
   }
   .vorspann .lead {
-    font-size: 15px;
+    font-size: 14.5px;
   }
   .fuss {
     padding: 12px 14px 16px;
@@ -2005,7 +2005,7 @@ input[type="date"].feld {
     top: 1px;
   }
   .saetze li {
-    font-size: 15px;
+    font-size: 14.5px;
   }
   .schritt .rueck-blatt {
     margin-left: 0;
@@ -2045,7 +2045,7 @@ input[type="date"].feld {
     grid-column: 1;
   }
   .sitz-satz p {
-    font-size: 15px;
+    font-size: 14.5px;
   }
   .reihe-spalten {
     display: none;
@@ -2278,7 +2278,7 @@ input[type="date"].feld {
   gap: 0 10px;
   align-items: baseline;
   padding: 8px;
-  font-size: 15.5px;
+  font-size: 16px;
   border-bottom: 1px solid var(--linie);
 }
 .urteil li:nth-child(even) {
@@ -2381,7 +2381,7 @@ input[type="date"].feld {
   border: 1px solid var(--linie); border-radius: var(--r);
 }
 .kennzeile dt {
-  font: 500 12px/1.2 var(--kopf-font); color: var(--text-3);
+  font: 500 11.5px/1.2 var(--kopf-font); color: var(--text-3);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 /* Die erste Kachel ist die Hauptzahl (Win rate am Leader, Rank beim Spieler). */
@@ -2403,7 +2403,7 @@ input[type="date"].feld {
 }
 .wr-skala.gut i { background: var(--gewinnt); }
 .wr-skala.schwach i { background: var(--verliert); }
-.kennzeile dd small { margin-left: 5px; font: 500 12px/1 var(--kopf-font); color: var(--text-3); }
+.kennzeile dd small { margin-left: 5px; font: 500 11.5px/1 var(--kopf-font); color: var(--text-3); }
 .kennzeile dd small.zeile { display: block; margin: 6px 0 0; font: 500 11.5px/1 var(--zahl-font); letter-spacing: 0; white-space: pre; }
 /* Leaderkopf: Win rate ist die Hauptkachel, breiter und groesser; Games etwas breiter fuer die Zeile mit Siegen und Niederlagen. */
 .kennzeile.leader-zeile { grid-auto-flow: row; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.3fr) repeat(4, minmax(0, 1fr)); }
@@ -2446,12 +2446,12 @@ input[type="date"].feld {
 .matrix thead th .kb-rahmen { margin: 0 auto 5px; }
 .matrix thead th span.kopfname {
   display: block; width: 58px; margin: 0 auto; text-align: center;
-  font: 600 10.5px/1.15 var(--kopf-font); letter-spacing: 0.02em; color: var(--text-3);
+  font: 600 11px/1.15 var(--kopf-font); letter-spacing: 0.02em; color: var(--text-3);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .matrix .ecke {
   left: 0; z-index: 3; text-align: left; padding: 0 10px 8px;
-  font: 500 12px/1.2 var(--kopf-font); color: var(--text-3);
+  font: 500 11.5px/1.2 var(--kopf-font); color: var(--text-3);
 }
 .matrix tbody th {
   position: sticky; left: 0; z-index: 2; background: var(--karton); text-align: left;
@@ -2460,11 +2460,11 @@ input[type="date"].feld {
 .matrix tbody tr:nth-child(even) th { background: var(--karton); }
 .matrix tbody tr:nth-child(even) td { background: var(--zebra); }
 .matrix .kopfzeile { display: grid; grid-template-columns: 22px 26px minmax(0, 1fr); gap: 0 10px; align-items: center; min-width: 210px; }
-.matrix .kopfzeile b { display: block; font-weight: 600; font-size: 14px; white-space: nowrap; }
-.matrix .kopfzeile small { font: 500 12px/1.2 var(--kopf-font); color: var(--text-3); white-space: nowrap; }
+.matrix .kopfzeile b { display: block; font-weight: 600; font-size: 14.5px; white-space: nowrap; }
+.matrix .kopfzeile small { font: 500 11.5px/1.2 var(--kopf-font); color: var(--text-3); white-space: nowrap; }
 .matrix td {
   width: 66px; min-width: 66px; text-align: center; padding: 6px 4px; cursor: pointer;
-  font: 500 14px/1.1 var(--kopf-font); color: var(--text-2);
+  font: 500 14.5px/1.1 var(--kopf-font); color: var(--text-2);
 }
 .matrix td.gut { color: var(--gewinnt); font-weight: 700; }
 .matrix td.schwach { color: var(--verliert); }
@@ -2480,11 +2480,11 @@ input[type="date"].feld {
   gap: 0 16px;
 }
 .ladder .vorn { cursor: pointer; padding-top: 5px; padding-bottom: 5px; }
-.ladder .spieler b { font-weight: 600; font-size: 15px; }
+.ladder .spieler b { font-weight: 600; font-size: 14.5px; }
 .ladder .bounty { text-align: right; font: 600 14.5px/1 var(--zahl-font); font-variant-numeric: tabular-nums; }
 .aufstellung { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; min-width: 0; }
 .aufstellung .eintrag { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
-.aufstellung .eintrag b { font-weight: 600; font-size: 14px; white-space: nowrap; }
+.aufstellung .eintrag b { font-weight: 600; font-size: 14.5px; white-space: nowrap; }
 .aufstellung .eintrag .wr { font-size: 13.5px; }
 .aufstellung .eintrag.neben { gap: 6px; }
 .pfeil-rechts { color: var(--text-3); }
@@ -2517,7 +2517,7 @@ input[type="date"].feld {
 .genau { display: flex; flex-wrap: wrap; gap: 10px 32px; }
 .genau .z.gross { font: 600 25px/1 var(--zahl-font); font-variant-numeric: tabular-nums; }
 .genau div { display: grid; gap: 4px; }
-.genau dt { font: 500 12px/1.2 var(--kopf-font); color: var(--text-3); }
+.genau dt { font: 500 11.5px/1.2 var(--kopf-font); color: var(--text-3); }
 .genau dd { margin: 0; }
 .noten-zeile { display: flex; flex-wrap: wrap; gap: 6px 8px; margin-top: 12px; }
 .tafel-spalten.entsch,
@@ -2527,10 +2527,10 @@ input[type="date"].feld {
 }
 .entsch .vorn { cursor: default; padding-top: 7px; padding-bottom: 7px; align-items: baseline; }
 .entsch .vorn > svg { position: relative; top: 3px; color: var(--text-2); }
-.entsch .stufe { width: 30px; height: 30px; font-size: 15px; align-self: center; }
+.entsch .stufe { width: 30px; height: 30px; font-size: 14.5px; align-self: center; }
 .entsch .stufe { display: grid; place-items: center; border-radius: var(--r); background: var(--karton-hoch); border: 1px solid var(--linie-stark); font-weight: 500; font-family: var(--zahl-font); color: var(--text); }
 .entsch .stufe.leise { background: transparent; border-color: var(--linie-stark); color: var(--text-3); }
-.entsch .wahltext { font-size: 15px; }
+.entsch .wahltext { font-size: 14.5px; }
 .entsch .wahltext b { font-weight: 600; }
 .entsch .lage { font-size: 13.5px; color: var(--text-2); }
 .entsch .zeile.fehler > .vorn { background: var(--akzent-flaeche); }
@@ -2546,8 +2546,8 @@ input[type="date"].feld {
     width: 100%; padding: 8px 10px; border: 1px solid var(--linie-stark); border-radius: var(--r);
     background: var(--grund); color: var(--text); text-align: left; cursor: pointer;
   }
-  .leiste-knopf .fl-label { display: block; font: 500 12px/1.2 var(--kopf-font); color: var(--text-3); }
-  .leiste-knopf b { display: block; font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .leiste-knopf .fl-label { display: block; font: 500 11.5px/1.2 var(--kopf-font); color: var(--text-3); }
+  .leiste-knopf b { display: block; font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .leiste-knopf svg { color: var(--text-2); }
   .deckteile { grid-template-columns: 1fr; }
 }
@@ -2596,7 +2596,7 @@ input[type="date"].feld {
   .mehr-blatt a {
     display: flex; align-items: center; justify-content: space-between;
     min-height: 48px; padding: 0 12px; border-radius: var(--r);
-    color: var(--text); text-decoration: none; font-size: 15px;
+    color: var(--text); text-decoration: none; font-size: 14.5px;
   }
   .mehr-blatt a + a { border-top: 1px solid var(--linie); }
   .mehr-blatt a svg { color: var(--text-3); }
@@ -2672,7 +2672,7 @@ input[type="date"].feld {
   .mull .vorn > .z-wrb { grid-area: wrb; }
   .mull .vorn > .z-wrw { grid-area: wrw; }
   .mull .vorn > .z-b, .mull .vorn > .z-w { display: none; }
-  .mull .vorn > .meta-handy { grid-area: meta; display: block; font: 500 12px/1.2 var(--zahl-font); color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .mull .vorn > .meta-handy { grid-area: meta; display: block; font: 500 12.5px/1.2 var(--zahl-font); color: var(--text-3); font-variant-numeric: tabular-nums; }
   .mull .zahlzelle::before {
     content: attr(data-label); display: block; margin-bottom: 2px;
     font: 500 11px/1 var(--kopf-font); color: var(--text-3);
@@ -2781,7 +2781,7 @@ input.feld { height: 36px; }
   border: 0;
   background: transparent;
   color: var(--text);
-  font: 400 15px/1 var(--text-font);
+  font: 400 16px/1 var(--text-font);
   outline: none;
 }
 .palette-feld input::placeholder { color: var(--text-3); }
@@ -2812,7 +2812,7 @@ input.feld { height: 36px; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.palette-liste .z { font-size: 12px; color: var(--text-2); }
+.palette-liste .z { font-size: 12.5px; color: var(--text-2); }
 .palette-liste small.z { color: var(--text-3); min-width: 88px; text-align: right; }
 .palette-liste .leer-satz { padding: 14px 10px; }
 @media (max-width: 760px) {
@@ -2861,7 +2861,7 @@ button { color: inherit; }
 .kb-kaputt {
   display: grid; place-content: center; width: 100%; height: 100%;
   container-type: inline-size;
-  font: 600 10.5px/1.1 var(--kopf-font); letter-spacing: 0.02em; color: var(--text-3); text-align: center;
+  font: 600 11px/1.1 var(--kopf-font); letter-spacing: 0.02em; color: var(--text-3); text-align: center;
   border: 1px dashed var(--linie-stark); border-radius: 3px; overflow: hidden;
 }
 .kb-kaputt > span { display: block; white-space: nowrap; }
@@ -2880,7 +2880,7 @@ button { color: inherit; }
 .spalten button[data-sortiert="ab"]::after { content: " \2193"; }
 .spalten button[data-sortiert="auf"]::after { content: " \2191"; }
 .knopf.rand[aria-pressed="true"] { border-color: var(--akzent); background: var(--akzent-flaeche); color: var(--akzent-hell); }
-.bkarte.kb-kaputt { display: grid; aspect-ratio: 120 / 167; font-size: 12px; }
+.bkarte.kb-kaputt { display: grid; aspect-ratio: 120 / 167; font-size: 11.5px; }
 .spalten .rechts button { width: 100%; text-align: right; }
 .tafel .vorn.still { cursor: default; }
 .zahlzelle { text-align: right; }
@@ -2910,9 +2910,9 @@ button { color: inherit; }
   gap: 0 16px;
 }
 .rang .vorn { cursor: default; }
-.rang .name b { font-weight: 600; font-size: 15px; }
+.rang .name b { font-weight: 600; font-size: 14.5px; }
 .rang .anteil .z { width: 58px; text-align: right; }
-.rang .rating { font: 600 15px/1 var(--zahl-font); text-align: right; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.rang .rating { font: 600 14.5px/1 var(--zahl-font); text-align: right; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .rang .rating.gut { color: var(--text); font-weight: 700; }
 .rang .rating.schwach { color: var(--text-3); font-weight: 500; }
 
@@ -2943,7 +2943,7 @@ button { color: inherit; }
   padding: 14px 0; border-top: 1px solid var(--linie);
 }
 .chronik > li:first-child { border-top: 0; }
-.chronik h2 { margin: 2px 0 0; font: 500 14px/1.3 var(--kopf-font); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.chronik h2 { margin: 2px 0 0; font: 500 14.5px/1.3 var(--kopf-font); color: var(--text-2); font-variant-numeric: tabular-nums; }
 .chronik ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0; }
 .chronik ul li { padding: 6px 8px; border-radius: var(--r); font-size: 14.5px; line-height: 1.55; }
 .chronik ul li:nth-child(even) { background: var(--zebra); }
@@ -2961,10 +2961,10 @@ button { color: inherit; }
   grid-template-columns: 26px 26px minmax(0, 1fr) 22px minmax(0, 1fr) 26px 120px 48px 30px;
   gap: 0 12px;
 }
-.spiele .vs { color: var(--text-3); font: 500 12px/1 var(--kopf-font); text-align: center; }
+.spiele .vs { color: var(--text-3); font: 500 11.5px/1 var(--kopf-font); text-align: center; }
 .spiele .eigen, .spiele .fremd { min-width: 0; }
 .spiele .eigen b, .spiele .fremd b {
-  display: block; font-weight: 600; font-size: 14px;
+  display: block; font-weight: 600; font-size: 14.5px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .spiele .fremd { text-align: right; }
@@ -2982,7 +2982,7 @@ button { color: inherit; }
   font: 500 13px/1.35 var(--kopf-font); color: var(--text);
   white-space: normal; overflow-wrap: anywhere; word-break: break-all;
 }
-.schritt-text { display: grid; gap: 6px; padding: 4px 8px 10px; font-size: 15px; min-width: 0; }
+.schritt-text { display: grid; gap: 6px; padding: 4px 8px 10px; font-size: 14.5px; min-width: 0; }
 .schritt-text .label { font: 500 12.5px/1.2 var(--kopf-font); color: var(--text-3); margin-top: 6px; }
 .schritt-text p { margin: 0; }
 .schritt-text .klein { margin: 0; }
@@ -2990,7 +2990,7 @@ button { color: inherit; }
   display: grid; place-items: center; gap: 4px; min-width: 0; padding: 22px 12px;
   border: 1px dashed var(--linie-stark); border-radius: var(--r); background: var(--grund);
   text-align: center; cursor: pointer;
-  font: 600 15px/1.2 var(--kopf-font); letter-spacing: 0.02em;
+  font: 600 14.5px/1.2 var(--kopf-font); letter-spacing: 0.02em;
 }
 .ablage:hover, .ablage.zieht { border-color: var(--akzent); background: var(--akzent-flaeche); }
 .ablage small { font: 400 13px/1.3 var(--text-font); color: var(--text-3); letter-spacing: 0; }
@@ -3001,13 +3001,13 @@ button { color: inherit; }
 
 /* ------------------------------------------------ Analyse im Replay Viewer */
 .r-analyse { margin-bottom: 12px; padding: 12px 14px; border: 1px solid var(--linie-stark); border-radius: var(--r); }
-.r-analyse-kopf { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; font-size: 14px; }
+.r-analyse-kopf { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; font-size: 14.5px; }
 .r-analyse-kopf .eigen { color: var(--akzent-hell); }
 .r-analyse-kopf .knopfreihe { margin-left: auto; }
 .r-analyse .kurve { height: 72px; }
-.r-analyse .note { margin: 6px 0 0; font-size: 14px; }
+.r-analyse .note { margin: 6px 0 0; font-size: 14.5px; }
 .r-analyse .note b { font-weight: 600; }
-.r-jetzt { margin-bottom: 12px; padding: 8px 12px; border: 1px solid var(--linie); border-radius: var(--r); background: var(--grund); font-size: 14px; line-height: 1.3; }
+.r-jetzt { margin-bottom: 12px; padding: 8px 12px; border: 1px solid var(--linie); border-radius: var(--r); background: var(--grund); font-size: 14.5px; line-height: 1.3; }
 .r-jetzt .wer { margin-right: 6px; font-weight: 600; color: var(--text-2); }
 .r-jetzt .wer.eigen, .ereignis .wer.eigen { color: var(--akzent-hell); }
 .kartenband { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: middle; }
@@ -3066,7 +3066,7 @@ button { color: inherit; }
   background: var(--grund) center / cover no-repeat;
   display: flex; align-items: flex-end; justify-content: center; padding-bottom: 3px;
 }
-.stapel .zahl { font-size: 12px; font-weight: 600; color: var(--auf-akzent); background: rgba(0, 0, 0, 0.72); border-radius: var(--r); padding: 1px 5px; }
+.stapel .zahl { font-size: 12.5px; font-weight: 600; color: var(--auf-akzent); background: rgba(0, 0, 0, 0.72); border-radius: var(--r); padding: 1px 5px; }
 .stapel.sk-karte { background-image: url("/rueckseiten/karte.jpg"); }
 .stapel.sk-don { background-image: url("/rueckseiten/don.jpg"); }
 .stapel.leer { background-image: none; align-items: center; padding-bottom: 0; color: var(--text-3); font-size: 11px; }
@@ -3074,7 +3074,7 @@ button { color: inherit; }
 .donzone span { width: calc(46px * var(--sk)); height: calc(46px * var(--sk)); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
 .donzone i { width: calc(31px * var(--sk)); height: calc(43px * var(--sk)); border-radius: 3px; display: block; background: url("/rueckseiten/don.jpg") center / cover no-repeat; }
 .donzone span.rest i { transform: rotate(90deg); opacity: 0.55; }
-.donzone .leer { color: var(--text-3); font-size: 12px; width: auto; }
+.donzone .leer { color: var(--text-3); font-size: 11.5px; width: auto; }
 .lifestapel { display: flex; flex-direction: column; align-items: center; }
 .lifestapel .lk {
   width: calc(40px * var(--sk)); height: calc(56px * var(--sk)); border-radius: 3px;
@@ -3082,13 +3082,13 @@ button { color: inherit; }
   margin-top: calc(-42px * var(--sk));
 }
 .lifestapel .lk:first-child { margin-top: 0; }
-.lifestapel.aus { color: var(--text-3); font: 600 12px/1 var(--kopf-font); padding: 6px 0; }
+.lifestapel.aus { color: var(--text-3); font: 600 11.5px/1 var(--kopf-font); padding: 6px 0; }
 .rkopf { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
-.rkopf .rname { font: 600 14px/1.2 var(--kopf-font); }
+.rkopf .rname { font: 600 14.5px/1.2 var(--kopf-font); }
 .rkopf .rname.eigen { color: var(--akzent-hell); }
 .pille {
   border: 1px solid var(--linie-stark); border-radius: var(--r); padding: 3px 8px 2px;
-  color: var(--text-3); font: 500 12px/1.2 var(--kopf-font);
+  color: var(--text-3); font: 500 11.5px/1.2 var(--kopf-font);
 }
 .pille b { color: var(--text); font-variant-numeric: tabular-nums; margin-left: 2px; }
 .lifeleiste { display: flex; gap: 3px; }
@@ -3097,7 +3097,7 @@ button { color: inherit; }
 .ereignis { display: block; width: 100%; text-align: left; border: 0; padding: 5px 8px; background: transparent; cursor: pointer; border-radius: var(--r); }
 .ereignis.jetzt { background: var(--akzent-flaeche); }
 .ereignis.spaeter { opacity: 0.45; }
-.ereignis .art { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; font: 500 12px/1.2 var(--kopf-font); color: var(--text-3); }
+.ereignis .art { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; font: 500 11.5px/1.2 var(--kopf-font); color: var(--text-3); }
 .ereignis .text { font-size: 13.5px; line-height: 1.3; }
 .ereignis .wer { margin-right: 4px; font-weight: 600; color: var(--text-2); }
 /* Die Art steht als Etikett vor dem Zug, in Helligkeit und Rand; nur Kampf traegt Blau. */
@@ -3123,7 +3123,7 @@ button { color: inherit; }
   .rmitte { gap: 6px; }
   .rkarten { min-height: calc(52px * var(--sk)); gap: 4px; }
   .brett .rhand { gap: 3px; margin-top: 4px; }
-  .brettleer { padding: 8px 4px; font-size: 12px; }
+  .brettleer { padding: 8px 4px; font-size: 11.5px; }
   .rkarten, .brett .rhand { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .rkarten::-webkit-scrollbar, .brett .rhand::-webkit-scrollbar { display: none; }
   .rkarten > *, .brett .rhand > * { flex: 0 0 auto; }
@@ -3133,7 +3133,7 @@ button { color: inherit; }
   .platz:has(.bkarte.leader.gerestet) { width: calc(50px * var(--sk) * 1.4); }
   .brett .rhand .bkarte { width: calc(34px * var(--sk)); }
   .rkopf { gap: 4px; }
-  .pille { padding: 2px 6px 1px; font-size: 10.5px; }
+  .pille { padding: 2px 6px 1px; font-size: 11px; }
   .lifeleiste i { width: 7px; height: 12px; }
   .dons { max-width: calc(48px * var(--sk)); }
   .dons i { width: calc(11px * var(--sk)); height: calc(15px * var(--sk)); }
@@ -3181,7 +3181,7 @@ button { color: inherit; }
   .mu .vorn > .z-first { grid-area: first; text-align: left; }
   .mu .vorn > .z-second { grid-area: second; text-align: left; }
   .mu .vorn > .z-partien, .mu .vorn > .z-w, .mu .vorn > .z-l { display: none; }
-  .mu .vorn > .meta-handy { grid-area: meta; display: block; font: 500 12px/1.2 var(--zahl-font); color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .mu .vorn > .meta-handy { grid-area: meta; display: block; font: 500 12.5px/1.2 var(--zahl-font); color: var(--text-3); font-variant-numeric: tabular-nums; }
   .mu .zahlzelle::before, .rang .zahlzelle::before, .gespielt .zahlzelle::before, .ladder.mit-zahlen .zahlzelle::before {
     content: attr(data-label); display: block; margin-bottom: 2px;
     font: 500 11px/1 var(--kopf-font); color: var(--text-3);
@@ -3210,13 +3210,18 @@ button { color: inherit; }
     grid-template-columns: 26px repeat(3, minmax(0, 1fr));
     grid-template-areas: "nr spieler spieler bounty" "nr partien wr zeit" "nr aufst aufst aufst";
   }
-  .ladder.mit-zahlen.ohne-zeit .vorn { grid-template-areas: "nr spieler spieler bounty" "nr partien wr wr" "nr aufst aufst aufst"; }
+  /* Die Rechnerregel fuer ohne-zeit hat vier Klassen und schlaegt sonst die Spalten oben;
+     ohne diese Zeile laeuft die Bounty am Handy rechts aus der Tafel. */
+  .ladder.mit-zahlen.ohne-zeit .vorn {
+    grid-template-columns: 26px repeat(3, minmax(0, 1fr));
+    grid-template-areas: "nr spieler spieler bounty" "nr partien wr wr" "nr aufst aufst aufst";
+  }
   .ladder.mit-zahlen .vorn > .z-partien { grid-area: partien; text-align: left; }
   .ladder.mit-zahlen .vorn > .z-wr { grid-area: wr; text-align: left; }
   .ladder.mit-zahlen .vorn > .z-zeit { grid-area: zeit; text-align: left; }
 
   .chronik > li { grid-template-columns: 1fr; gap: 6px; }
-  .chronik ul li { font-size: 15px; padding: 6px 4px; }
+  .chronik ul li { font-size: 14.5px; padding: 6px 4px; }
 
   .tafel-spalten.gespielt { display: none; }
   .gespielt .vorn {
@@ -3253,11 +3258,11 @@ button { color: inherit; }
 /* ------------------------------------------------------- Belege im Guide */
 .beleg-titel {
   display: flex; align-items: center; gap: 7px;
-  margin: 14px 0 6px; font: 500 12px/1.2 var(--kopf-font); color: var(--text-2);
+  margin: 14px 0 6px; font: 500 11.5px/1.2 var(--kopf-font); color: var(--text-2);
 }
 .beleg-titel:first-of-type { margin-top: 2px; }
 .beleg-titel svg { color: var(--akzent-hell); flex: none; }
-.beleg-zeile { margin: 8px 0 0; font-size: 14px; color: var(--text-2); }
+.beleg-zeile { margin: 8px 0 0; font-size: 14.5px; color: var(--text-2); }
 .beleg-zeile b { color: var(--text); font-weight: 600; }
 .tab .name .rolle { margin-left: 8px; }
 .rueck-blatt .tab tr.markiert { background: var(--akzent-flaeche); }
@@ -3372,7 +3377,7 @@ button { color: inherit; }
 
 /* Kaizoku Teile (Kartenwerte, Starthand, Zugkurve) */
 .kz-tab { width: 100%; }
-.kz-tab th { text-align: right; font-weight: 600; font-size: 12px; color: var(--text-3); padding: 6px 8px; }
+.kz-tab th { text-align: right; font-weight: 600; font-size: 11.5px; color: var(--text-3); padding: 6px 8px; }
 .kz-tab th:first-child, .kz-tab td:first-child { text-align: left; }
 .kz-tab td { padding: 6px 8px; text-align: right; }
 /* Kaizoku Listen eines Spielers auf der Spielerseite (KaizokuListe) */
@@ -3501,4 +3506,38 @@ p.leer-satz::before { opacity: .7; }
   }
   .dreh:hover::before { border-color: var(--akzent-hell); }
   .dreh[aria-expanded="true"]::before { border-color: var(--akzent); background: var(--akzent-flaeche); }
+
+  /* Polish (specs/features/polish.md): Suchfeld und Quellenchip im Kopf, der Sombrero als
+     Link und die Kartenbilder als Knopf bekommen am Handy ebenfalls 44 px. */
+  .suche-knopf,
+  .quelle-chip {
+    height: var(--touch);
+  }
+  .marke {
+    min-width: var(--touch);
+    min-height: var(--touch);
+    justify-content: center;
+  }
+  /* Das Kartenbild im Mulligan bleibt so gross wie es ist; die Trefferflaeche im ::after
+     waechst auf 44 px. Dafuer darf der Knopf nicht mehr beschneiden, die Rundung traegt das
+     Bild. Nur im Mulligan: in den Kartenstreifen stehen die Bilder dicht, dort wuerden sich
+     die Flaechen ueberlappen und ein Tipp die Nachbarkarte oeffnen. */
+  .mull .kb-knopf {
+    overflow: visible;
+  }
+  .mull .kb-knopf > .kb {
+    border-radius: inherit;
+  }
+  /* Eingabefelder unter 16 px laesst iOS beim Fokus heranzoomen; am Handy daher 16 px. */
+  .feld {
+    font-size: 16px;
+  }
+  .mull .kb-knopf::after {
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    width: max(100%, var(--touch));
+    height: max(100%, var(--touch));
+    transform: translate(-50%, -50%);
+  }
 }
