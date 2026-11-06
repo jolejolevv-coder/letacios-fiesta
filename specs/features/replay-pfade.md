@@ -26,8 +26,8 @@ Out of scope:
 
 ## Acceptance criteria
 - [x] Probe mit mindestens 50 Partien seit dem 27.10.: jede Partie, deren Replay in Storage liegt, bekommt den echten Pfad (63 junge Partien, 15 gefunden, 0 über den gerechneten Pfad).
-- [ ] Ein Lauf von `replays_holen.py` nach `spieler_daten.py` findet mindestens dreimal so viele neue Replays wie der Lauf vom 06.11. (32), relativ zur Zahl der Pfade. (Probe: insgesamt 1,5 mal so viele, bei Partien seit dem 27.10. von 0 auf 15 von 63. Mehr liegt nicht in Storage.)
-- [ ] Auf der Seite öffnet sich ein Replay einer Partie vom 05.11. oder später. (Erst nach dem Deploy prüfbar.)
+- [x] Ein Lauf von `replays_holen.py` nach `spieler_daten.py` findet mindestens dreimal so viele neue Replays wie der Lauf vom 06.11. (32), relativ zur Zahl der Pfade. (Action 42189667825 am 06.11.: 121 neu von 338 Pfaden, also 36 % statt 12 %, W44 96 von 233.)
+- [ ] Auf der Seite öffnet sich ein Replay einer Partie vom 05.11. oder später. (Datei liegt live, z. B. `replays/2026-W44_0_OP13-001_OP09-042_60ee….json.gz.enc` mit HTTP 200; das Öffnen hinter dem Passwort prüft der Nutzer.)
 - [x] Partien ohne hochgeladenes Replay führen nicht mehr ins „No replay stored“: `replays_holen.py` trägt sie aus, die Seite zeigt den Knopf nur mit `replay`.
 - [x] Fällt die Firestore Abfrage aus, läuft `spieler_daten.py` mit den gerechneten Pfaden weiter wie bisher (Warnung im Log, Test).
 - [x] `npm test` (81 pass, 7 skipped) und die Python Tests (204) grün.
