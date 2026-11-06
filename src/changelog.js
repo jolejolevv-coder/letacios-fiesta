@@ -4,6 +4,18 @@
    Git Historie zusammengefasst. */
 export const CHANGELOG = [
   {
+    tag: "2026-11-06",
+    punkte: [
+      "Player pages show a new chart, Bounty this season: the player's bounty after every game of the season, with start, high and latest value. It comes from the player's own profile, so it can lag behind the leaderboard until they open the app again.",
+      "Recent games now lists only games with both decks known. Games played without sim sync (on the phone or with play anyway) carry no deck and no replay; the page says how many were hidden.",
+      "Games without a winner (both players disconnected, unresolved or cancelled) and wins shorter than 60 seconds no longer show up as results, the same rule the OPBounty client uses.",
+      "Watch replay only appears when a replay really exists. Replays are found by OPBounty's own lookup now, so far more of them open, and newer games from the replays reach more player pages.",
+      "Every name in the top 100 opens its player page, with the leaders from OPBounty's leaderboard and the player's Card Kaizoku lists where they exist.",
+      "Faster on the phone: smaller card images, the leader art loads first and rarely used tabs load only when you open them.",
+      "Player and replay pages have their own address you can share, errors show a clear message instead of a blank page, and buttons are easier to hit on the phone.",
+    ],
+  },
+  {
     tag: "2026-11-02",
     punkte: [
       "Card Kaizoku is now a data set you pick under Source instead of a tab of its own, for the current OP17 + EB05 Standard format, for all players or only the top players. Decklists, matchups, the matrix and the rankings then show Kaizoku's numbers, with tech cards for each leader under Matchups.",
