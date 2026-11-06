@@ -1932,7 +1932,9 @@ function Replay({ pfad, namen, eigenerLeader, zurueck, zeilenDirekt, analyseDire
 
       <div className={"r-raster" + (logOffen ? " mit-log" : "")}>
         <div ref={listeRef} className={"r-log" + (logOffen ? "" : " hidden")}>
-          <div className="ereignisse">
+          {/* Nur bauen, solange das Protokoll offen ist: sonst entstehen beim Abspielen mit 4x
+              alle 175 ms Hunderte Knoepfe in einer versteckten Liste (Audit P2-7). */}
+          {logOffen ? <div className="ereignisse">
             {schritte.map((s, j) => {
               const art = ereignisart(s.text);
               const dran = j === nr;
@@ -1957,7 +1959,7 @@ function Replay({ pfad, namen, eigenerLeader, zurueck, zeilenDirekt, analyseDire
                 </button>
               );
             })}
-          </div>
+          </div> : null}
         </div>
 
         <div ref={ebeneRef} className="r-ebene">
