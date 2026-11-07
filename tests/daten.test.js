@@ -210,3 +210,11 @@ test("Karten mit X Vorsilbe zeigen auf das Bild ohne X, in beiden Quellen", () =
   assert.match(quellen[0], /img\/OP17-039\.jpg$/);
   assert.equal(quellen[1], BILD_CDN + "OP17-039.webp");
 });
+
+test("decklistText: eine Zeile je Karte, Leader ohne Anzahl gilt als 1x", async () => {
+  const { decklistText } = await import("../src/daten.js");
+  assert.equal(decklistText(["OP17-001", "4xST30-004", "2xOP17-045"]), "1xOP17-001\n4xST30-004\n2xOP17-045");
+  assert.equal(decklistText(["1xEB02-030", "4xOP08-051"]), "1xEB02-030\n4xOP08-051");
+  assert.equal(decklistText(undefined), "");
+  assert.equal(decklistText(["", null, "3xOP17-049"]), "3xOP17-049");
+});

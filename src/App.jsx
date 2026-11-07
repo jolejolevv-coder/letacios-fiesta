@@ -7,6 +7,7 @@ import { fahnenFarben, FARBNAME, farbBuchstaben, LEADERFARBE, leaderTon, themaFa
 import {
   anmelden,
   anzahl,
+  decklistText,
   bildpfad,
   bildQuellen,
   deckSchluessel,
@@ -643,11 +644,32 @@ function Quelle({ verzeichnis, wahl, setWahl, laedt }) {
    -------------------------------------------------------------------------- */
 
 const KZ_BILANZ_ZEILEN_MAX = 20;
+// So lange steht "Copied" auf dem Knopf, bevor er wieder "Copy decklist" heisst.
+const KOPIERT_MS = 1500;
+
+/** Kopiert eine Deckliste als "4xOP17-045" je Zeile (decklistText). Ein Knopf fuer
+    Decklists, Spielerseite und Kaizoku Listen. */
+function KopierKnopf({ eintraege, className = "knopf rand" }) {
+  const [kopiert, setKopiert] = useState(false);
+  function kopieren() {
+    navigator.clipboard.writeText(decklistText(eintraege)).then(
+      () => {
+        setKopiert(true);
+        setTimeout(() => setKopiert(false), KOPIERT_MS);
+      },
+      () => setKopiert(false)
+    );
+  }
+  return (
+    <button type="button" className={className} onClick={kopieren}>
+      {kopiert ? "Copied" : "Copy decklist"}
+    </button>
+  );
+}
 
 function Deckzeile({ nr, liste, leaderId, spielerIndex, partienIndex, namen }) {
   const g = liste.w + liste.l;
   const [offen, setOffen] = useState(false);
-  const [kopiert, setKopiert] = useState(false);
   const [bilanzOffen, setBilanzOffen] = useState(false);
   // Bekannte Partien dieser Liste je Gegnerleader. Die Quelle der Listen kennt keine
   // Aufteilung nach Gegner; das hier sind nur die aufgezeichneten Partien der Bestenliste.
@@ -673,17 +695,6 @@ function Deckzeile({ nr, liste, leaderId, spielerIndex, partienIndex, namen }) {
     const treffer = spielerIndex.get(deckSchluessel(liste.d, leaderId));
     return treffer ? [...treffer].sort((a, b) => a.localeCompare(b)) : [];
   }, [spielerIndex, liste, leaderId]);
-
-  function kopieren() {
-    const text = liste.d.map((e) => anzahl(e) + "x" + kennung(e)).join("\n");
-    navigator.clipboard.writeText(text).then(
-      () => {
-        setKopiert(true);
-        setTimeout(() => setKopiert(false), 1500);
-      },
-      () => setKopiert(false)
-    );
-  }
 
   const lid = kennung(leaderId);
   const streifen = liste.d.filter((e) => kennung(e) !== lid);
@@ -732,9 +743,7 @@ function Deckzeile({ nr, liste, leaderId, spielerIndex, partienIndex, namen }) {
             <div><dt>Std. error</dt><dd className="z">± {fehler(g).toFixed(1)}</dd></div>
             <div><dt>Duration</dt><dd className="z">{fmtDauer(liste.dur)}</dd></div>
           </dl>
-          <button type="button" className="knopf rand" onClick={kopieren}>
-            {kopiert ? "Copied" : "Copy decklist"}
-          </button>
+          <KopierKnopf eintraege={liste.d} />
         </div>
         {bilanz ? (
           <div className="rueck-fuss" style={{ display: "block" }}>
@@ -1379,12 +1388,18 @@ function Partie({ nr, p, namen, replayOeffnen }) {
         ) : (
           <p className="hinweis" style={{ marginTop: 0 }}>No decklist recorded for this game.</p>
         )}
-        {p.replay ? (
+        {p.replay || karten.length ? (
           <div className="rueck-fuss">
-            <button type="button" className="knopf voll" onClick={() => replayOeffnen(p.replay, p.eigener_leader)}>
-              Watch replay
-            </button>
-            <a href={replayAdresse(p.replay)} target="_blank" rel="noreferrer noopener" className="link">raw log</a>
+            {p.replay ? (
+              <button type="button" className="knopf voll" onClick={() => replayOeffnen(p.replay, p.eigener_leader)}>
+                Watch replay
+              </button>
+            ) : null}
+            {/* Ganze Liste mit Leader vorn; deck[0] ist der Leader ohne Anzahl. */}
+            {karten.length ? <KopierKnopf eintraege={p.deck} /> : null}
+            {p.replay ? (
+              <a href={replayAdresse(p.replay)} target="_blank" rel="noreferrer noopener" className="link">raw log</a>
+            ) : null}
           </div>
         ) : null}
       </Rueckseite>
@@ -1580,6 +1595,7 @@ function KaizokuListe({ liste, nr, namen }) {
         )}
         <button type="button" className="knopf leise" aria-expanded={karten}
                 onClick={() => setKarten((o) => !o)}>{karten ? "Hide list" : "Show list"}</button>
+        <KopierKnopf eintraege={liste.d} className="knopf leise" />
       </div>
       {karten ? <Decktabellen eintraege={liste.d} namen={namen} /> : null}
       {bilanz ? (
