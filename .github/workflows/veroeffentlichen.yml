@@ -220,6 +220,16 @@ jobs:
         run: python3 replays_holen.py
         continue-on-error: true
 
+      # Schluessel fuer Verbesserungsvorschlaege (specs/features/feedback.md). Landet als
+      # feedback.json.gz in dist und wird im Schritt "Daten verschluesseln" mit dem
+      # Seitenpasswort verschluesselt, steht also nie offen im Repo oder in der Seite.
+      # Fehlt das Secret, fehlt die Datei und die Seite zeigt keinen Knopf.
+      - name: Feedback Schluessel ablegen
+        env:
+          WEB3FORMS_KEY: ${{ secrets.WEB3FORMS_KEY }}
+        run: python3 werkzeuge/feedback_schluessel.py --ziel public
+        continue-on-error: true
+
       - run: npm ci
       - run: npm run build
 

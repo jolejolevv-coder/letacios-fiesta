@@ -49,6 +49,13 @@ Nutzer: Sätze alter Formate nicht mehr zeigen. `aktualisieren.py`: `Stats_OP17`
 `NUR_FORMATSAETZE = True`: kein Last Week Standard, 1B, 2B, 3B mehr (werden nicht geholt).
 Bleiben: OP17 + EB05 Standard, EB05 Heroines Event, Kaizoku eb05 (alle, top 20). Changelog ergänzt.
 
+## Feedback 06.11.2026 (Branch `pi/feedback`)
+
+Spec `specs/features/feedback.md`. Knopf „Suggest an improvement“ im Fuß (`Vorschlag` in
+App.jsx, Logik `src/feedback.js`), Versand über Web3Forms als Mail an den Nutzer. Schlüssel als
+Secret `WEB3FORMS_KEY` (angelegt 06.11.), `werkzeuge/feedback_schluessel.py` legt ihn als
+`feedback.json.gz` ab, verschlüsselt mit dem Seitenpasswort. Offen: Probeversand nach dem Merge.
+
 ## Nächste Schritte
 
 1. Nächster Leistungshebel am Handy, falls gewünscht: Leaderbild aus `?leader=` vor dem Satz oder eine Kopfdatei des Satzes (siehe `specs/features/ladepfad-handy.md`).

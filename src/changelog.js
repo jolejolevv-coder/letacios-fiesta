@@ -7,6 +7,7 @@ export const CHANGELOG = [
     tag: "2026-11-06",
     punkte: [
       "The data set list is shorter: only the current OP17 + EB05 format remains, as OP17 + EB05 Standard, EB05 Heroines Event and the two Card Kaizoku sets. The old OP17 format sets and the Last Week sets are gone.",
+      "Got an idea? Suggest an improvement at the bottom of every page: type it in and press Send.",
       "Copy decklist now works on player pages too: on the back of each recent game and next to every Card Kaizoku list.",
       "Player pages show a new chart, Bounty this season: the player's bounty after every game of the season, with start, high and latest value. It comes from the player's own profile, so it can lag behind the leaderboard until they open the app again.",
       "Recent games now lists only games with both decks known. Games played without sim sync (on the phone or with play anyway) carry no deck and no replay; the page says how many were hidden.",
