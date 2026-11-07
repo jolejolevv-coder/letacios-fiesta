@@ -918,6 +918,17 @@ input[type="date"].feld {
   font-size: 12.5px;
   color: var(--text-3);
 }
+/* Verbesserungsvorschlag (specs/features/feedback.md): Knopf rechts im Fuss, offen volle Breite. */
+.vorschlag { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.vorschlag.offen { flex-basis: 100%; flex-direction: column; align-items: stretch; gap: 8px; }
+.vorschlag label { font-size: 13px; color: var(--text-2); }
+.vorschlag textarea { resize: vertical; min-height: 96px; font: inherit; font-size: 14.5px; line-height: 1.45; }
+.vorschlag-meldung { font-size: 13px; color: var(--text-2); }
+.vorschlag-meldung.fehler { color: var(--fehler); }
+@media (max-width: 760px) {
+  .vorschlag textarea { font-size: 16px; }
+  .vorschlag .knopf { min-height: 44px; }
+}
 .fuss-rechts {
   display: flex;
   flex-wrap: wrap;

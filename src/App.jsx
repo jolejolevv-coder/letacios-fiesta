@@ -30,6 +30,7 @@ import {
 } from "./daten.js";
 import { leaderSuchen } from "./leadersuche.js";
 import { partienTeilen } from "./partien.js";
+import { FEEDBACK_DATEI, MAX_ZEICHEN, pruefen, schluesselAus, senden } from "./feedback.js";
 import { verlaufBauen, VERLAUF_BREITE, VERLAUF_HOEHE } from "./verlauf.js";
 import { PASSWORT_SCHLUESSEL, VORGABE_SATZ } from "./vorab.js";
 
@@ -1909,6 +1910,56 @@ const EINZUG_KURVE = "cubic-bezier(0.5, 1, 0.89, 1)";
    der Unterschied nicht. */
 const EINZUG_START_DECKKRAFT = 0.01;
 
+/** Verbesserungsvorschlag im Fuss: Knopf, aufklappendes Textfeld, Versand als Mail ueber
+    Web3Forms (src/feedback.js). Bei einem Fehler bleibt der Text stehen. */
+function Vorschlag({ schluessel, kontext }) {
+  const [offen, setOffen] = useState(false);
+  const [text, setText] = useState("");
+  const [zustand, setZustand] = useState({ art: "", meldung: "" });
+  const sendet = zustand.art === "sendet";
+
+  async function abschicken(e) {
+    e.preventDefault();
+    setZustand({ art: "sendet", meldung: "" });
+    try {
+      await senden(schluessel, text, kontext);
+      setText("");
+      setZustand({ art: "gesendet", meldung: "Thanks, sent." });
+      setOffen(false);
+    } catch (fehler) {
+      setZustand({ art: "fehler", meldung: fehler.message });
+    }
+  }
+
+  if (!offen) {
+    return (
+      <div className="vorschlag">
+        {zustand.art === "gesendet" ? <span className="vorschlag-meldung" role="status">{zustand.meldung}</span> : null}
+        <button type="button" className="knopf leise" onClick={() => { setOffen(true); setZustand({ art: "", meldung: "" }); }}>
+          Suggest an improvement
+        </button>
+      </div>
+    );
+  }
+  return (
+    <form className="vorschlag offen" onSubmit={abschicken}>
+      <label htmlFor="vorschlag-text">What would make Fiesta better for you?</label>
+      <textarea id="vorschlag-text" className="feld" rows={4} maxLength={MAX_ZEICHEN} value={text}
+                autoFocus onChange={(e) => setText(e.target.value)} disabled={sendet} />
+      <div className="knopfreihe">
+        <button type="submit" className="knopf voll" disabled={sendet || pruefen(text) !== ""}>
+          {sendet ? "Sending" : "Send"}
+        </button>
+        <button type="button" className="knopf leise" disabled={sendet}
+                onClick={() => { setOffen(false); setZustand({ art: "", meldung: "" }); }}>
+          Cancel
+        </button>
+        {zustand.art === "fehler" ? <span className="vorschlag-meldung fehler" role="alert">{zustand.meldung}</span> : null}
+      </div>
+    </form>
+  );
+}
+
 export default function App() {
   const [entsperrt, setEntsperrt] = useState(null);
   // Meldung, wenn schon das Entsperren beim Start scheitert (P1-3); die Anmeldung zeigt sie.
@@ -2055,6 +2106,20 @@ export default function App() {
   useEffect(() => {
     if (entsperrt !== true) return;
     kartenLaden().then(setNamen);
+  }, [entsperrt]);
+
+  /* Schluessel fuer Verbesserungsvorschlaege (specs/features/feedback.md). Fehlt die Datei,
+     bleibt er leer und der Knopf im Fuss fehlt; der Rest der Seite haengt nicht daran. */
+  const [feedbackSchluessel, setFeedbackSchluessel] = useState("");
+  useEffect(() => {
+    if (entsperrt !== true) return undefined;
+    let abgebrochen = false;
+    holen(FEEDBACK_DATEI)
+      .then((d) => !abgebrochen && setFeedbackSchluessel(schluesselAus(d)))
+      .catch(() => !abgebrochen && setFeedbackSchluessel(""));
+    return () => {
+      abgebrochen = true;
+    };
   }, [entsperrt]);
 
   /* Bestenliste. Eigene Datei, eigener Rhythmus, und sie darf fehlen: faellt sie
@@ -2792,6 +2857,15 @@ export default function App() {
             {satz ? <> · {satz.name}{satz.stand ? <>, data of {datumKurz(satz.stand)}</> : null}</> : null}
           </span>
           <span><span className="raute">◆</span> italic means estimate, upright means ladder</span>
+          {feedbackSchluessel ? (
+            <Vorschlag schluessel={feedbackSchluessel} kontext={{
+              reiter: reiterName,
+              leader: leaderbezogen && gewaehlt ? ((namen[kennung(gewaehlt)] || {}).n || kennung(gewaehlt)) : "",
+              satz: satz ? satz.name : "",
+              stand: satz ? satz.stand : "",
+              adresse: window.location.href,
+            }} />
+          ) : null}
         </footer>
       </div>
     </div>
