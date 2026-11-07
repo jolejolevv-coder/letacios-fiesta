@@ -85,6 +85,12 @@ export function anzahl(text) {
   return t ? parseInt(t[1], 10) : 1;
 }
 
+/** Text zum Kopieren einer Deckliste: eine Zeile je Eintrag als "4xOP17-045", in der
+ *  Reihenfolge der Liste (der Leader steht vorn). Ein Eintrag ohne Anzahl gilt als 1x. */
+export function decklistText(eintraege) {
+  return (eintraege || []).filter((e) => e).map((e) => anzahl(e) + "x" + kennung(e)).join("\n");
+}
+
 /**
  * Schluessel einer Deckliste, unabhaengig von der Schreibweise.
  *
